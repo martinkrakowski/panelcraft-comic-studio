@@ -19,7 +19,7 @@ export class ComicTitle {
    * Private constructor enforces factory pattern.
    * Use ComicTitle.create() instead.
    */
-  private constructor(private readonly value: unknown) {
+  private constructor(private readonly value: string) {
     // Value is immutable after construction
   }
 
@@ -28,25 +28,21 @@ export class ComicTitle {
    *
    * @param value - Raw value to wrap
    * @returns Result containing ComicTitle or validation error
-   *
-   * TODO: Implement validation logic
-   * Example:
-   * static create(value: string): Result<ComicTitle, Error> {
-   *   if (!value || value.length === 0) {
-   *     return { success: false, error: new Error('Value cannot be empty') };
-   *   }
-   *   return { success: true, value: new ComicTitle(value) };
-   * }
    */
   static create(value: unknown): { success: boolean; value?: ComicTitle; error?: Error } {
-    // TODO: Add validation
+    if (typeof value !== 'string') {
+      return { success: false, error: new Error('ComicTitle must be a string') };
+    }
+    if (value.length < 10 || value.length > 1000) {
+      return { success: false, error: new Error('ComicTitle must be between 10 and 1000 characters') };
+    }
     return { success: true, value: new ComicTitle(value) };
   }
 
   /**
    * Get the wrapped value.
    */
-  getValue(): unknown {
+  getValue(): string {
     return this.value;
   }
 

@@ -19,7 +19,7 @@ export class ComicProjectId {
    * Private constructor enforces factory pattern.
    * Use ComicProjectId.create() instead.
    */
-  private constructor(private readonly value: unknown) {
+  private constructor(private readonly value: string) {
     // Value is immutable after construction
   }
 
@@ -28,25 +28,21 @@ export class ComicProjectId {
    *
    * @param value - Raw value to wrap
    * @returns Result containing ComicProjectId or validation error
-   *
-   * TODO: Implement validation logic
-   * Example:
-   * static create(value: string): Result<ComicProjectId, Error> {
-   *   if (!value || value.length === 0) {
-   *     return { success: false, error: new Error('Value cannot be empty') };
-   *   }
-   *   return { success: true, value: new ComicProjectId(value) };
-   * }
    */
   static create(value: unknown): { success: boolean; value?: ComicProjectId; error?: Error } {
-    // TODO: Add validation
+    if (typeof value !== 'string' || value.length === 0) {
+      return { success: false, error: new Error('ComicProjectId must be a non-empty string') };
+    }
+    if (!/^[a-zA-Z0-9-]+$/.test(value)) {
+      return { success: false, error: new Error('ComicProjectId must contain only alphanumeric characters and hyphens') };
+    }
     return { success: true, value: new ComicProjectId(value) };
   }
 
   /**
    * Get the wrapped value.
    */
-  getValue(): unknown {
+  getValue(): string {
     return this.value;
   }
 

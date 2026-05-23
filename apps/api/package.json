@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@panelcraft/comic-generation": "workspace:*",
+    "@panelcraft/comic-project-management": "workspace:*",
     "@panelcraft/shared": "workspace:*",
     "bullmq": "^5.4.2",
     "express": "^4.18.2",

@@ -2,6 +2,7 @@ import express from "express";
 import { Queue } from "bullmq";
 import { ValidationError, NotFoundError, errorToHttpStatus } from "@panelcraft/shared";
 import { ComicGenerationUseCase, LangGraphOrchestrationAdapter } from "@panelcraft/comic-generation";
+import { InMemoryProjectRepository } from "@panelcraft/comic-project-management";
 import { initComicWorker } from "./workers/comic-worker.js";
 import { BullMQJobQueueAdapter } from "./adapters/BullMQJobQueueAdapter.js";
 import { XaiLLMClientAdapter } from "./adapters/XaiLLMClientAdapter.js";
@@ -12,26 +13,6 @@ app.use(express.json());
 // ============================================================================
 // Infrastructure Setup: Database and Queue
 // ============================================================================
-
-/**
- * In-memory project repository for demo.
- * For production, implement with PostgreSQL or similar persistent storage.
- */
-class InMemoryProjectRepository {
-  private projects = new Map<string, any>();
-
-  async save(project: any): Promise<void> {
-    this.projects.set(project.id, project);
-  }
-
-  async load(id: string): Promise<any | null> {
-    return this.projects.get(id) ?? null;
-  }
-
-  async listAll(): Promise<any[]> {
-    return Array.from(this.projects.values());
-  }
-}
 
 const projectRepo = new InMemoryProjectRepository();
 
@@ -154,15 +135,16 @@ app.get("/api/projects/:id", async (req, res, next) => {
       });
     }
 
+    const projectJson = project.toJSON();
     res.json({
-      id: project.id,
-      prompt: project.prompt,
-      panelCount: project.panelCount,
-      status: project.status,
-      createdAt: project.createdAt,
-      panels: project.panels.map((p: any) => ({
+      id: projectJson.id,
+      prompt: projectJson.prompt,
+      panelCount: projectJson.panelCount,
+      status: projectJson.status,
+      createdAt: projectJson.createdAt,
+      panels: projectJson.panels.map((p: any, idx: number) => ({
         id: p.id,
-        index: p.index,
+        index: idx,
         status: p.status,
         imageUrl: p.generatedImageUrl,
       })),
@@ -181,13 +163,16 @@ app.get("/api/projects", async (req, res, next) => {
     const projects = await comicUseCase.listProjects();
 
     res.json(
-      projects.map((p) => ({
-        id: p.id,
-        prompt: p.prompt.substring(0, 50),
-        panelCount: p.panelCount,
-        status: p.status,
-        createdAt: p.createdAt,
-      }))
+      projects.map((p) => {
+        const projectJson = p.toJSON();
+        return {
+          id: projectJson.id,
+          prompt: projectJson.prompt.substring(0, 50),
+          panelCount: projectJson.panelCount,
+          status: projectJson.status,
+          createdAt: projectJson.createdAt,
+        };
+      })
     );
   } catch (error) {
     next(error);

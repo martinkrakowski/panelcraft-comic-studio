@@ -4,10 +4,12 @@ import {
   LLMResponseValidationError,
   ExternalServiceError
 } from "@panelcraft/shared";
+import { ComicProject } from "@panelcraft/comic-project-management";
 import { ComicGraphState, ComicGraphStateType } from "../../domain/types/ComicGraphState.js";
 import type { HITLFeedbackData } from "../../domain/value-objects/HITLFeedback.vo.js";
 import type { ImageGenerationPort } from "../../application/ports/out/image-generation.out-port.js";
 import type { LLMClientPort } from "../../application/ports/out/llm-client.out-port.js";
+import { PanelPromptValidationService } from "../../domain/services/PanelPromptValidationService.js";
 
 /**
  * LangGraph orchestration adapter that manages the comic generation workflow.
@@ -50,7 +52,11 @@ export class LangGraphOrchestrationAdapter {
     // After review: regenerate if rejected, else advance to next panel or finalize
     workflow.addConditionalEdges("hitlReview", (state: ComicGraphStateType) => {
       if (!state.lastFeedback?.approved) return "generatePanel";
-      return state.currentPanelIndex < state.project.panelCount
+      // panelCount may be a value object (ComicProject) or plain number (JSON from state)
+      const panelCountValue = typeof state.project.panelCount === 'number'
+        ? state.project.panelCount
+        : state.project.panelCount.getValue();
+      return state.currentPanelIndex < panelCountValue
         ? "generatePanel"
         : "finalizeComic";
     });
@@ -61,20 +67,22 @@ export class LangGraphOrchestrationAdapter {
 
   private async structureStory(state: ComicGraphStateType) {
     const { prompt, panelCount } = state.project;
+    const promptValue = prompt.getValue();
+    const panelCountValue = panelCount.getValue();
 
-    console.log(`Structuring story into ${panelCount} panels...`);
+    console.log(`Structuring story into ${panelCountValue} panels...`);
 
     const systemPrompt = `You are an expert comic book writer and storyboarder. Your task is to
 take a story concept and break it into visually compelling panel descriptions that an AI can use to generate artwork.`;
 
-    const userPrompt = `Story Concept: "${prompt}"
-Desired Panel Count: ${panelCount}
+    const userPrompt = `Story Concept: "${promptValue}"
+Desired Panel Count: ${panelCountValue}
 
-Create exactly ${panelCount} short, vivid visual descriptions for each panel of the comic.
+Create exactly ${panelCountValue} short, vivid visual descriptions for each panel of the comic.
 Each description should be 1-2 sentences, focusing on visual elements, composition, characters, and mood.
 Make them cinematic and action-oriented where appropriate.
 
-Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown or extra formatting:
+Return ONLY a valid JSON array of exactly ${panelCountValue} strings with no markdown or extra formatting:
 ["Panel 1: ...", "Panel 2: ...", ...]`;
 
     let panelPrompts: any;
@@ -89,46 +97,32 @@ Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown
       throw new LLMResponseParsingError(`structureStory failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Validate: must be array
-    if (!Array.isArray(panelPrompts)) {
-      throw new LLMResponseValidationError(
-        `structureStory: LLM must return an array, got ${typeof panelPrompts}`,
-        { expected: `array of ${panelCount} strings`, received: typeof panelPrompts }
-      );
-    }
-
-    // Validate: must have correct count
-    if (panelPrompts.length !== panelCount) {
-      throw new LLMResponseValidationError(
-        `structureStory: requested ${panelCount} panels but LLM returned ${panelPrompts.length}`,
-        { expected: panelCount, received: panelPrompts.length }
-      );
-    }
-
-    // Validate: each entry must be non-empty string
-    for (let i = 0; i < panelPrompts.length; i++) {
-      if (typeof panelPrompts[i] !== 'string' || !panelPrompts[i].trim()) {
-        throw new LLMResponseValidationError(
-          `structureStory: panel ${i} is empty or not a string`,
-          { expected: 'non-empty string', received: panelPrompts[i] }
-        );
+    // Delegate validation to domain service
+    try {
+      PanelPromptValidationService.validate(panelPrompts, panelCountValue);
+    } catch (error) {
+      if (error instanceof LLMResponseValidationError) {
+        throw new LLMResponseValidationError(`structureStory: ${error.message}`, error.expected, error.received);
       }
+      throw error;
     }
 
     // Now safe to assign
-    const updatedPanels = state.project.panels.map((panel: any, idx: number) => ({
+    const projectJson = state.project.toJSON();
+    const updatedPanels = projectJson.panels.map((panel: any, idx: number) => ({
       ...panel,
       prompt: panelPrompts[idx],
     }));
 
     return {
       ...state,
-      project: { ...state.project, panels: updatedPanels },
+      project: { ...projectJson, panels: updatedPanels },
     };
   }
 
   private async buildCharacterBible(state: ComicGraphStateType) {
-    const { prompt, panels } = state.project;
+    const projectJson = state.project;
+    const { prompt, panels } = projectJson;
     const panelPrompts = (panels as any[]).map((p) => p.prompt).join("\n");
 
     console.log("Extracting and characterizing story characters...");
@@ -217,13 +211,14 @@ Return ONLY valid JSON with no markdown or additional text:
 
     return {
       ...state,
-      project: { ...state.project, characterBible: characterData },
+      project: { ...projectJson, characterBible: characterData },
     };
   }
 
-private async generatePanel(state: ComicGraphStateType) {
+  private async generatePanel(state: ComicGraphStateType) {
+    const projectJson = state.project;
     const panelIndex = state.currentPanelIndex;
-    const panel = state.project.panels[panelIndex];
+    const panel = projectJson.panels[panelIndex];
 
     if (!panel) {
       throw new Error(`Panel at index ${panelIndex} not found`);
@@ -234,12 +229,12 @@ private async generatePanel(state: ComicGraphStateType) {
       panelNumber: panelIndex + 1,
     });
 
-    const updatedPanels = [...state.project.panels];
+    const updatedPanels = [...projectJson.panels];
     updatedPanels[panelIndex] = { ...panel, generatedImageUrl: imageUrl, status: "generated" };
 
     return {
       ...state,
-      project: { ...state.project, panels: updatedPanels },
+      project: { ...projectJson, panels: updatedPanels },
       currentPanelIndex: panelIndex + 1,
     };
   }
@@ -273,7 +268,8 @@ private async generatePanel(state: ComicGraphStateType) {
 
   private async finalizeComic(state: ComicGraphStateType) {
     console.log("Finalizing comic project...");
-    await this.projectRepo.save(state.project);
+    const project = ComicProject.fromJSON(state.project);
+    await this.projectRepo.save(project);
     return state;
   }
 }
