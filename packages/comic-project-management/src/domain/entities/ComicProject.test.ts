@@ -242,6 +242,18 @@ describe('ComicProject', () => {
       expect(deserialized.getCharacterBible()).toBeNull();
     });
 
+    it('should enforce panelCount invariants during deserialization', () => {
+      const invalidJsons = [
+        { id: 'p1', prompt: 'test', panelCount: 0 },
+        { id: 'p2', prompt: 'test', panelCount: -5 },
+        { id: 'p3', prompt: 'test', panelCount: 2.5 },
+      ];
+
+      invalidJsons.forEach((json) => {
+        expect(() => ComicProject.fromJSON(json)).toThrow(RangeError);
+      });
+    });
+
     it('should handle round-trip serialization', () => {
       const panels = [
         new Panel('p1', { prompt: 'Test', status: 'completed' }),

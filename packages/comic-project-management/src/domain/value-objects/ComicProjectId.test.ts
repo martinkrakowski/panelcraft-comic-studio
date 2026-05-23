@@ -3,7 +3,7 @@ import { ComicProjectId } from './ComicProjectId.vo';
 
 describe('ComicProjectId', () => {
   describe('create', () => {
-    it('should successfully create a value object with a valid ID', () => {
+    it('should successfully create a value object with a valid string ID', () => {
       const result = ComicProjectId.create('project-123');
 
       expect(result.success).toBe(true);
@@ -18,11 +18,11 @@ describe('ComicProjectId', () => {
       expect(result.value?.getValue()).toBe(id);
     });
 
-    it('should support numeric IDs', () => {
-      const result = ComicProjectId.create(789);
+    it('should enforce string-typed IDs for strong typing', () => {
+      const result = ComicProjectId.create('uuid-style-id-123');
 
       expect(result.success).toBe(true);
-      expect(result.value?.getValue()).toBe(789);
+      expect(typeof result.value?.getValue()).toBe('string');
     });
   });
 
@@ -36,24 +36,24 @@ describe('ComicProjectId', () => {
   });
 
   describe('equals', () => {
-    it('should return true for value objects with identical values', () => {
+    it('should return true for value objects with identical string IDs', () => {
       const id1 = ComicProjectId.create('same-id').value!;
       const id2 = ComicProjectId.create('same-id').value!;
 
       expect(id1.equals(id2)).toBe(true);
     });
 
-    it('should return false for value objects with different values', () => {
+    it('should return false for value objects with different string IDs', () => {
       const id1 = ComicProjectId.create('id-1').value!;
       const id2 = ComicProjectId.create('id-2').value!;
 
       expect(id1.equals(id2)).toBe(false);
     });
 
-    it('should correctly compare numeric values', () => {
-      const id1 = ComicProjectId.create(123).value!;
-      const id2 = ComicProjectId.create(123).value!;
-      const id3 = ComicProjectId.create(456).value!;
+    it('should compare canonical string IDs only', () => {
+      const id1 = ComicProjectId.create('project-uuid-abc').value!;
+      const id2 = ComicProjectId.create('project-uuid-abc').value!;
+      const id3 = ComicProjectId.create('project-uuid-def').value!;
 
       expect(id1.equals(id2)).toBe(true);
       expect(id1.equals(id3)).toBe(false);
