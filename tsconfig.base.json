@@ -8,6 +8,7 @@
     "composite": true,
     "declaration": true,
     "emitDeclarationOnly": true,
+    "skipLibCheck": true,
     "paths": {
       "@panelcraft/*": [
         "./packages/*/src/index.ts"
