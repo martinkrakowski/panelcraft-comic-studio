@@ -55,8 +55,38 @@
 
 ---
 
+## Documentation & File Organization Rules
+
+**All documentation and agent-generated notes must go in the `docs/` folder.**
+
+### Correct Locations:
+- **Project documentation**: `docs/`
+  - `docs/architecture/` — Architecture decisions and diagrams
+  - `docs/planning/` — Implementation plans and task breakdowns
+  - `docs/remediation/` — Bug fixes and improvement notes
+  - `docs/api/` — API endpoint documentation
+  - `docs/testing/` — Test strategies and coverage reports
+  - `docs/e2e/` — End-to-end workflow documentation
+
+- **Agent context**: `.agents/` (already established for briefs and prompts)
+
+### Prohibited:
+- ❌ Do **not** create new `.md` files in the project root (except `README.md`, `AGENTS.md`, `.gitignore`)
+- ❌ Do **not** create new top-level folders for documentation
+
+### When creating documentation:
+1. Always place files inside `docs/`
+2. Use clear, descriptive filenames (e.g., `docs/api/endpoints.md`, `docs/architecture/llm-client-port.md`)
+3. Update `docs/README.md` (if it exists) with a link to the new file
+4. Link to docs from relevant source files via comments when appropriate
+
+**Reason**: This keeps the project root clean and professional while maintaining excellent organization for both humans and AI agents.
+
+---
+
 **When working on this project:**
 1. Check `.architecture/manifest.yaml` first
 2. Review relevant files in `.agents/` for context
-3. Think step-by-step about architecture boundaries
-4. Deliver clean, well-commented code
+3. Place all documentation in `docs/` with appropriate subfolder
+4. Think step-by-step about architecture boundaries
+5. Deliver clean, well-commented code
