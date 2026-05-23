@@ -1,41 +1,83 @@
 import express from "express";
+import { Queue } from "bullmq";
 import { ValidationError, NotFoundError, errorToHttpStatus } from "@panelcraft/shared";
-import { LangGraphOrchestrationAdapter } from "@panelcraft/comic-generation";
+import { ComicGenerationUseCase, LangGraphOrchestrationAdapter } from "@panelcraft/comic-generation";
+import { initComicWorker } from "./workers/comic-worker.js";
+import { BullMQJobQueueAdapter } from "./adapters/BullMQJobQueueAdapter.js";
 
 const app = express();
 app.use(express.json());
 
-// In-memory project storage for demo (maps threadId -> project state)
-const projects = new Map<string, any>();
-let nextProjectId = 1;
+// ============================================================================
+// Infrastructure Setup: Database and Queue
+// ============================================================================
 
-// Mock image generation port (TODO: integrate with real service)
+/**
+ * In-memory project repository for demo.
+ * For production, implement with PostgreSQL or similar persistent storage.
+ */
+class InMemoryProjectRepository {
+  private projects = new Map<string, any>();
+
+  async save(project: any): Promise<void> {
+    this.projects.set(project.id, project);
+  }
+
+  async load(id: string): Promise<any | null> {
+    return this.projects.get(id) ?? null;
+  }
+
+  async listAll(): Promise<any[]> {
+    return Array.from(this.projects.values());
+  }
+}
+
+const projectRepo = new InMemoryProjectRepository();
+
+// ============================================================================
+// Message Queue Setup
+// ============================================================================
+
+const redisConnection = {
+  host: process.env.REDIS_HOST || "localhost",
+  port: parseInt(process.env.REDIS_PORT || "6379", 10),
+};
+
+const bullMQQueue = new Queue("comic-generation-queue", { connection: redisConnection });
+const jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue);
+
+// ============================================================================
+// LangGraph & Use Case Setup
+// ============================================================================
+
+/**
+ * Mock image generation port for demo.
+ * For production, integrate with actual image generation service (Firefly, DALL-E, etc.)
+ */
 const mockImageGenPort = {
   generatePanel: async (opts: any) => {
     console.log(`[Mock] Generating image for panel ${opts.panelNumber}: ${opts.prompt.substring(0, 50)}...`);
-    // Simulate generation delay
     await new Promise((r) => setTimeout(r, 500));
     return `https://example.com/panels/${opts.panelNumber}.png`;
   },
 };
 
-// Mock project repository
-const mockProjectRepo = {
-  save: async (project: any) => {
-    console.log(`[Mock] Saving project: ${project.id}`);
-    projects.set(project.id, project);
-  },
-  load: async (id: string) => {
-    return projects.get(id);
-  },
-};
+// Initialize orchestration adapter with ports
+const langGraphAdapter = new LangGraphOrchestrationAdapter(mockImageGenPort, projectRepo);
 
-// Initialize the LangGraph adapter
-const langGraphAdapter = new LangGraphOrchestrationAdapter(mockImageGenPort, mockProjectRepo);
+// Initialize application use case implementing RestControllerPort
+const comicUseCase = new ComicGenerationUseCase(projectRepo, jobQueueAdapter);
+
+// Initialize background worker for job queue
+initComicWorker(langGraphAdapter, projectRepo, bullMQQueue);
+
+// ============================================================================
+// REST API Endpoints
+// ============================================================================
 
 /**
  * POST /api/projects
- * Create a new comic project and start generation workflow
+ * Create a new comic project and enqueue background generation workflow.
  */
 app.post("/api/projects", async (req, res, next) => {
   try {
@@ -74,36 +116,14 @@ app.post("/api/projects", async (req, res, next) => {
       });
     }
 
-    // Create project
-    const projectId = String(nextProjectId++);
-    const project = {
-      id: projectId,
-      prompt: trimmedPrompt,
-      panelCount,
-      panels: Array.from({ length: panelCount }, (_, i) => ({
-        id: `panel-${i}`,
-        index: i,
-        prompt: "",
-        status: "pending",
-        generatedImageUrl: null,
-      })),
-      characterBible: null,
-      createdAt: new Date().toISOString(),
-      status: "generating",
-    };
-
-    projects.set(projectId, project);
-
-    // Trigger async generation (in real app, this would be a background job)
-    // For now, just mark it as created
-    console.log(`[API] Created project ${projectId}`);
+    // Delegate to use case (which persists and enqueues workflow)
+    const projectId = await comicUseCase.createProject(trimmedPrompt, panelCount);
 
     res.status(201).json({
       id: projectId,
-      prompt: project.prompt,
+      prompt: trimmedPrompt,
       panelCount,
       status: "created",
-      createdAt: project.createdAt,
     });
   } catch (error) {
     next(error);
@@ -112,12 +132,12 @@ app.post("/api/projects", async (req, res, next) => {
 
 /**
  * GET /api/projects/:id
- * Retrieve project status and panel information
+ * Retrieve project status and panel information.
  */
 app.get("/api/projects/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const project = projects.get(id);
+    const project = await comicUseCase.getProject(id);
 
     if (!project) {
       return res.status(404).json({
@@ -145,19 +165,21 @@ app.get("/api/projects/:id", async (req, res, next) => {
 
 /**
  * GET /api/projects
- * List all projects
+ * List all projects.
  */
 app.get("/api/projects", async (req, res, next) => {
   try {
-    const projectList = Array.from(projects.values()).map((p) => ({
-      id: p.id,
-      prompt: p.prompt.substring(0, 50),
-      panelCount: p.panelCount,
-      status: p.status,
-      createdAt: p.createdAt,
-    }));
+    const projects = await comicUseCase.listProjects();
 
-    res.json(projectList);
+    res.json(
+      projects.map((p) => ({
+        id: p.id,
+        prompt: p.prompt.substring(0, 50),
+        panelCount: p.panelCount,
+        status: p.status,
+        createdAt: p.createdAt,
+      }))
+    );
   } catch (error) {
     next(error);
   }
@@ -165,7 +187,7 @@ app.get("/api/projects", async (req, res, next) => {
 
 /**
  * POST /api/projects/:id/review
- * Submit HITL review feedback and resume generation
+ * Submit HITL review feedback and enqueue workflow resumption.
  */
 app.post("/api/projects/:id/review", async (req, res, next) => {
   try {
@@ -178,23 +200,19 @@ app.post("/api/projects/:id/review", async (req, res, next) => {
       });
     }
 
-    const project = projects.get(id);
-    if (!project) {
-      return res.status(404).json({
-        error: `Project with id ${id} not found`,
-      });
-    }
+    // Delegate to use case (which enqueues resumption job)
+    await comicUseCase.submitReview(id, approved, comment);
 
-    console.log(`[API] Review for project ${id}: approved=${approved}, comment=${comment}`);
-    // In real implementation, this would resume the LangGraph thread with the feedback
-
-    res.json({ message: "Review submitted", projectId: id });
+    res.json({ message: "Review submitted. Workflow resumption queued.", projectId: id });
   } catch (error) {
     next(error);
   }
 });
 
-// Global error handler
+// ============================================================================
+// Global Error Handler
+// ============================================================================
+
 app.use(
   (error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     const status = errorToHttpStatus(error);
@@ -209,10 +227,14 @@ app.use(
   }
 );
 
-// Start server
+// ============================================================================
+// Server Startup
+// ============================================================================
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`API server listening on port ${PORT}`);
+  console.log(`BullMQ worker connected to Redis at ${redisConnection.host || "localhost"}:${redisConnection.port || 6379}`);
 });
 
 export function main(): void {
