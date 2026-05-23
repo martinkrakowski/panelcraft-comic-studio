@@ -2,6 +2,7 @@ import { RestControllerPort } from "../ports/in/rest-controller.in-port.js";
 import type { RelationalDbPort } from "../ports/out/relational-db.out-port.js";
 import type { JobQueuePort } from "../ports/out/job-queue.out-port.js";
 import { randomUUID } from "node:crypto";
+import { NotFoundError, ValidationError } from "@panelcraft/shared";
 
 /**
  * Application use case for comic generation workflow orchestration.
@@ -62,22 +63,41 @@ export class ComicGenerationUseCase implements RestControllerPort {
     comment?: string,
     regenerationHint?: string
   ): Promise<void> {
-    // Verify project exists and is in a reviewable state
+    // Verify project exists
     const project = await this.projectRepo.load(projectId);
     if (!project) {
-      throw new Error(`Project ${projectId} not found`);
+      throw new NotFoundError(`Project ${projectId} not found`, projectId);
     }
 
-    if (project.status !== "pending_review") {
-      throw new Error(
+    // Check if project is in a reviewable state
+    const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minute timeout for recovery
+    const isStuckProcessing =
+      project.status === "processing" &&
+      project.lastReviewSubmittedAt &&
+      Date.now() - new Date(project.lastReviewSubmittedAt).getTime() > PROCESSING_TIMEOUT_MS;
+
+    if (project.status !== "pending_review" && !isStuckProcessing) {
+      throw new ValidationError(
         `Cannot submit review for project in status "${project.status}". ` +
-        `Project must be in "pending_review" status.`
+        `Project must be in "pending_review" status.`,
+        "status",
+        project.status
+      );
+    }
+
+    // If recovering from stuck state, log it
+    if (isStuckProcessing) {
+      console.warn(
+        `[Recovery] Project ${projectId} was stuck in "processing" for ` +
+        `${Math.round((Date.now() - new Date(project.lastReviewSubmittedAt).getTime()) / 1000)}s. ` +
+        `Allowing retry.`
       );
     }
 
     // Prevent duplicate submissions by marking project as "processing" synchronously
-    // This blocks concurrent review submissions while the job is being processed
+    // Store timestamp for recovery detection if job fails
     project.status = "processing";
+    project.lastReviewSubmittedAt = new Date().toISOString();
     await this.projectRepo.save(project);
 
     // Dispatch resumption job containing the human feedback

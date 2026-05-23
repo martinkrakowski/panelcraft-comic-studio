@@ -4,6 +4,7 @@ import { ValidationError, NotFoundError, errorToHttpStatus } from "@panelcraft/s
 import { ComicGenerationUseCase, LangGraphOrchestrationAdapter } from "@panelcraft/comic-generation";
 import { initComicWorker } from "./workers/comic-worker.js";
 import { BullMQJobQueueAdapter } from "./adapters/BullMQJobQueueAdapter.js";
+import { XaiLLMClientAdapter } from "./adapters/XaiLLMClientAdapter.js";
 
 const app = express();
 app.use(express.json());
@@ -62,8 +63,11 @@ const mockImageGenPort = {
   },
 };
 
+// Initialize LLM client adapter for xAI integration
+const llmClientAdapter = new XaiLLMClientAdapter();
+
 // Initialize orchestration adapter with ports
-const langGraphAdapter = new LangGraphOrchestrationAdapter(mockImageGenPort, projectRepo);
+const langGraphAdapter = new LangGraphOrchestrationAdapter(mockImageGenPort, llmClientAdapter, projectRepo);
 
 // Initialize application use case implementing RestControllerPort
 const comicUseCase = new ComicGenerationUseCase(projectRepo, jobQueueAdapter);

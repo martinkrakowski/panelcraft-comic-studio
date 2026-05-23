@@ -7,6 +7,7 @@ import {
 import { ComicGraphState, ComicGraphStateType } from "../../domain/types/ComicGraphState.js";
 import type { HITLFeedbackData } from "../../domain/value-objects/HITLFeedback.vo.js";
 import type { ImageGenerationPort } from "../../application/ports/out/ImageGenerationPort.js";
+import type { LLMClientPort } from "../../application/ports/out/llm-client.out-port.js";
 
 /**
  * LangGraph orchestration adapter that manages the comic generation workflow.
@@ -15,12 +16,14 @@ import type { ImageGenerationPort } from "../../application/ports/out/ImageGener
  */
 export class LangGraphOrchestrationAdapter {
   private readonly imageGenPort: ImageGenerationPort;
+  private readonly llmClient: LLMClientPort;
   private readonly projectRepo: any;
   private readonly graph;
   private readonly debug = process.env['PANELCRAFT_DEBUG'] === 'true';
 
-  constructor(imageGenPort: ImageGenerationPort, projectRepo: any) {
+  constructor(imageGenPort: ImageGenerationPort, llmClient: LLMClientPort, projectRepo: any) {
     this.imageGenPort = imageGenPort;
+    this.llmClient = llmClient;
     this.projectRepo = projectRepo;
     this.graph = this.buildGraph();
   }
@@ -76,7 +79,7 @@ Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown
 
     let panelPrompts: any;
     try {
-      panelPrompts = await this.callLLM(systemPrompt, userPrompt);
+      panelPrompts = await this.llmClient.call(systemPrompt, userPrompt);
     } catch (error) {
       // Re-throw domain errors without masking
       if (error instanceof LLMResponseParsingError || error instanceof LLMResponseValidationError || error instanceof ExternalServiceError) {
@@ -162,7 +165,7 @@ Return ONLY valid JSON with no markdown or additional text:
 
     let characterData: any;
     try {
-      characterData = await this.callLLM(systemPrompt, userPrompt);
+      characterData = await this.llmClient.call(systemPrompt, userPrompt);
     } catch (error) {
       // Re-throw domain errors without masking
       if (error instanceof LLMResponseParsingError || error instanceof LLMResponseValidationError || error instanceof ExternalServiceError) {
@@ -211,121 +214,7 @@ Return ONLY valid JSON with no markdown or additional text:
     };
   }
 
-  /**
-   * Calls xAI's Grok model via the OpenAI-compatible chat API.
-   * Implements retry logic for transient failures (5xx, 429).
-   * Throws custom domain errors on parse failure or validation issues.
-   * Uses try...finally to guarantee timeout cleanup and preserves HTTP status codes.
-   */
-  private async callLLM(
-    systemPrompt: string,
-    userPrompt: string,
-    maxRetries: number = 2
-  ): Promise<any> {
-    const apiKey = process.env['XAI_API_KEY'];
-    if (!apiKey) {
-      throw new Error('XAI_API_KEY environment variable is not set');
-    }
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for reasoning
-
-      try {
-        const response = await fetch('https://api.x.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'grok-2',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            temperature: 0.7,
-            max_tokens: 2048,
-          }),
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          const errorBody = await response.text();
-          const isRetryable = response.status >= 500 || response.status === 429;
-
-          const err = new ExternalServiceError(
-            `xAI API returned ${response.status}: ${errorBody.substring(0, 100)}`,
-            response.status,
-            isRetryable
-          );
-
-          if (isRetryable && attempt < maxRetries) {
-            const backoffMs = 1000 * Math.pow(2, attempt);
-            console.warn(
-              `[Attempt ${attempt + 1}/${maxRetries + 1}] xAI returned ${response.status}, ` +
-              `retrying in ${backoffMs}ms...`
-            );
-            await new Promise((r) => setTimeout(r, backoffMs));
-            continue;
-          }
-          throw err;
-        }
-
-        interface ChatResponse {
-          choices: Array<{ message: { content: string } }>;
-        }
-        const json = (await response.json()) as ChatResponse;
-        const content = json.choices[0]?.message.content;
-
-        if (!content) {
-          throw new LLMResponseParsingError('xAI returned empty response');
-        }
-
-        if (this.debug) {
-          console.log(`[LLM Response] ${content.substring(0, 300)}...`);
-        }
-
-        try {
-          return JSON.parse(content);
-        } catch (parseError) {
-          if (this.debug) {
-            console.warn(`[LLM Parse Error] Invalid JSON: ${content.substring(0, 200)}`);
-          }
-          throw new LLMResponseParsingError(
-            `LLM returned invalid JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
-            content.substring(0, 200)
-          );
-        }
-      } catch (error) {
-        if (
-          error instanceof LLMResponseParsingError ||
-          error instanceof LLMResponseValidationError ||
-          (error instanceof ExternalServiceError && !error.retryable)
-        ) {
-          throw error;
-        }
-
-        if (attempt < maxRetries) {
-          const backoffMs = 1000 * Math.pow(2, attempt);
-          console.warn(
-            `[Attempt ${attempt + 1}/${maxRetries + 1}] LLM call failed: ${(error as Error).message}, ` +
-            `retrying in ${backoffMs}ms...`
-          );
-          await new Promise((r) => setTimeout(r, backoffMs));
-        } else {
-          if (error instanceof ExternalServiceError) throw error;
-          throw new ExternalServiceError(
-            `LLM call failed after ${maxRetries + 1} attempts: ${(error as Error).message}`
-          );
-        }
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    }
-  }
-
-  private async generatePanel(state: ComicGraphStateType) {
+private async generatePanel(state: ComicGraphStateType) {
     const panelIndex = state.currentPanelIndex;
     const panel = state.project.panels[panelIndex];
 

@@ -86,7 +86,27 @@ export function initComicWorker(
         }
       } catch (error) {
         console.error(`[Worker] Error processing job ${job.id}:`, error);
-        throw error; // BullMQ will retry based on job configuration
+
+        // If this is the last attempt, reset project status to allow recovery
+        const totalAttempts = job.opts.attempts ?? 1;
+        if (job.attemptsMade + 1 >= totalAttempts) {
+          try {
+            const project = await projectRepo.load(projectId);
+            if (project && project.status === "processing") {
+              // Reset to pending_review to allow user to resubmit
+              project.status = "pending_review";
+              await projectRepo.save(project);
+              console.warn(
+                `[Worker] Job ${job.id} failed permanently. ` +
+                `Reset project ${projectId} to "pending_review" for recovery.`
+              );
+            }
+          } catch (recoveryError) {
+            console.error(`[Worker] Failed to recover project ${projectId}:`, recoveryError);
+          }
+        }
+
+        throw error; // BullMQ will handle final retry failure
       }
     },
     { connection: queue.opts.connection }
