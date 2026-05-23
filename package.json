@@ -13,6 +13,9 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "test:watch": "turbo test -- --watch",
+    "test:coverage": "turbo test -- --coverage",
+    "test:ui": "turbo test -- --ui",
     "clean": "turbo clean",
     "sync": "hexagen sync",
     "sync:dry": "hexagen sync --dry-run",
@@ -21,9 +24,12 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.7",
+    "@vitest/ui": "^4.1.7",
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
     "turbo": "^2.0.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.7"
   }
 }

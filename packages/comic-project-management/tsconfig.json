@@ -10,9 +10,11 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "paths": {}
   },
+  "include": ["src"],
   "references": [
     {
       "path": "../shared"
     }
-  ]
+  ],
+  "exclude": ["src/**/*.test.ts", "**/*.config.ts"]
 }

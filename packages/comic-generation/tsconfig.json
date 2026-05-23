@@ -10,6 +10,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "paths": {}
   },
+  "include": ["src"],
   "references": [
     {
       "path": "../shared"
@@ -17,5 +18,6 @@
     {
       "path": "../comic-project-management"
     }
-  ]
+  ],
+  "exclude": ["src/**/*.test.ts", "**/*.config.ts"]
 }
