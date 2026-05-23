@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { FeedbackEntry } from './FeedbackEntry.vo';
+import { FeedbackEntry } from '../FeedbackEntry.vo';
 
 describe('FeedbackEntry', () => {
   it('creates a feedback entry with approved=true', () => {

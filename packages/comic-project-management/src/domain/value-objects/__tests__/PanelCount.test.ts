@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PanelCount } from './PanelCount.vo';
+import { PanelCount } from '../PanelCount.vo';
 
 describe('PanelCount', () => {
   it('creates valid panel counts between 1 and 20', () => {

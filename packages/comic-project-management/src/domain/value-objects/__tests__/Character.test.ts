@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Character } from './Character.vo';
+import { Character } from '../Character.vo';
 
 describe('Character', () => {
   const validCharacter = {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Panel } from './Panel';
-import { PanelId, PanelStatus } from '../value-objects/index.js';
+import { Panel } from '../Panel';
+import { PanelId, PanelStatus } from '../../value-objects/index.js';
 
 describe('Panel', () => {
   describe('constructor', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PanelStatus } from './PanelStatus.vo';
+import { PanelStatus } from '../PanelStatus.vo';
 
 describe('PanelStatus', () => {
   it('creates valid status values', () => {

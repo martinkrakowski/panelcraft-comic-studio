@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ComicProject } from './ComicProject';
-import { Panel } from './Panel';
-import { ComicProjectId, ComicTitle, PanelCount, PanelId, PanelStatus, CharacterBible } from '../value-objects/index.js';
+import { ComicProject } from '../ComicProject';
+import { Panel } from '../Panel';
+import { ComicProjectId, ComicTitle, PanelCount, PanelId, PanelStatus, CharacterBible } from '../../value-objects/index.js';
 
 describe('ComicProject', () => {
   let project: ComicProject;

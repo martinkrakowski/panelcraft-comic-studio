@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PanelId } from './PanelId.vo';
+import { PanelId } from '../PanelId.vo';
 
 describe('PanelId', () => {
   it('creates a valid panel ID', () => {

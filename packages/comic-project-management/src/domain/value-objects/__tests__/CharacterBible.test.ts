@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CharacterBible } from './CharacterBible.vo';
+import { CharacterBible } from '../CharacterBible.vo';
 
 describe('CharacterBible', () => {
   const validCharacter = {

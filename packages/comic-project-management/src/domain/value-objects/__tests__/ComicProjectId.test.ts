@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ComicProjectId } from './ComicProjectId.vo';
+import { ComicProjectId } from '../ComicProjectId.vo';
 
 describe('ComicProjectId', () => {
   describe('create', () => {

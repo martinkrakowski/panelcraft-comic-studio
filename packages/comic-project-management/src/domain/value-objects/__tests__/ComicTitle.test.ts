@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ComicTitle } from './ComicTitle.vo';
+import { ComicTitle } from '../ComicTitle.vo';
 
 describe('ComicTitle', () => {
   it('creates a valid title with 10-1000 characters', () => {
