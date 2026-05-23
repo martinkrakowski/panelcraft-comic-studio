@@ -5,6 +5,26 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
+import { NoSemanticState } from "../../types";
+
+/**
+ * Modal dialog system based on Radix UI primitives.
+ * Blocks raw data/loading states from leaking into overlay modules.
+ * 
+ * @example
+ * <Dialog>
+ *   <DialogTrigger>Open Modal</DialogTrigger>
+ *   <DialogContent>
+ *     <DialogHeader>
+ *       <DialogTitle>Confirm Action</DialogTitle>
+ *       <DialogDescription>This action cannot be undone.</DialogDescription>
+ *     </DialogHeader>
+ *     <DialogFooter>
+ *       <Button>Confirm</Button>
+ *     </DialogFooter>
+ *   </DialogContent>
+ * </Dialog>
+ */
 const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -15,7 +35,7 @@ const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+  NoSemanticState<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
@@ -30,7 +50,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+  NoSemanticState<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>>
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />

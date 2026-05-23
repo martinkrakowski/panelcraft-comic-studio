@@ -1,9 +1,18 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
-export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+import { NoSemanticState } from "../../types";
 
+export interface TextareaProps
+  extends NoSemanticState<React.TextareaHTMLAttributes<HTMLTextAreaElement>> {}
+
+/**
+ * Textarea element for multiline form inputs.
+ * Blocks semantic state parameters to keep UI strictly presentation-only.
+ * 
+ * @example
+ * <Textarea placeholder="Enter prompt description..." />
+ */
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => {
     return (

@@ -21,17 +21,32 @@ const alertVariants = cva(
   }
 );
 
-const Alert = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
->(({ className, variant, ...props }, ref) => (
-  <div
-    ref={ref}
-    role="alert"
-    className={cn(alertVariants({ variant }), className)}
-    {...props}
-  />
-));
+import { NoSemanticState } from "../../types";
+
+export interface AlertProps
+  extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>>,
+    VariantProps<typeof alertVariants> {}
+
+/**
+ * Message banner block for visual feedback and warning alerts.
+ * Blocks direct semantic state parameters to keep UI strictly presentation-only.
+ * 
+ * @example
+ * <Alert variant="warning">
+ *   <AlertTitle>Warning</AlertTitle>
+ *   <AlertDescription>Review is pending.</AlertDescription>
+ * </Alert>
+ */
+const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
+  ({ className, variant, ...props }, ref) => (
+    <div
+      ref={ref}
+      role="alert"
+      className={cn(alertVariants({ variant }), className)}
+      {...props}
+    />
+  )
+);
 Alert.displayName = "Alert";
 
 const AlertTitle = React.forwardRef<

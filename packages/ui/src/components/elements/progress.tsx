@@ -1,10 +1,19 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
-export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
+import { NoSemanticState } from "../../types";
+
+export interface ProgressProps extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>> {
   value?: number; // 0 to 100
 }
 
+/**
+ * Progress bar component showing completion status (0 to 100%).
+ * Filters out raw semantic data/fetching states to stay presentational.
+ * 
+ * @example
+ * <Progress value={45} />
+ */
 const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
   ({ className, value = 0, ...props }, ref) => {
     // Ensure value is bounded between 0 and 100

@@ -1,12 +1,14 @@
 # DESIGN.md — Authoritative UI Contract
 
-> **Version:** 1.0.0
+> **Version:** 1.2.0
 > **Status:** Active
 > **Last Updated:** May 23, 2026
 > **Changelog:**
 > | Version | Date | Summary |
 > |---------|------------|---------|
-> | 1.0.0 | 2026-05-23 | Initial authoritative contract for PanelCraft Comic Studio. Defines design tokens, component contracts, and strict AI generation rules aligned with hexagonal architecture and Next.js 15 App Router. |
+> | 1.0.0 | 2026-05-23 | Initial authoritative contract for PanelCraft Comic Studio. |
+> | 1.1.0 | 2026-05-23 | Corrected component listings, documented active NoSemanticState compile-time enforcement, completed all 10 component API contracts, and clarified token-to-CSS variable mappings. |
+> | 1.2.0 | 2026-05-23 | Mandated JSDoc comment requirements, documented sub-component type-safety enforcement boundaries, and updated ToastProps component contract alignment. |
 
 ---
 
@@ -117,47 +119,42 @@ packages/ui/
 
 #### Detailed Layer Explanation
 
-| Directory | Purpose | Examples | Characteristics |
-| :--- | :--- | :--- | :--- |
-| `elements/` | Primitive UI bricks — the lowest-level building blocks | `Button`, `Card`, `Input`, `Badge`, `Label`, `Textarea`, `Icon`, `Skeleton` | - Purely presentational<br>- Accept `NoSemanticState<T>` props<br>- Use CVA for variants<br>- No side effects |
-| `modules/` | Composite interactive components — combinations of elements | `Tabs`, `ViewToggle`, `FileDropZone`, `DropdownMenu`, `DataTable` | - Combine multiple elements<br>- Can have internal state (client components)<br>- Still presentation-focused |
-| `sections/` | Layout containers & compound views — larger structural pieces | `Dialog`, `Modal`, `PageSection`, `FormSection` | - Higher-order layout<br>- Often wrap multiple modules<br>- Structural, not behavioral |
-| `controllers/` | Interaction hooks only — pure logic, no rendering | `useDialog`, `useDisclosure`, `useFocusTrap`, `usePress`, `useRovingTabIndex` | - Hooks only (no JSX)<br>- Reusable behavior logic<br>- Can be used by modules/sections |
+| Directory | Purpose | Examples / Implemented | Planned Components | Characteristics |
+| :--- | :--- | :--- | :--- | :--- |
+| `elements/` | Primitive UI bricks — the lowest-level building blocks | `Alert`, `Badge`, `Button`, `Card`, `Input`, `Progress`, `Skeleton`, `Textarea` | None | - Purely presentational<br>- Accept `NoSemanticState<T>` props<br>- Use CVA for variants<br>- No side effects |
+| `modules/` | Composite interactive components — combinations of elements | `Dialog`, `Toast` | `Tabs`, `ViewToggle`, `FileDropZone`, `DropdownMenu`, `DataTable` | - Combine multiple elements<br>- Can have internal state (client components)<br>- Still presentation-focused |
+| `sections/` | Layout containers & compound views — larger structural pieces | None (Reserved) | `PageSection`, `FormSection` | - Higher-order layout<br>- Often wrap multiple modules<br>- Structural, not behavioral |
+| `controllers/` | Interaction hooks only — pure logic, no rendering | `useToast` | `useDialog`, `useDisclosure`, `useFocusTrap`, `usePress`, `useRovingTabIndex` | - Hooks only (no JSX)<br>- Reusable behavior logic<br>- Can be used by modules/sections |
 
 #### Supporting Folders
 
 | Directory | Purpose | Key Files |
 | :--- | :--- | :--- |
 | `lib/` | Shared utilities and helpers | `utils.ts` (contains `cn()` function) |
-| `tokens/` | Branded design token system + compile-time validation | Projection tokens, allowed token lists |
-| `types/` | Branded type enforcement (e.g. `NoSemanticState<T>`) | Forbidden props, projection types |
+| `tokens/` | Branded design token system | `index.ts` (defines colors and motion constants) |
+| `types/` | Branded type enforcement | `index.ts` (defines `NoSemanticState<T>`) |
 
 #### Key Design Rules Enforced by This Structure
 
-- **Presentation-Only Rule**: `elements/`, `modules/`, and `sections/` components must not receive loading, error, data, status, etc. They extend `NoSemanticState<T>` to enforce this at compile time.
-- **Composition Hierarchy**: Build bottom-up: `elements` → `modules` → `sections`. Never skip layers unless absolutely necessary (and document the exception).
+- **Presentation-Only Rule (Fully Enforced)**: `elements/`, `modules/`, and `sections/` components must not receive loading, error, data, status, etc. They extend `NoSemanticState<T>` to enforce this at compile time.
+- **Composition Hierarchy**: Build bottom-up: `elements` → `modules` → `sections`. Never skip layers unless absolutely necessary.
 - **Public API**: Everything intended for use outside the package is exported from `src/index.ts`. Internal folders are not directly imported by `apps/web`.
 - **Naming Convention**: Semantic and domain-aware where possible (e.g. `ProjectCard` instead of generic `Card`).
-
-#### Why This Structure Works Well
-- **Enforces discipline** — prevents mixing data logic with UI.
-- **Promotes reusability** — primitives and modules can be used across multiple apps.
-- **Scalable** — easy to add new components without polluting the root.
-- **Type-safe** — branded types and tokens catch violations early.
-- **Maintainable** — clear mental model for developers and AI agents.
+- **JSDoc Documentation Requirement**: All component interfaces and exported hook controllers must include clean JSDoc comment blocks with descriptions, properties, and `@example` code snippets.
 
 ---
 
 ## 4. Design System & CSS Variable Mapping
 
-To achieve rich, high-fidelity dark modes and modern glassmorphic surfaces, the application uses CSS Variables mapped to Tailwind CSS configuration.
+### 4.1 Token-to-CSS Mapping
+To achieve rich, high-fidelity dark modes and modern glassmorphic surfaces, layout styling values are defined statically in `packages/ui/src/tokens/index.ts` and mapped dynamically via CSS Variables in `apps/web/src/app/globals.css`.
 
-### 4.1 HSL Color Tokens
-Colors are defined inside `apps/web/src/app/globals.css` using HSL coordinates:
-- `--background`: Page backing color. Resolves to deep space dark (`hsl(224 71% 4%)`).
-- `--foreground`: Primary typography color. Resolves to high-contrast slate (`hsl(213 31% 91%)`).
-- `--border`: Fine boundary strokes. Resolves to dark gray-slate (`hsl(223 47% 11%)`).
-- `--card`: Surface color for containers and comic panels. Resolves to deep space dark (`hsl(224 71% 4%)`).
+- `packages/ui/src/tokens/index.ts` defines design constants (`colorTokens`, `motionTokens`) enforcing token compile-time validation.
+- `apps/web/src/app/globals.css` declares custom HSL variables representing these design configurations:
+  - `--background`: Page backing color. Resolves to deep space dark (`hsl(224 71% 4%)`).
+  - `--foreground`: Primary typography color. Resolves to high-contrast slate (`hsl(213 31% 91%)`).
+  - `--border`: Fine boundary strokes. Resolves to dark gray-slate (`hsl(223 47% 11%)`).
+  - `--card`: Surface color for containers and comic panels. Resolves to deep space dark (`hsl(224 71% 4%)`).
 
 ### 4.2 Tailwind Theme Extensions (`tailwind.config.ts`)
 The tailwind configurations extend the default theme to reference these variables directly:
@@ -179,22 +176,60 @@ Under Section 1's directive, arbitrary values are forbidden in layout styling un
 ## 5. Component Contracts & APIs
 
 ### 5.1 Presentation Components (`@panelcraft/ui`)
-Every component in the shared UI library must expose a clean, type-safe API.
+Every component in the shared UI library must expose a clean, type-safe API, wrapping standard element properties with `NoSemanticState<T>` to block state parameters.
 
+#### Elements (Atomic UI Bricks)
 - **Button**: Wraps standard HTML buttons with CVA variants.
   ```typescript
-  interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+  interface ButtonProps extends NoSemanticState<React.ButtonHTMLAttributes<HTMLButtonElement>>, VariantProps<typeof buttonVariants> {
     asChild?: boolean;
   }
   ```
-- **Card**: Structural building blocks for projects and panels.
-  - `<Card>`: Parent container.
-  - `<CardHeader>`, `<CardTitle>`, `<CardDescription>`: Textual hierarchy elements.
-  - `<CardContent>`: Main container body.
-  - `<CardFooter>`: Bottom boundary action container.
-- **Badge**: Tiny indicators supporting standard statuses (`default`, `secondary`, `destructive`, `outline`, `success`, `warning`).
-- **Progress**: Linear progress wrapper for backend generation phases.
-- **Dialog**: Radix-backed overlay modals for Human-in-the-Loop review interactions.
+- **Card**: Structural building block panels. 
+  - *Type Enforcement Boundary*: `NoSemanticState` is enforced on the parent container props (`CardProps`). Sub-components focused purely on typography or structural wrapping (`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`) do not require the constraint as they extend standard element attributes without logic bounds.
+  ```typescript
+  interface CardProps extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>> {}
+  ```
+- **Badge**: Status labels (`default`, `secondary`, `destructive`, `outline`, `success`, `warning`).
+  ```typescript
+  interface BadgeProps extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>>, VariantProps<typeof badgeVariants> {}
+  ```
+- **Alert**: Block banner layouts (`default`, `destructive`, `warning`, `info`).
+  ```typescript
+  interface AlertProps extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>>, VariantProps<typeof alertVariants> {}
+  ```
+- **Progress**: Linear progress tracking bar.
+  ```typescript
+  interface ProgressProps extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>> {
+    value?: number;
+  }
+  ```
+- **Skeleton**: Animated loading indicator.
+  ```typescript
+  interface SkeletonProps extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>> {}
+  ```
+- **Input**: Primitive text inputs.
+  ```typescript
+  interface InputProps extends NoSemanticState<React.InputHTMLAttributes<HTMLInputElement>> {}
+  ```
+- **Textarea**: Multiline text inputs.
+  ```typescript
+  interface TextareaProps extends NoSemanticState<React.TextareaHTMLAttributes<HTMLTextAreaElement>> {}
+  ```
+
+#### Modules (Composite Interactive)
+- **Dialog**: Radix-backed overlay modal.
+  - *Type Enforcement Boundary*: `NoSemanticState` is enforced on the overlay and body containers (`DialogOverlay`, `DialogContent`) to prevent state parameters from leaking into modal views. Structural typography and helper wrapper props (`Dialog`, `DialogTrigger`, `DialogPortal`, `DialogClose`, `DialogHeader`, `DialogFooter`, `DialogTitle`, `DialogDescription`) do not require the wrapper constraint.
+  ```typescript
+  const DialogContent = React.forwardRef<
+    React.ElementRef<typeof DialogPrimitive.Content>,
+    NoSemanticState<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>>
+  >
+  ```
+- **Toast**: Toast notification system.
+  ```typescript
+  interface ToastProps extends NoSemanticState<React.ComponentPropsWithoutRef<typeof ToastPrimitive.Root>>, VariantProps<typeof toastVariants> {}
+  ```
 
 ### 5.2 Application Layout Components
 - **WorkspaceShell**:

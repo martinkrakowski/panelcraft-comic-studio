@@ -26,10 +26,20 @@ const badgeVariants = cva(
   }
 );
 
+import { NoSemanticState } from "../../types";
+
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>>,
     VariantProps<typeof badgeVariants> {}
 
+/**
+ * Status indicator badge component.
+ * Filters out raw semantic state parameters to keep UI strictly presentation-only.
+ * 
+ * @example
+ * <Badge variant="success">Completed</Badge>
+ * <Badge variant="warning">Pending Review</Badge>
+ */
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (
     <div className={cn(badgeVariants({ variant }), className)} {...props} />

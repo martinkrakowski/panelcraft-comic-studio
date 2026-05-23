@@ -1,9 +1,26 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
+import { NoSemanticState } from "../../types";
+
+export interface CardProps extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>> {}
+
+/**
+ * Structural container panel for grouping layout blocks.
+ * Filters out raw semantic data/fetching states to remain presentational.
+ * 
+ * @example
+ * <Card>
+ *   <CardHeader>
+ *     <CardTitle>Title</CardTitle>
+ *     <CardDescription>Description</CardDescription>
+ *   </CardHeader>
+ *   <CardContent>Content</CardContent>
+ * </Card>
+ */
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  CardProps
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
