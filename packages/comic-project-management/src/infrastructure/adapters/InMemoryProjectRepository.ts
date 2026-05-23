@@ -10,19 +10,27 @@ export class InMemoryProjectRepository implements RelationalDbPort {
 
   async save(project: ComicProject): Promise<void> {
     this.projects.set(
-      project.getId(),
+      project.getId().getValue(),
+      ComicProject.fromJSON(project.toJSON())
+    );
+  }
+
+  async load(id: string): Promise<ComicProject | null> {
+    const project = this.projects.get(id);
+    return project ? ComicProject.fromJSON(project.toJSON()) : null;
+  }
+
+  async listAll(): Promise<ComicProject[]> {
+    return Array.from(this.projects.values()).map(project =>
       ComicProject.fromJSON(project.toJSON())
     );
   }
 
   async findById(id: string): Promise<ComicProject | null> {
-    const project = this.projects.get(id);
-    return project ? ComicProject.fromJSON(project.toJSON()) : null;
+    return this.load(id);
   }
 
   async findAll(): Promise<ComicProject[]> {
-    return Array.from(this.projects.values()).map(project =>
-      ComicProject.fromJSON(project.toJSON())
-    );
+    return this.listAll();
   }
 }

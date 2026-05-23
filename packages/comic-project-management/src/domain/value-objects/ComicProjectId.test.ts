@@ -24,6 +24,33 @@ describe('ComicProjectId', () => {
       expect(result.success).toBe(true);
       expect(typeof result.value?.getValue()).toBe('string');
     });
+
+    it('should reject empty strings', () => {
+      const result = ComicProjectId.create('');
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('non-empty');
+    });
+
+    it('should reject non-string values', () => {
+      const result = ComicProjectId.create(123 as any);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('non-empty');
+    });
+
+    it('should reject invalid characters', () => {
+      const result = ComicProjectId.create('project@invalid!');
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('alphanumeric');
+    });
+
+    it('should accept hyphens', () => {
+      const result = ComicProjectId.create('project-123-abc-def');
+
+      expect(result.success).toBe(true);
+    });
   });
 
   describe('getValue', () => {
@@ -59,5 +86,4 @@ describe('ComicProjectId', () => {
       expect(id1.equals(id3)).toBe(false);
     });
   });
-
 });

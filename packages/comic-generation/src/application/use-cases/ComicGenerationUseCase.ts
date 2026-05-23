@@ -1,6 +1,8 @@
 import { RestControllerPort } from "../ports/in/rest-controller.in-port.js";
 import type { RelationalDbPort } from "../ports/out/relational-db.out-port.js";
 import type { JobQueuePort } from "../ports/out/job-queue.out-port.js";
+import { ComicProject, Panel } from "@panelcraft/comic-project-management";
+import { ComicProjectId, ComicTitle, PanelCount, PanelId, PanelStatus, FeedbackEntry } from "@panelcraft/comic-project-management";
 import { randomUUID } from "node:crypto";
 import { NotFoundError, ValidationError } from "@panelcraft/shared";
 
@@ -16,27 +18,55 @@ export class ComicGenerationUseCase implements RestControllerPort {
   ) {}
 
   async createProject(prompt: string, panelCount: number): Promise<string> {
-    const projectId = randomUUID();
+    // Validate and create value objects
+    const promptResult = ComicTitle.create(prompt);
+    if (!promptResult.success) {
+      throw new ValidationError(promptResult.error?.message || "Invalid prompt", "prompt", prompt);
+    }
 
-    // 1. Create and persist project domain entity
-    const project = {
-      id: projectId,
-      prompt,
-      panelCount,
-      panels: Array.from({ length: panelCount }, (_, i) => ({
-        id: `panel-${i}`,
-        index: i,
+    const panelCountResult = PanelCount.create(panelCount);
+    if (!panelCountResult.success) {
+      throw new ValidationError(panelCountResult.error?.message || "Invalid panel count", "panelCount", panelCount);
+    }
+
+    const projectId = randomUUID();
+    const projectIdResult = ComicProjectId.create(projectId);
+    if (!projectIdResult.success) {
+      throw new ValidationError(projectIdResult.error?.message || "Invalid project ID", "projectId", projectId);
+    }
+
+    // Create panels with PanelId and PanelStatus value objects
+    const panels: Panel[] = Array.from({ length: panelCountResult.value!.getValue() }, (_, i) => {
+      const panelIdResult = PanelId.create(`panel-${i}`);
+      if (!panelIdResult.success) {
+        throw new ValidationError(panelIdResult.error?.message || "Invalid panel ID", "panelId", `panel-${i}`);
+      }
+
+      const statusResult = PanelStatus.create("pending");
+      if (!statusResult.success) {
+        throw new ValidationError(statusResult.error?.message || "Invalid panel status", "status", "pending");
+      }
+
+      return new Panel(panelIdResult.value!, {
         prompt: "",
-        status: "pending",
+        status: statusResult.value!,
         generatedImageUrl: null,
-      })),
+      });
+    });
+
+    // Create and persist project domain entity
+    const project = new ComicProject(projectIdResult.value!, {
+      prompt: promptResult.value!,
+      panelCount: panelCountResult.value!,
+      panels,
       characterBible: null,
-      createdAt: new Date().toISOString(),
       status: "created",
-    };
+      createdAt: new Date().toISOString(),
+    });
+
     await this.projectRepo.save(project);
 
-    // 2. Dispatch job to background worker queue for async generation
+    // Dispatch job to background worker queue for async generation
     await this.taskQueue.add("start-comic", { projectId }, {
       attempts: 3,
       backoff: {
@@ -63,6 +93,16 @@ export class ComicGenerationUseCase implements RestControllerPort {
     comment?: string,
     regenerationHint?: string
   ): Promise<void> {
+    // Validate feedback entry
+    const feedbackResult = FeedbackEntry.create({
+      approved,
+      comment,
+      regenerationHint,
+    });
+    if (!feedbackResult.success) {
+      throw new ValidationError(feedbackResult.error?.message || "Invalid feedback", "feedback", { approved, comment, regenerationHint });
+    }
+
     // Verify project exists
     const project = await this.projectRepo.load(projectId);
     if (!project) {
@@ -72,16 +112,16 @@ export class ComicGenerationUseCase implements RestControllerPort {
     // Check if project is in a reviewable state
     const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minute timeout for recovery
     const isStuckProcessing =
-      project.status === "processing" &&
-      project.lastReviewSubmittedAt &&
-      Date.now() - new Date(project.lastReviewSubmittedAt).getTime() > PROCESSING_TIMEOUT_MS;
+      project.getStatus() === "processing" &&
+      project.getLastReviewSubmittedAt() &&
+      Date.now() - new Date(project.getLastReviewSubmittedAt()!).getTime() > PROCESSING_TIMEOUT_MS;
 
-    if (project.status !== "pending_review" && !isStuckProcessing) {
+    if (project.getStatus() !== "pending_review" && !isStuckProcessing) {
       throw new ValidationError(
-        `Cannot submit review for project in status "${project.status}". ` +
+        `Cannot submit review for project in status "${project.getStatus()}". ` +
         `Project must be in "pending_review" status.`,
         "status",
-        project.status
+        project.getStatus()
       );
     }
 
@@ -89,21 +129,21 @@ export class ComicGenerationUseCase implements RestControllerPort {
     if (isStuckProcessing) {
       console.warn(
         `[Recovery] Project ${projectId} was stuck in "processing" for ` +
-        `${Math.round((Date.now() - new Date(project.lastReviewSubmittedAt).getTime()) / 1000)}s. ` +
+        `${Math.round((Date.now() - new Date(project.getLastReviewSubmittedAt()!).getTime()) / 1000)}s. ` +
         `Allowing retry.`
       );
     }
 
     // Prevent duplicate submissions by marking project as "processing" synchronously
     // Store timestamp for recovery detection if job fails
-    project.status = "processing";
-    project.lastReviewSubmittedAt = new Date().toISOString();
+    project.setStatus("processing");
+    project.setLastReviewSubmittedAt(new Date().toISOString());
     await this.projectRepo.save(project);
 
     // Dispatch resumption job containing the human feedback
     await this.taskQueue.add("resume-comic", {
       projectId,
-      feedback: { approved, comment, regenerationHint },
+      feedback: feedbackResult.value!.getValue(),
     }, {
       attempts: 3,
       backoff: {

@@ -14,12 +14,16 @@
  *   // Use vo.value
  * }
  */
+export type PanelStatusValue = 'pending' | 'generated' | 'completed' | 'failed';
+
 export class PanelStatus {
+  private static readonly VALID_STATUSES: PanelStatusValue[] = ['pending', 'generated', 'completed', 'failed'];
+
   /**
    * Private constructor enforces factory pattern.
    * Use PanelStatus.create() instead.
    */
-  private constructor(private readonly value: unknown) {
+  private constructor(private readonly value: PanelStatusValue) {
     // Value is immutable after construction
   }
 
@@ -28,25 +32,18 @@ export class PanelStatus {
    *
    * @param value - Raw value to wrap
    * @returns Result containing PanelStatus or validation error
-   *
-   * TODO: Implement validation logic
-   * Example:
-   * static create(value: string): Result<PanelStatus, Error> {
-   *   if (!value || value.length === 0) {
-   *     return { success: false, error: new Error('Value cannot be empty') };
-   *   }
-   *   return { success: true, value: new PanelStatus(value) };
-   * }
    */
   static create(value: unknown): { success: boolean; value?: PanelStatus; error?: Error } {
-    // TODO: Add validation
-    return { success: true, value: new PanelStatus(value) };
+    if (typeof value !== 'string' || !PanelStatus.VALID_STATUSES.includes(value as PanelStatusValue)) {
+      return { success: false, error: new Error(`PanelStatus must be one of: ${PanelStatus.VALID_STATUSES.join(', ')}`) };
+    }
+    return { success: true, value: new PanelStatus(value as PanelStatusValue) };
   }
 
   /**
    * Get the wrapped value.
    */
-  getValue(): unknown {
+  getValue(): PanelStatusValue {
     return this.value;
   }
 

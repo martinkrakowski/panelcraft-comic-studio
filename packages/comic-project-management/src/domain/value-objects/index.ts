@@ -7,5 +7,6 @@ export * from "./ComicProjectId.vo.js";
 export * from "./ComicTitle.vo.js";
 export * from "./FeedbackEntry.vo.js";
 export * from "./LangGraphThreadId.vo.js";
+export * from "./PanelCount.vo.js";
 export * from "./PanelId.vo.js";
 export * from "./PanelStatus.vo.js";

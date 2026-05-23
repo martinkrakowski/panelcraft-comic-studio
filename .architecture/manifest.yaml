@@ -135,6 +135,7 @@ bounded_contexts:
           - FeedbackEntry
           - LangGraphThreadId
           - PanelId
+          - PanelCount
         domain_services: []
       application:
         use_cases: []

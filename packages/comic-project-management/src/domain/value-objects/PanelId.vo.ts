@@ -19,7 +19,7 @@ export class PanelId {
    * Private constructor enforces factory pattern.
    * Use PanelId.create() instead.
    */
-  private constructor(private readonly value: unknown) {
+  private constructor(private readonly value: string) {
     // Value is immutable after construction
   }
 
@@ -28,25 +28,18 @@ export class PanelId {
    *
    * @param value - Raw value to wrap
    * @returns Result containing PanelId or validation error
-   *
-   * TODO: Implement validation logic
-   * Example:
-   * static create(value: string): Result<PanelId, Error> {
-   *   if (!value || value.length === 0) {
-   *     return { success: false, error: new Error('Value cannot be empty') };
-   *   }
-   *   return { success: true, value: new PanelId(value) };
-   * }
    */
   static create(value: unknown): { success: boolean; value?: PanelId; error?: Error } {
-    // TODO: Add validation
+    if (typeof value !== 'string' || value.length === 0) {
+      return { success: false, error: new Error('PanelId must be a non-empty string') };
+    }
     return { success: true, value: new PanelId(value) };
   }
 
   /**
    * Get the wrapped value.
    */
-  getValue(): unknown {
+  getValue(): string {
     return this.value;
   }
 

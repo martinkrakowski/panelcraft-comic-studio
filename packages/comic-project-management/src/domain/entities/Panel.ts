@@ -1,24 +1,27 @@
+import { PanelId, PanelStatus } from "../value-objects/index.js";
+import { ValidationError } from "../errors/ValidationError.js";
+
 export interface PanelProps {
   prompt?: string;
-  status?: string;
-  generatedImageUrl?: string;
+  status: PanelStatus;
+  generatedImageUrl?: string | null;
 }
 
 export class Panel {
   private prompt: string;
-  private status: string;
-  private generatedImageUrl: string;
+  private status: PanelStatus;
+  private generatedImageUrl: string | null;
 
   constructor(
-    private readonly id: string,
-    props: PanelProps = {}
+    private readonly id: PanelId,
+    props: PanelProps
   ) {
     this.prompt = props.prompt || "";
-    this.status = props.status || "pending";
-    this.generatedImageUrl = props.generatedImageUrl || "";
+    this.status = props.status;
+    this.generatedImageUrl = props.generatedImageUrl || null;
   }
 
-  getId(): string {
+  getId(): PanelId {
     return this.id;
   }
 
@@ -30,36 +33,46 @@ export class Panel {
     this.prompt = prompt;
   }
 
-  getStatus(): string {
+  getStatus(): PanelStatus {
     return this.status;
   }
 
-  setStatus(status: string): void {
+  setStatus(status: PanelStatus): void {
     this.status = status;
   }
 
-  getGeneratedImageUrl(): string {
+  getGeneratedImageUrl(): string | null {
     return this.generatedImageUrl;
   }
 
-  setGeneratedImageUrl(url: string): void {
+  setGeneratedImageUrl(url: string | null): void {
     this.generatedImageUrl = url;
   }
 
   toJSON() {
     return {
-      id: this.id,
+      id: this.id.getValue(),
       prompt: this.prompt,
-      status: this.status,
+      status: this.status.getValue(),
       generatedImageUrl: this.generatedImageUrl,
     };
   }
 
   static fromJSON(json: any): Panel {
-    return new Panel(json.id, {
+    const idResult = PanelId.create(json.id);
+    if (!idResult.success) {
+      throw new ValidationError(`Panel.fromJSON: ${idResult.error?.message}`);
+    }
+
+    const statusResult = PanelStatus.create(json.status || "pending");
+    if (!statusResult.success) {
+      throw new ValidationError(`Panel.fromJSON: ${statusResult.error?.message}`);
+    }
+
+    return new Panel(idResult.value!, {
       prompt: json.prompt,
-      status: json.status,
-      generatedImageUrl: json.generatedImageUrl,
+      status: statusResult.value!,
+      generatedImageUrl: json.generatedImageUrl || null,
     });
   }
 }
