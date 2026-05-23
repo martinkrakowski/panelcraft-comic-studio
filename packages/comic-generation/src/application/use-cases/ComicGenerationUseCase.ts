@@ -62,11 +62,23 @@ export class ComicGenerationUseCase implements RestControllerPort {
     comment?: string,
     regenerationHint?: string
   ): Promise<void> {
-    // Verify project exists
+    // Verify project exists and is in a reviewable state
     const project = await this.projectRepo.load(projectId);
     if (!project) {
       throw new Error(`Project ${projectId} not found`);
     }
+
+    if (project.status !== "pending_review") {
+      throw new Error(
+        `Cannot submit review for project in status "${project.status}". ` +
+        `Project must be in "pending_review" status.`
+      );
+    }
+
+    // Prevent duplicate submissions by marking project as "processing" synchronously
+    // This blocks concurrent review submissions while the job is being processed
+    project.status = "processing";
+    await this.projectRepo.save(project);
 
     // Dispatch resumption job containing the human feedback
     await this.taskQueue.add("resume-comic", {

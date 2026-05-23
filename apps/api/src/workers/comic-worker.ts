@@ -38,9 +38,19 @@ export function initComicWorker(
             { configurable: { thread_id: projectId } }
           );
 
+          // CRITICAL: Retrieve updated project state from graph checkpointer
+          // The invoke() call generates panel descriptions, character bible, and images,
+          // but these updates exist only in the graph's checkpointer, not in the stale
+          // project variable loaded at the start of the job.
+          // Without this fetch, we would save an empty project, losing all generated data.
+          const currentThreadState = await graph.getState({
+            configurable: { thread_id: projectId }
+          });
+          const updatedProject = currentThreadState.values.project;
+
           // Update project status to indicate workflow is waiting on human review
-          project.status = "pending_review";
-          await projectRepo.save(project);
+          updatedProject.status = "pending_review";
+          await projectRepo.save(updatedProject);
 
           console.log(`[Worker] First panel generated for project ${projectId}. Waiting for HITL review.`);
         }
