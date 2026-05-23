@@ -72,3 +72,6 @@ generator:
       RestController: comic-generation
       RelationalDb: comic-generation
       ExternalServiceClient: comic-generation
+      ImageGeneration: comic-generation
+      JobQueue: comic-generation
+      LLMClient: comic-generation

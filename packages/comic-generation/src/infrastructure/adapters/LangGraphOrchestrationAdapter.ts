@@ -1,7 +1,13 @@
 import { StateGraph, START, END, MemorySaver, interrupt } from "@langchain/langgraph";
+import {
+  LLMResponseParsingError,
+  LLMResponseValidationError,
+  ExternalServiceError
+} from "@panelcraft/shared";
 import { ComicGraphState, ComicGraphStateType } from "../../domain/types/ComicGraphState.js";
 import type { HITLFeedbackData } from "../../domain/value-objects/HITLFeedback.vo.js";
-import type { ImageGenerationPort } from "../../application/ports/out/ImageGenerationPort.js";
+import type { ImageGenerationPort } from "../../application/ports/out/image-generation.out-port.js";
+import type { LLMClientPort } from "../../application/ports/out/llm-client.out-port.js";
 
 /**
  * LangGraph orchestration adapter that manages the comic generation workflow.
@@ -10,11 +16,14 @@ import type { ImageGenerationPort } from "../../application/ports/out/ImageGener
  */
 export class LangGraphOrchestrationAdapter {
   private readonly imageGenPort: ImageGenerationPort;
+  private readonly llmClient: LLMClientPort;
   private readonly projectRepo: any;
   private readonly graph;
+  private readonly debug = process.env['PANELCRAFT_DEBUG'] === 'true';
 
-  constructor(imageGenPort: ImageGenerationPort, projectRepo: any) {
+  constructor(imageGenPort: ImageGenerationPort, llmClient: LLMClientPort, projectRepo: any) {
     this.imageGenPort = imageGenPort;
+    this.llmClient = llmClient;
     this.projectRepo = projectRepo;
     this.graph = this.buildGraph();
   }
@@ -51,16 +60,168 @@ export class LangGraphOrchestrationAdapter {
   }
 
   private async structureStory(state: ComicGraphStateType) {
-    console.log("Structuring story into panels...");
-    return state;
+    const { prompt, panelCount } = state.project;
+
+    console.log(`Structuring story into ${panelCount} panels...`);
+
+    const systemPrompt = `You are an expert comic book writer and storyboarder. Your task is to
+take a story concept and break it into visually compelling panel descriptions that an AI can use to generate artwork.`;
+
+    const userPrompt = `Story Concept: "${prompt}"
+Desired Panel Count: ${panelCount}
+
+Create exactly ${panelCount} short, vivid visual descriptions for each panel of the comic.
+Each description should be 1-2 sentences, focusing on visual elements, composition, characters, and mood.
+Make them cinematic and action-oriented where appropriate.
+
+Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown or extra formatting:
+["Panel 1: ...", "Panel 2: ...", ...]`;
+
+    let panelPrompts: any;
+    try {
+      panelPrompts = await this.llmClient.call(systemPrompt, userPrompt);
+    } catch (error) {
+      // Re-throw domain errors without masking
+      if (error instanceof LLMResponseParsingError || error instanceof LLMResponseValidationError || error instanceof ExternalServiceError) {
+        throw error;
+      }
+      // Wrap unexpected errors
+      throw new LLMResponseParsingError(`structureStory failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    // Validate: must be array
+    if (!Array.isArray(panelPrompts)) {
+      throw new LLMResponseValidationError(
+        `structureStory: LLM must return an array, got ${typeof panelPrompts}`,
+        { expected: `array of ${panelCount} strings`, received: typeof panelPrompts }
+      );
+    }
+
+    // Validate: must have correct count
+    if (panelPrompts.length !== panelCount) {
+      throw new LLMResponseValidationError(
+        `structureStory: requested ${panelCount} panels but LLM returned ${panelPrompts.length}`,
+        { expected: panelCount, received: panelPrompts.length }
+      );
+    }
+
+    // Validate: each entry must be non-empty string
+    for (let i = 0; i < panelPrompts.length; i++) {
+      if (typeof panelPrompts[i] !== 'string' || !panelPrompts[i].trim()) {
+        throw new LLMResponseValidationError(
+          `structureStory: panel ${i} is empty or not a string`,
+          { expected: 'non-empty string', received: panelPrompts[i] }
+        );
+      }
+    }
+
+    // Now safe to assign
+    const updatedPanels = state.project.panels.map((panel: any, idx: number) => ({
+      ...panel,
+      prompt: panelPrompts[idx],
+    }));
+
+    return {
+      ...state,
+      project: { ...state.project, panels: updatedPanels },
+    };
   }
 
   private async buildCharacterBible(state: ComicGraphStateType) {
-    console.log("Building character bible...");
-    return state;
+    const { prompt, panels } = state.project;
+    const panelPrompts = (panels as any[]).map((p) => p.prompt).join("\n");
+
+    console.log("Extracting and characterizing story characters...");
+
+    const systemPrompt = `You are a character designer and visual continuity expert for comic books.
+Your task is to extract all significant characters from a story, describe them visually, and provide
+consistency notes to ensure they look the same across all panels.`;
+
+    const userPrompt = `Original Story: "${prompt}"
+
+Panel Descriptions:
+${panelPrompts}
+
+Analyze the story and panel descriptions to identify all main and supporting characters.
+For each character, provide:
+- Name (or "Unknown" if not named)
+- Role in story
+- Visual description (appearance, costume, hair, distinctive features)
+- Key personality traits
+- Consistency notes (what visual elements MUST stay the same across panels)
+
+Return ONLY valid JSON with no markdown or additional text:
+{
+  "characters": [
+    {
+      "name": "...",
+      "role": "...",
+      "visual": "...",
+      "traits": "...",
+      "consistency": "..."
+    }
+  ]
+}`;
+
+    let characterData: any;
+    try {
+      characterData = await this.llmClient.call(systemPrompt, userPrompt);
+    } catch (error) {
+      // Re-throw domain errors without masking
+      if (error instanceof LLMResponseParsingError || error instanceof LLMResponseValidationError || error instanceof ExternalServiceError) {
+        throw error;
+      }
+      // Wrap unexpected errors
+      throw new LLMResponseParsingError(`buildCharacterBible failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    // Validate: must be object
+    if (!characterData || typeof characterData !== 'object') {
+      throw new LLMResponseValidationError(
+        `buildCharacterBible: expected object, got ${typeof characterData}`,
+        { expected: 'object with characters array', received: typeof characterData }
+      );
+    }
+
+    // Validate: must have characters array
+    if (!Array.isArray(characterData.characters)) {
+      throw new LLMResponseValidationError(
+        `buildCharacterBible: expected { characters: [...] } structure`,
+        { expected: 'characters array', received: Object.keys(characterData).join(', ') }
+      );
+    }
+
+    // Validate: each character has required fields
+    for (let i = 0; i < characterData.characters.length; i++) {
+      const char = characterData.characters[i];
+      if (!char || typeof char !== "object" || Array.isArray(char)) {
+        throw new LLMResponseValidationError(
+          `buildCharacterBible: character ${i} must be an object`,
+          { expected: "character object", received: char }
+        );
+      }
+
+      const requiredFields = ['name', 'visual', 'consistency'];
+      const missingFields = requiredFields.filter((f) => !char[f]);
+
+      if (missingFields.length > 0) {
+        console.warn(
+          `[Warning] Character ${i} missing fields: ${missingFields.join(', ')}. Has: ${Object.keys(char).join(', ')}`
+        );
+      }
+    }
+
+    if (this.debug) {
+      console.log('[buildCharacterBible Output]', JSON.stringify(characterData, null, 2));
+    }
+
+    return {
+      ...state,
+      project: { ...state.project, characterBible: characterData },
+    };
   }
 
-  private async generatePanel(state: ComicGraphStateType) {
+private async generatePanel(state: ComicGraphStateType) {
     const panelIndex = state.currentPanelIndex;
     const panel = state.project.panels[panelIndex];
 

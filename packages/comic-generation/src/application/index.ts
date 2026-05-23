@@ -2,3 +2,4 @@
 
 export * from "./ports/index.js";
 export * from "./commands/index.js";
+export * from "./use-cases/index.js";

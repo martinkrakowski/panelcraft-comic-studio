@@ -1,59 +1,76 @@
 # PROJECT_BRIEF.md
 
 ## Project Name
+
 **PanelCraft** – AI Comic Studio
 
 ## Elevator Pitch
-An ambitious, production-grade AI comic book creation platform that turns high-level story prompts into complete multi-panel comics using LangGraph.js orchestration, sophisticated Human-in-the-Loop workflows, and persistent creative memory.
+
+An AI-powered comic book creation platform that transforms high-level story prompts into complete, professionally laid-out multi-panel comics using LangGraph.js orchestration, sophisticated Human-in-the-Loop refinement, and persistent creative memory.
 
 ## Core Objective
-Build a standout technical demo showcasing enterprise AI patterns for the Adobe Firefly interview (Tuesday, May 27, 2026).
 
-## Key Capabilities
+Build a standout technical demonstration of enterprise AI workflows for the Adobe Firefly interview, showcasing orchestration, collaboration, persistence, and clean hexagonal architecture.
 
-### 1. Comic Project Management
-- Create, save, list, and resume comic projects
-- Rich domain model (ComicProject, Panel, CharacterBible)
+## Refined Feature Scope (MVP)
 
-### 2. Intelligent Generation Workflow
-- Automatic story structuring and panel breakdown
-- Character Bible generation with consistency tracking
-- LangGraph.js stateful orchestration with checkpointer
+### 1. Story Definition
 
-### 3. Human-in-the-Loop (HITL)
-- Per-panel review and refinement
-- Structured feedback (approve / regenerate / edit prompt)
-- Global style updates across panels
+- User provides a high-level text prompt describing the story, genre, tone, and desired number of panels.
+- Optional: Upload reference assets (character sketches, mood boards, style examples).
+- System uses LLM to break the story into logical panels with suggested action, dialogue, and emotional beats.
 
-### 4. Image Generation
-- Swappable adapter (currently Grok Imagine via @ai-sdk/xai)
-- Prompt enhancement optimized for comic art
-- Fallback to placeholder images during development
+### 2. Character Bible & World Building
 
-### 5. Persistence & Memory
-- Full project persistence
-- Resume interrupted comics
-- Long-term character and style memory
+- Automatic generation of consistent character descriptions, visual traits, and initial reference images.
+- User can review, edit, and add custom traits or reference images.
+- Bible is persisted and used for style/character consistency across all panels.
 
-### 6. User Experience
-- Modern Next.js 15 + shadcn/ui interface
-- Project dashboard (inspired by previous Chaucer comic tool)
-- Panel grid with drag-and-drop ordering
-- Live generation feedback
+### 3. Layout & Composition
 
-## Technical Architecture
-- Hexagonal Architecture (via Hexagen-Monaco)
-- Two bounded contexts: `comic-project-management` + `comic-generation`
-- Reference: `.architecture/manifest.yaml`
+- User selects overall comic style (grid-based, cinematic, manga, experimental, etc.).
+- Per-page layout selection with common comic patterns (classic grid, splash pages, overlapping panels, dynamic angles, etc.).
+- Panel-by-panel layout suggestions with drag-and-drop reordering.
 
-## Success Criteria for Demo
-- End-to-end working comic creation flow
-- Visible HITL refinement loop
-- Ability to save and resume a project
-- Clean, professional code structure
-- LangSmith tracing enabled
-- Ready for future Firefly API integration
+### 4. AI Panel Generation with HITL (Core Loop)
+
+- Generate panels sequentially or in small batches.
+- **Human-in-the-Loop Review** for each panel:
+  - Approve as-is
+  - Regenerate with modified prompt
+  - Adjust composition, lighting, angle, or emotion
+  - Upload reference sketch for that specific panel
+  - Global style updates ("make everything more cinematic")
+- System maintains character and art style consistency using previous panels + Character Bible.
+
+### 5. Assembly & Polish
+
+- Arrange approved panels into final pages.
+- Add speech bubbles, captions, and sound effects via prompts or manual editing.
+- Generate cover art.
+- Export as high-resolution PDF or image set.
+
+### 6. Persistence & Iteration
+
+- Full project save with version history.
+- Resume interrupted comics with full memory of characters, style, and feedback.
+- Create variations or sequels using existing Character Bible.
 
 ---
+
+## Technical Architecture Highlights
+
+- Hexagonal Architecture (via Hexagen-Monaco)
+- LangGraph.js for stateful orchestration with real `interrupt()`-based HITL
+- Swappable image generation (Grok Imagine → Firefly)
+- Persistent memory via LangGraph checkpointer + project storage
+
+## Success Criteria for Adobe Demo
+
+- End-to-end working flow: prompt → character bible → panel generation with HITL → final comic
+- Visible human collaboration and refinement
+- Clean, professional code structure with clear architectural boundaries
+- Ability to save and resume a project
+- LangSmith tracing visible
 
 **Last Updated:** May 23, 2026

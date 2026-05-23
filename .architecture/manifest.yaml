@@ -160,12 +160,16 @@ bounded_contexts:
           - HITLFeedback
         domain_services: []
       application:
-        use_cases: []
+        use_cases:
+          - ComicGenerationUseCase
         ports:
           in:
             - rest-controller.in-port.ts
           out:
             - relational-db.out-port.ts
             - external-service-client.out-port.ts
+            - job-queue.out-port.ts
+            - llm-client.out-port.ts
+            - image-generation.out-port.ts
       infrastructure:
         adapters: []

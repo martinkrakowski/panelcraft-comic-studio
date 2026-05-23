@@ -1,53 +1,66 @@
-// @generated entity stub — edit freely
-/**
- * Panel is a domain entity with identity and lifecycle.
- *
- * Domain entities:
- * - Have unique identity (ID)
- * - Contain business logic and invariants
- * - Are mutable (unlike value objects)
- * - Enforce domain rules in their methods
- *
- * @example
- * const entity = new Panel(id, props);
- * entity.performAction();
- */
+export interface PanelProps {
+  prompt?: string;
+  status?: string;
+  generatedImageUrl?: string;
+}
+
 export class Panel {
-  /**
-   * Constructor for Panel entity.
-   *
-   * @param id - Unique identifier
-   * @param props - Entity properties
-   *
-   * TODO: Define your entity properties
-   * Example:
-   * constructor(
-   *   private readonly id: string,
-   *   private name: string,
-   *   private status: Status,
-   * ) {
-   *   // Validate invariants
-   * }
-   */
-  constructor(private readonly id: string) {
-    // TODO: Initialize entity state
-    // TODO: Validate invariants
+  private prompt: string;
+  private status: string;
+  private generatedImageUrl: string;
+
+  constructor(
+    private readonly id: string,
+    props: PanelProps = {}
+  ) {
+    this.prompt = props.prompt || "";
+    this.status = props.status || "pending";
+    this.generatedImageUrl = props.generatedImageUrl || "";
   }
 
-  /**
-   * Get entity ID.
-   */
   getId(): string {
     return this.id;
   }
 
-  /**
-   * TODO: Add domain methods here
-   * Example:
-   * performAction(): Result<void, Error> {
-   *   // Validate business rules
-   *   // Update state
-   *   // Return result
-   * }
-   */
+  getPrompt(): string {
+    return this.prompt;
+  }
+
+  setPrompt(prompt: string): void {
+    this.prompt = prompt;
+  }
+
+  getStatus(): string {
+    return this.status;
+  }
+
+  setStatus(status: string): void {
+    this.status = status;
+  }
+
+  getGeneratedImageUrl(): string {
+    return this.generatedImageUrl;
+  }
+
+  setGeneratedImageUrl(url: string): void {
+    this.generatedImageUrl = url;
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      prompt: this.prompt,
+      status: this.status,
+      generatedImageUrl: this.generatedImageUrl,
+    };
+  }
+
+  static fromJSON(json: any): Panel {
+    return new Panel(json.id, {
+      prompt: json.prompt,
+      status: json.status,
+      generatedImageUrl: json.generatedImageUrl,
+    });
+  }
 }
+

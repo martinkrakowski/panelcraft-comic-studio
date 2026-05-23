@@ -1,53 +1,89 @@
-// @generated entity stub — edit freely
-/**
- * ComicProject is a domain entity with identity and lifecycle.
- *
- * Domain entities:
- * - Have unique identity (ID)
- * - Contain business logic and invariants
- * - Are mutable (unlike value objects)
- * - Enforce domain rules in their methods
- *
- * @example
- * const entity = new ComicProject(id, props);
- * entity.performAction();
- */
+import { Panel } from "./Panel.js";
+
+export interface ComicProjectProps {
+  prompt: string;
+  panelCount: number;
+  panels?: Panel[];
+  characterBible?: any;
+}
+
 export class ComicProject {
-  /**
-   * Constructor for ComicProject entity.
-   *
-   * @param id - Unique identifier
-   * @param props - Entity properties
-   *
-   * TODO: Define your entity properties
-   * Example:
-   * constructor(
-   *   private readonly id: string,
-   *   private name: string,
-   *   private status: Status,
-   * ) {
-   *   // Validate invariants
-   * }
-   */
-  constructor(private readonly id: string) {
-    // TODO: Initialize entity state
-    // TODO: Validate invariants
+  private prompt: string;
+  private panelCount: number;
+  private panels: Panel[];
+  private characterBible: any;
+
+  private static assertValidPanelCount(count: number): void {
+    if (!Number.isInteger(count) || count < 1) {
+      throw new RangeError("panelCount must be an integer >= 1");
+    }
   }
 
-  /**
-   * Get entity ID.
-   */
+  constructor(
+    private readonly id: string,
+    props: ComicProjectProps
+  ) {
+    this.prompt = props.prompt;
+    ComicProject.assertValidPanelCount(props.panelCount);
+    this.panelCount = props.panelCount;
+    this.panels = props.panels || [];
+    this.characterBible = props.characterBible || null;
+  }
+
   getId(): string {
     return this.id;
   }
 
-  /**
-   * TODO: Add domain methods here
-   * Example:
-   * performAction(): Result<void, Error> {
-   *   // Validate business rules
-   *   // Update state
-   *   // Return result
-   * }
-   */
+  getPrompt(): string {
+    return this.prompt;
+  }
+
+  setPrompt(prompt: string): void {
+    this.prompt = prompt;
+  }
+
+  getPanelCount(): number {
+    return this.panelCount;
+  }
+
+  setPanelCount(count: number): void {
+    ComicProject.assertValidPanelCount(count);
+    this.panelCount = count;
+  }
+
+  getPanels(): Panel[] {
+    return this.panels;
+  }
+
+  setPanels(panels: Panel[]): void {
+    this.panels = panels;
+  }
+
+  getCharacterBible(): any {
+    return this.characterBible;
+  }
+
+  setCharacterBible(bible: any): void {
+    this.characterBible = bible;
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      prompt: this.prompt,
+      panelCount: this.panelCount,
+      panels: this.panels.map(p => p.toJSON()),
+      characterBible: this.characterBible,
+    };
+  }
+
+  static fromJSON(json: any): ComicProject {
+    return new ComicProject(json.id, {
+      prompt: json.prompt,
+      panelCount: json.panelCount,
+      panels: (json.panels || []).map((p: any) => Panel.fromJSON(p)),
+      characterBible: json.characterBible,
+    });
+  }
 }
+
