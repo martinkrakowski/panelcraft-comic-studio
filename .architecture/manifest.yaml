@@ -1,0 +1,171 @@
+system: panelcraft-comic-studio
+scope: panelcraft
+architecture: modular-monolith
+workspaceTemplate: modular-monolith
+monorepo:
+  packageManager: yarn@4.12.0
+  linker: node-modules
+  buildTool: turbo
+  workspaces:
+    - apps/*
+    - packages/*
+  workspaceDefaults:
+    tsConfig:
+      extends: ../../tsconfig.base.json
+      compilerOptions:
+        rootDir: src
+        outDir: dist
+        composite: true
+        declaration: true
+        emitDeclarationOnly: true
+        declarationMap: true
+        tsBuildInfoFile: ./dist/.tsbuildinfo
+    packageJson:
+      scripts:
+        build: tsc
+        lint: eslint src --ext .ts,.tsx
+        typecheck: tsc --noEmit
+      devDependencies:
+        typescript: ^5.5.4
+        eslint: ^9.0.0
+        '@typescript-eslint/parser': ^8.0.0
+        '@typescript-eslint/eslint-plugin': ^8.0.0
+  turboConfig:
+    globalDependencies:
+      - '**/.env.*'
+    pipeline:
+      build:
+        dependsOn:
+          - ^build
+        outputs:
+          - dist/**
+      lint:
+        dependsOn:
+          - ^build
+      test:
+        dependsOn:
+          - ^build
+      typecheck:
+        outputs: []
+        cache: true
+generator:
+  version: 0.2.0
+  sync:
+    idempotent: true
+    createOnlyIfMissing: true
+    nonDestructive: true
+    layers:
+      domain:
+        folder: src/domain
+        subfolders:
+          - entities
+          - value_objects
+      application:
+        folder: src/application
+        subfolders:
+          - use-cases
+          - ports/in
+          - ports/out
+      infrastructure:
+        folder: src/infrastructure
+        subfolders:
+          - adapters
+    packageJson:
+      mergeStrategy: preserveExisting
+      injectIfMissing:
+        scripts:
+          build: tsc
+          lint: eslint src --ext .ts,.tsx
+          typecheck: tsc --noEmit
+    stubs:
+      enabled: true
+    apps:
+      enabled: true
+apps:
+  - name: web
+    framework: plain-ts
+    depends_on: &ref_0
+      - comic-generation
+      - comic-project-management
+  - name: api
+    framework: plain-ts
+    depends_on: *ref_0
+bounded_contexts:
+  - name: shared
+    type: shared-kernel
+    description: Shared primitives, custom errors, base classes, utilities
+    depends_on: []
+    uiFramework: Next.js
+    apiFramework: Express
+    layers:
+      domain:
+        entities: []
+        value_objects:
+          - CustomError
+          - Identifier
+        domain_services: []
+      application:
+        use_cases: []
+        ports:
+          in: []
+          out: []
+      infrastructure:
+        adapters:
+          - Prisma.adapter.ts
+          - BullMQ.adapter.ts
+  - name: comic-project-management
+    type: core
+    description: Comic project lifecycle, persistence, and retrieval
+    depends_on:
+      - shared
+    uiFramework: Next.js
+    apiFramework: Express
+    layers:
+      domain:
+        entities:
+          - ComicProject
+          - Panel
+        value_objects:
+          - ComicProjectId
+          - ComicTitle
+          - ComicGenre
+          - CharacterBible
+          - Character
+          - PanelStatus
+          - FeedbackEntry
+          - LangGraphThreadId
+          - PanelId
+        domain_services: []
+      application:
+        use_cases: []
+        ports:
+          in:
+            - rest-controller.in-port.ts
+          out:
+            - relational-db.out-port.ts
+      infrastructure:
+        adapters: []
+  - name: comic-generation
+    type: core
+    description: LangGraph orchestration, panel generation, HITL workflow
+    depends_on:
+      - shared
+    uiFramework: Next.js
+    apiFramework: Express
+    layers:
+      domain:
+        entities:
+          - GenerationSession
+        value_objects:
+          - HITLFeedback
+        domain_services: []
+      application:
+        use_cases: []
+        ports:
+          in:
+            - rest-controller.in-port.ts
+          out:
+            - relational-db.out-port.ts
+            - external-service-client.out-port.ts
+      infrastructure:
+        adapters: []

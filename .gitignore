@@ -1,0 +1,74 @@
+# --- IDE & Editor Settings ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*.code-workspace
+
+# --- Dependencies & Build Artifacts ---
+node_modules/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/install-state.gz
+.pnp.*
+.turbo/
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# --- Lockfiles (choose one) ---
+# yarn.lock          # Uncomment if you want to commit it
+package-lock.json
+pnpm-lock.yaml
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- Agent & AI Tooling ---
+.agents/sessions/
+.cache/
+.local/
+.model-context/
+.opencode/
+cursor/
+claude/
+
+# --- Logs & Temporary Files ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.tui-history/
+temp/
+*.tmp
+
+# --- OS & Misc ---
+.DS_Store
+Thumbs.db
+*.icloud
+
+# --- Framework Specific ---
+# Next.js
+.next/
+.vercel/
+
+# Nitro / Serverless
+.nitro/
+.output/
+
+# --- Hexagen / Architecture Tools ---
+.architecture/**/*.local.*
+.hexagen/
+
+# --- Database & ORM ---
+*.sqlite
+*.db
+prisma/migrations/
+
+# --- Coverage & Testing ---
+coverage/
+.nyc_output/

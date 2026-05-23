@@ -1,0 +1,29 @@
+{
+  "name": "panelcraft-comic-studio",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.12.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "clean": "turbo clean",
+    "sync": "hexagen sync",
+    "sync:dry": "hexagen sync --dry-run",
+    "sync:force": "hexagen sync --force",
+    "lint:arch": "hexagen arch validate",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.4"
+  }
+}

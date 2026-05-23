@@ -1,0 +1,9 @@
+# Rules for @hexagen/arch-linter
+# Template: modular-monolith (flexible mode)
+
+global_whitelist:
+  - "@panelcraft/shared"
+  - "@panelcraft/shared/**"
+
+test_double_rules:
+  allowed_cross_package_imports: true
