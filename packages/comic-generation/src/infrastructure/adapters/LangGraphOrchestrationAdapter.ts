@@ -6,7 +6,7 @@ import {
 } from "@panelcraft/shared";
 import { ComicGraphState, ComicGraphStateType } from "../../domain/types/ComicGraphState.js";
 import type { HITLFeedbackData } from "../../domain/value-objects/HITLFeedback.vo.js";
-import type { ImageGenerationPort } from "../../application/ports/out/ImageGenerationPort.js";
+import type { ImageGenerationPort } from "../../application/ports/out/image-generation.out-port.js";
 import type { LLMClientPort } from "../../application/ports/out/llm-client.out-port.js";
 
 /**
@@ -194,6 +194,13 @@ Return ONLY valid JSON with no markdown or additional text:
     // Validate: each character has required fields
     for (let i = 0; i < characterData.characters.length; i++) {
       const char = characterData.characters[i];
+      if (!char || typeof char !== "object" || Array.isArray(char)) {
+        throw new LLMResponseValidationError(
+          `buildCharacterBible: character ${i} must be an object`,
+          { expected: "character object", received: char }
+        );
+      }
+
       const requiredFields = ['name', 'visual', 'consistency'];
       const missingFields = requiredFields.filter((f) => !char[f]);
 

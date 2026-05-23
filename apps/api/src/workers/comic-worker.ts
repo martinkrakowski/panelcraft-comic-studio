@@ -92,13 +92,17 @@ export function initComicWorker(
         if (job.attemptsMade + 1 >= totalAttempts) {
           try {
             const project = await projectRepo.load(projectId);
-            if (project && project.status === "processing") {
-              // Reset to pending_review to allow user to resubmit
-              project.status = "pending_review";
+            if (project) {
+              if (project.status === "processing") {
+                project.status = "pending_review";
+              } else if (job.name === "start-comic" && project.status === "created") {
+                project.status = "failed";
+              }
+
               await projectRepo.save(project);
               console.warn(
                 `[Worker] Job ${job.id} failed permanently. ` +
-                `Reset project ${projectId} to "pending_review" for recovery.`
+                `Updated project ${projectId} to "${project.status}".`
               );
             }
           } catch (recoveryError) {

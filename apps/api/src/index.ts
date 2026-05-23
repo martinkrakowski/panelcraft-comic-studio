@@ -39,9 +39,14 @@ const projectRepo = new InMemoryProjectRepository();
 // Message Queue Setup
 // ============================================================================
 
+const redisPort = Number.parseInt(process.env.REDIS_PORT ?? "6379", 10);
+if (!Number.isInteger(redisPort) || redisPort < 1 || redisPort > 65535) {
+  throw new Error(`Invalid REDIS_PORT: ${process.env.REDIS_PORT ?? "undefined"}`);
+}
+
 const redisConnection = {
   host: process.env.REDIS_HOST || "localhost",
-  port: parseInt(process.env.REDIS_PORT || "6379", 10),
+  port: redisPort,
 };
 
 const bullMQQueue = new Queue("comic-generation-queue", { connection: redisConnection });
@@ -204,8 +209,16 @@ app.post("/api/projects/:id/review", async (req, res, next) => {
       });
     }
 
+    if (comment !== undefined && typeof comment !== "string") {
+      return res.status(400).json({
+        error: "comment must be a string when provided",
+      });
+    }
+
+    const normalizedComment = comment?.trim() || undefined;
+
     // Delegate to use case (which enqueues resumption job)
-    await comicUseCase.submitReview(id, approved, comment);
+    await comicUseCase.submitReview(id, approved, normalizedComment);
 
     res.json({ message: "Review submitted. Workflow resumption queued.", projectId: id });
   } catch (error) {

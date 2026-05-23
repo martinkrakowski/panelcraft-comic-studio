@@ -31,7 +31,9 @@ export class XaiLLMClientAdapter implements LLMClientPort {
     userPrompt: string,
     maxRetries: number = 2
   ): Promise<any> {
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const retries = Math.max(0, Math.floor(maxRetries));
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for reasoning
 
@@ -64,10 +66,10 @@ export class XaiLLMClientAdapter implements LLMClientPort {
             isRetryable
           );
 
-          if (isRetryable && attempt < maxRetries) {
+          if (isRetryable && attempt < retries) {
             const backoffMs = 1000 * Math.pow(2, attempt);
             console.warn(
-              `[Attempt ${attempt + 1}/${maxRetries + 1}] xAI returned ${response.status}, ` +
+              `[Attempt ${attempt + 1}/${retries + 1}] xAI returned ${response.status}, ` +
               `retrying in ${backoffMs}ms...`
             );
             await new Promise((r) => setTimeout(r, backoffMs));
@@ -110,17 +112,17 @@ export class XaiLLMClientAdapter implements LLMClientPort {
           throw error;
         }
 
-        if (attempt < maxRetries) {
+        if (attempt < retries) {
           const backoffMs = 1000 * Math.pow(2, attempt);
           console.warn(
-            `[Attempt ${attempt + 1}/${maxRetries + 1}] LLM call failed: ${(error as Error).message}, ` +
+            `[Attempt ${attempt + 1}/${retries + 1}] LLM call failed: ${(error as Error).message}, ` +
             `retrying in ${backoffMs}ms...`
           );
           await new Promise((r) => setTimeout(r, backoffMs));
         } else {
           if (error instanceof ExternalServiceError) throw error;
           throw new ExternalServiceError(
-            `LLM call failed after ${maxRetries + 1} attempts: ${(error as Error).message}`
+            `LLM call failed after ${retries + 1} attempts: ${(error as Error).message}`
           );
         }
       } finally {

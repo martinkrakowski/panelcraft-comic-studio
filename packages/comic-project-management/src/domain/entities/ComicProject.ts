@@ -13,11 +13,18 @@ export class ComicProject {
   private panels: Panel[];
   private characterBible: any;
 
+  private static assertValidPanelCount(count: number): void {
+    if (!Number.isInteger(count) || count < 1) {
+      throw new RangeError("panelCount must be an integer >= 1");
+    }
+  }
+
   constructor(
     private readonly id: string,
     props: ComicProjectProps
   ) {
     this.prompt = props.prompt;
+    ComicProject.assertValidPanelCount(props.panelCount);
     this.panelCount = props.panelCount;
     this.panels = props.panels || [];
     this.characterBible = props.characterBible || null;
@@ -40,6 +47,7 @@ export class ComicProject {
   }
 
   setPanelCount(count: number): void {
+    ComicProject.assertValidPanelCount(count);
     this.panelCount = count;
   }
 

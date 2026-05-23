@@ -1,4 +1,4 @@
-import type { ImageGenerationPort } from '../../application/ports/out/ImageGenerationPort.js';
+import type { ImageGenerationPort } from '../../application/ports/out/image-generation.out-port.js';
 import type { GeneratePanelCommand } from '../../application/commands/GeneratePanelCommand.js';
 
 interface XaiImageResponse {

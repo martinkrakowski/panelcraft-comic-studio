@@ -170,5 +170,6 @@ bounded_contexts:
             - external-service-client.out-port.ts
             - job-queue.out-port.ts
             - llm-client.out-port.ts
+            - image-generation.out-port.ts
       infrastructure:
         adapters: []
