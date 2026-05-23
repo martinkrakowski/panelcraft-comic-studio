@@ -25,30 +25,40 @@ export class Panel {
     return this.id;
   }
 
+  /** Returns the AI prompt used to generate this panel's image. */
   getPrompt(): string {
     return this.prompt;
   }
 
+  /** Sets the panel prompt (e.g., from LLM story structuring). */
   setPrompt(prompt: string): void {
     this.prompt = prompt;
   }
 
+  /** Returns the current status (pending, generated, completed, or failed). */
   getStatus(): PanelStatus {
     return this.status;
   }
 
+  /** Sets the panel status as it progresses through generation/review workflow. */
   setStatus(status: PanelStatus): void {
     this.status = status;
   }
 
+  /** Returns the URL of the generated image, or null if not yet generated. */
   getGeneratedImageUrl(): string | null {
     return this.generatedImageUrl;
   }
 
+  /** Sets the generated image URL after successful image generation. */
   setGeneratedImageUrl(url: string | null): void {
     this.generatedImageUrl = url;
   }
 
+  /**
+   * Serializes the panel to a plain JSON object with primitive values.
+   * Used at layer boundaries (e.g., API responses, workflow state persistence).
+   */
   toJSON() {
     return {
       id: this.id.getValue(),
@@ -58,6 +68,11 @@ export class Panel {
     };
   }
 
+  /**
+   * Deserializes a plain JSON object back into a Panel entity.
+   * Reconstructs all value objects and validates their contracts.
+   * Throws ValidationError if any field fails to construct.
+   */
   static fromJSON(json: any): Panel {
     const idResult = PanelId.create(json.id);
     if (!idResult.success) {

@@ -1,6 +1,7 @@
 import { Worker, Job, Queue } from "bullmq";
 import type { LangGraphOrchestrationAdapter } from "@panelcraft/comic-generation";
 import type { RelationalDbPort } from "@panelcraft/comic-generation";
+import { ComicProject } from "@panelcraft/comic-project-management";
 
 /**
  * Comic generation worker processes jobs from the task queue.
@@ -46,10 +47,11 @@ export function initComicWorker(
           const currentThreadState = await graph.getState({
             configurable: { thread_id: projectId }
           });
-          const updatedProject = currentThreadState.values.project;
+          const projectJson = currentThreadState.values.project;
 
-          // Update project status to indicate workflow is waiting on human review
-          updatedProject.status = "pending_review";
+          // Convert JSON state back to ComicProject entity (workflow stores as JSON to avoid prototype issues)
+          const updatedProject = ComicProject.fromJSON(projectJson);
+          updatedProject.setStatus("pending_review");
           await projectRepo.save(updatedProject);
 
           console.log(`[Worker] First panel generated for project ${projectId}. Waiting for HITL review.`);
@@ -69,17 +71,23 @@ export function initComicWorker(
           const currentThreadState = await graph.getState({
             configurable: { thread_id: projectId }
           });
-          const updatedProject = currentThreadState.values.project;
+          const projectJson = currentThreadState.values.project;
+
+          // Convert JSON state back to ComicProject entity
+          const updatedProject = ComicProject.fromJSON(projectJson);
+          const panelCountValue = typeof updatedProject.getPanelCount() === 'number'
+            ? updatedProject.getPanelCount()
+            : updatedProject.getPanelCount().getValue();
 
           // Update project status based on workflow completion
-          if (currentThreadState.values.currentPanelIndex >= updatedProject.panelCount) {
-            updatedProject.status = "completed";
+          if (currentThreadState.values.currentPanelIndex >= panelCountValue) {
+            updatedProject.setStatus("completed");
             console.log(`[Worker] Comic generation completed for project ${projectId}.`);
           } else {
-            updatedProject.status = "pending_review";
+            updatedProject.setStatus("pending_review");
             console.log(
               `[Worker] Panel ${currentThreadState.values.currentPanelIndex} generated. ` +
-              `Waiting for HITL review (${currentThreadState.values.currentPanelIndex}/${updatedProject.panelCount}).`
+              `Waiting for HITL review (${currentThreadState.values.currentPanelIndex}/${panelCountValue}).`
             );
           }
           await projectRepo.save(updatedProject);
@@ -93,16 +101,17 @@ export function initComicWorker(
           try {
             const project = await projectRepo.load(projectId);
             if (project) {
-              if (project.status === "processing") {
-                project.status = "pending_review";
-              } else if (job.name === "start-comic" && project.status === "created") {
-                project.status = "failed";
+              const currentStatus = project.getStatus();
+              if (currentStatus === "processing") {
+                project.setStatus("pending_review");
+              } else if (job.name === "start-comic" && currentStatus === "created") {
+                project.setStatus("failed");
               }
 
               await projectRepo.save(project);
               console.warn(
                 `[Worker] Job ${job.id} failed permanently. ` +
-                `Updated project ${projectId} to "${project.status}".`
+                `Updated project ${projectId} to "${project.getStatus()}".`
               );
             }
           } catch (recoveryError) {

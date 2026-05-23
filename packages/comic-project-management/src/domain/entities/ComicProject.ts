@@ -70,26 +70,36 @@ export class ComicProject {
     this.characterBible = bible;
   }
 
+  /** Returns the current workflow status (e.g., 'created', 'pending_review', 'completed'). */
   getStatus(): string {
     return this.status;
   }
 
+  /** Sets the workflow status. Used during comic generation to track workflow progress. */
   setStatus(status: string): void {
     this.status = status;
   }
 
+  /** Returns the timestamp when the project was created (ISO 8601 format). */
   getCreatedAt(): string {
     return this.createdAt;
   }
 
+  /** Returns the timestamp of the last HITL review submission, or null if never reviewed. */
   getLastReviewSubmittedAt(): string | null {
     return this.lastReviewSubmittedAt;
   }
 
+  /** Records when human feedback was submitted for HITL review. Used to track review history. */
   setLastReviewSubmittedAt(date: string | null): void {
     this.lastReviewSubmittedAt = date;
   }
 
+  /**
+   * Serializes the project to a plain JSON object with primitive values.
+   * Used at layer boundaries (e.g., API responses, workflow state persistence).
+   * Value objects are unwrapped to primitives; entities are recursively serialized.
+   */
   toJSON() {
     return {
       id: this.id.getValue(),
@@ -103,6 +113,12 @@ export class ComicProject {
     };
   }
 
+  /**
+   * Deserializes a plain JSON object back into a ComicProject entity.
+   * Reconstructs all value objects and validates their contracts.
+   * Throws ValidationError if any field fails to construct.
+   * Used to recover typed entities from persistent or serialized state.
+   */
   static fromJSON(json: any): ComicProject {
     const idResult = ComicProjectId.create(json.id);
     if (!idResult.success) {

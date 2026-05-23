@@ -9,6 +9,7 @@ import { ComicGraphState, ComicGraphStateType } from "../../domain/types/ComicGr
 import type { HITLFeedbackData } from "../../domain/value-objects/HITLFeedback.vo.js";
 import type { ImageGenerationPort } from "../../application/ports/out/image-generation.out-port.js";
 import type { LLMClientPort } from "../../application/ports/out/llm-client.out-port.js";
+import { PanelPromptValidationService } from "../../domain/services/PanelPromptValidationService.js";
 
 /**
  * LangGraph orchestration adapter that manages the comic generation workflow.
@@ -51,7 +52,11 @@ export class LangGraphOrchestrationAdapter {
     // After review: regenerate if rejected, else advance to next panel or finalize
     workflow.addConditionalEdges("hitlReview", (state: ComicGraphStateType) => {
       if (!state.lastFeedback?.approved) return "generatePanel";
-      return state.currentPanelIndex < state.project.panelCount.getValue()
+      // panelCount may be a value object (ComicProject) or plain number (JSON from state)
+      const panelCountValue = typeof state.project.panelCount === 'number'
+        ? state.project.panelCount
+        : state.project.panelCount.getValue();
+      return state.currentPanelIndex < panelCountValue
         ? "generatePanel"
         : "finalizeComic";
     });
@@ -92,30 +97,14 @@ Return ONLY a valid JSON array of exactly ${panelCountValue} strings with no mar
       throw new LLMResponseParsingError(`structureStory failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Validate: must be array
-    if (!Array.isArray(panelPrompts)) {
-      throw new LLMResponseValidationError(
-        `structureStory: LLM must return an array, got ${typeof panelPrompts}`,
-        { expected: `array of ${panelCount} strings`, received: typeof panelPrompts }
-      );
-    }
-
-    // Validate: must have correct count
-    if (panelPrompts.length !== panelCountValue) {
-      throw new LLMResponseValidationError(
-        `structureStory: requested ${panelCountValue} panels but LLM returned ${panelPrompts.length}`,
-        { expected: panelCountValue, received: panelPrompts.length }
-      );
-    }
-
-    // Validate: each entry must be non-empty string
-    for (let i = 0; i < panelPrompts.length; i++) {
-      if (typeof panelPrompts[i] !== 'string' || !panelPrompts[i].trim()) {
-        throw new LLMResponseValidationError(
-          `structureStory: panel ${i} is empty or not a string`,
-          { expected: 'non-empty string', received: panelPrompts[i] }
-        );
+    // Delegate validation to domain service
+    try {
+      PanelPromptValidationService.validate(panelPrompts, panelCountValue);
+    } catch (error) {
+      if (error instanceof LLMResponseValidationError) {
+        throw new LLMResponseValidationError(`structureStory: ${error.message}`, error.expected, error.received);
       }
+      throw error;
     }
 
     // Now safe to assign
