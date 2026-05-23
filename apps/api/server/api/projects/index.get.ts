@@ -7,8 +7,8 @@ import { getComicUseCase } from '../../utils/dependencies.js'
  * List all comic projects with summary information.
  * @returns 200 with array of projects (id, prompt summary, panelCount, status, createdAt)
  */
-export default defineEventHandler(async () => {
-  const projects = await getComicUseCase().listProjects()
+export default defineEventHandler(async (event) => {
+  const projects = await getComicUseCase(event).listProjects()
   return ok({
     projects: projects.map((p) => {
       const j = p.toJSON()

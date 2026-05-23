@@ -13,7 +13,7 @@ import { getComicUseCase } from '../../../utils/dependencies.js'
  */
 export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), { id: getRouterParam(event, 'id') })
-  const project = await getComicUseCase().getProject(id)
+  const project = await getComicUseCase(event).getProject(id)
   const j = project.toJSON()
   return ok({
     project: {

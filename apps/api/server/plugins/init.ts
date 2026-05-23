@@ -5,7 +5,6 @@ import { InMemoryProjectRepository } from '@panelcraft/comic-project-management'
 import { BullMQJobQueueAdapter } from '../adapters/BullMQJobQueueAdapter.js'
 import { XaiLLMClientAdapter } from '../adapters/XaiLLMClientAdapter.js'
 import { initComicWorker } from '../workers/comic-worker.js'
-import { initComicUseCase } from '../utils/dependencies.js'
 
 /**
  * Nitro server initialization plugin.
@@ -40,7 +39,12 @@ export default defineNitroPlugin(async (nitroApp) => {
   const langGraphAdapter = new LangGraphOrchestrationAdapter(imageGenPort, llmClient, projectRepo)
   const comicUseCase = new ComicGenerationUseCase(projectRepo, jobQueueAdapter)
 
-  initComicUseCase(comicUseCase)
+  // Inject dependencies into request context (Nitro event.context pattern)
+  nitroApp.hooks.hook('request', (event) => {
+    event.context = event.context || {}
+    event.context.comicUseCase = comicUseCase
+  })
+
   const worker = initComicWorker(langGraphAdapter, projectRepo, bullMQQueue)
 
   // Gracefully close BullMQ connections on server shutdown
