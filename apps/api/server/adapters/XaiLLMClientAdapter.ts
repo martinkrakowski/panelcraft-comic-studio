@@ -15,9 +15,6 @@ export class XaiLLMClientAdapter implements LLMClientPort {
 
   constructor() {
     this.apiKey = process.env['XAI_API_KEY'] || '';
-    if (!this.apiKey) {
-      throw new Error('XAI_API_KEY environment variable is not set');
-    }
   }
 
   /**
@@ -31,6 +28,9 @@ export class XaiLLMClientAdapter implements LLMClientPort {
     userPrompt: string,
     maxRetries: number = 2
   ): Promise<any> {
+    if (!this.apiKey) {
+      throw new Error('XAI_API_KEY environment variable is not set. Please set it in your .env file.');
+    }
     const retries = Math.max(0, Math.floor(maxRetries));
 
     for (let attempt = 0; attempt <= retries; attempt++) {

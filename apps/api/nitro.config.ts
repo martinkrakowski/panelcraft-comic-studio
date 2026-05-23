@@ -3,6 +3,10 @@ export default {
   compatibilityDate: '2026-05-23',
   errorHandler: '~/utils/error',
 
+  devServer: {
+    port: 3001,
+  },
+
   // Nitro defaults to port 3000 — set explicitly to match existing .env
   // Use useRuntimeConfig() in handlers for typed environment variables (preferred over raw process.env)
   runtimeConfig: {

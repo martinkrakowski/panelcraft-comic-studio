@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "nitro build",
-    "dev": "nitro dev",
+    "dev": "nitro dev --port 3001",
     "lint": "eslint server --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
