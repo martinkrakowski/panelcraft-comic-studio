@@ -96,7 +96,7 @@ bounded_contexts:
     description: Shared primitives, custom errors, base classes, utilities
     depends_on: []
     uiFramework: Next.js
-    apiFramework: Express
+    apiFramework: Nitro
     layers:
       domain:
         entities: []
@@ -119,7 +119,7 @@ bounded_contexts:
     depends_on:
       - shared
     uiFramework: Next.js
-    apiFramework: Express
+    apiFramework: Nitro
     layers:
       domain:
         entities:
@@ -152,7 +152,7 @@ bounded_contexts:
     depends_on:
       - shared
     uiFramework: Next.js
-    apiFramework: Express
+    apiFramework: Nitro
     layers:
       domain:
         entities:

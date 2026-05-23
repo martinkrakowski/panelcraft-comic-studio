@@ -4,25 +4,31 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "lint": "eslint src --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "build": "nitro build",
+    "dev": "nitro dev",
+    "lint": "eslint server --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "@panelcraft/comic-generation": "workspace:*",
     "@panelcraft/comic-project-management": "workspace:*",
     "@panelcraft/shared": "workspace:*",
     "bullmq": "^5.4.2",
-    "express": "^4.18.2",
-    "redis": "^4.6.12"
+    "h3": "^1.15.11",
+    "nitropack": "^2.13.4",
+    "redis": "^4.6.12",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
     "@types/node": "^25.9.1",
+    "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",
-    "typescript": "^5.5.4"
+    "supertest": "^7.2.2",
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.7"
   }
 }
