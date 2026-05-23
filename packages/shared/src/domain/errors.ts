@@ -24,7 +24,7 @@ export class DomainError extends Error {
  * Thrown when an LLM returns invalid JSON or unparseable content.
  */
 export class LLMResponseParsingError extends DomainError {
-  override readonly code = 'INTERNAL_SERVER_ERROR';
+  override readonly code = 'PARSE_ERROR';
   constructor(message: string, readonly content?: string) {
     super(`LLM Response Parsing Error: ${message}`);
     Object.setPrototypeOf(this, LLMResponseParsingError.prototype);
@@ -35,7 +35,7 @@ export class LLMResponseParsingError extends DomainError {
  * Thrown when an LLM returns a valid response but with incorrect structure/count.
  */
 export class LLMResponseValidationError extends DomainError {
-  override readonly code = 'INTERNAL_SERVER_ERROR';
+  override readonly code = 'VALIDATION_ERROR';
   constructor(message: string, readonly expected?: any, readonly received?: any) {
     super(`LLM Response Validation Error: ${message}`);
     Object.setPrototypeOf(this, LLMResponseValidationError.prototype);
@@ -46,7 +46,7 @@ export class LLMResponseValidationError extends DomainError {
  * Thrown when a call to an external LLM service fails (network, timeout, rate limit).
  */
 export class ExternalServiceError extends DomainError {
-  override readonly code = 'INTERNAL_SERVER_ERROR';
+  override readonly code = 'SERVICE_ERROR';
   constructor(
     message: string,
     readonly statusCode?: number,
@@ -61,7 +61,7 @@ export class ExternalServiceError extends DomainError {
  * Thrown when image generation fails.
  */
 export class ImageGenerationError extends DomainError {
-  override readonly code = 'INTERNAL_SERVER_ERROR';
+  override readonly code = 'IMAGE_GENERATION_ERROR';
   constructor(message: string, readonly reason?: string) {
     super(`Image Generation Error: ${message}`);
     Object.setPrototypeOf(this, ImageGenerationError.prototype);

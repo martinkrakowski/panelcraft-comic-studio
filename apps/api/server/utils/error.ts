@@ -1,7 +1,7 @@
-import { setResponseStatus } from 'h3'
+import { setResponseStatus, H3Event } from 'h3'
 import { errorToHttpStatus, DomainError, NotFoundError } from '@panelcraft/shared'
 
-export function handleServerError(error: unknown, event: any) {
+export function handleServerError(error: unknown, event: H3Event) {
   const h3err = error as any
 
   // Extract the wrapped error if it exists AND is a proper Error instance.
@@ -31,8 +31,10 @@ export function handleServerError(error: unknown, event: any) {
   // Override status based on error code if needed
   if (code === 'NOT_FOUND' && status !== 404) {
     status = 404
-  } else if (code === 'VALIDATION_ERROR' && status !== 400) {
+  } else if ((code === 'VALIDATION_ERROR' || code === 'PARSE_ERROR') && status !== 400) {
     status = 400
+  } else if ((code === 'SERVICE_ERROR' || code === 'IMAGE_GENERATION_ERROR') && status !== 500) {
+    status = 500
   }
 
   const message = (originalError instanceof Error ? originalError.message : null) ?? 'Internal server error'

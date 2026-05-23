@@ -19,14 +19,18 @@ export default defineNitroPlugin(async (nitroApp) => {
   const jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue)
   const llmClient = new XaiLLMClientAdapter()
 
-  const mockImageGenPort = {
+  const imageGenPort = process.env.USE_MOCK_IMAGE === 'true' ? {
     generatePanel: async (opts: any) => {
       await new Promise((r) => setTimeout(r, 500))
       return `https://example.com/panels/${opts.panelNumber}.png`
     },
+  } : {
+    generatePanel: async (opts: any) => {
+      throw new Error('Real image generation adapter not yet implemented. Set USE_MOCK_IMAGE=true for development.')
+    },
   }
 
-  const langGraphAdapter = new LangGraphOrchestrationAdapter(mockImageGenPort, llmClient, projectRepo)
+  const langGraphAdapter = new LangGraphOrchestrationAdapter(imageGenPort, llmClient, projectRepo)
   const comicUseCase = new ComicGenerationUseCase(projectRepo, jobQueueAdapter)
 
   initComicUseCase(comicUseCase)
