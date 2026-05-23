@@ -1,5 +1,5 @@
 import { Annotation } from "@langchain/langgraph";
-import type { HITLFeedback } from "../value-objects/HITLFeedback.vo.js";
+import type { HITLFeedbackData } from "../value-objects/HITLFeedback.vo.js";
 
 /**
  * LangGraph state definition for the comic generation workflow.
@@ -14,7 +14,7 @@ export const ComicGraphState = Annotation.Root({
   currentPanelIndex: Annotation<number>(),
 
   /** Latest human feedback from HITL review (null if no review yet) */
-  lastFeedback: Annotation<HITLFeedback | null>(),
+  lastFeedback: Annotation<HITLFeedbackData | null>(),
 
   /** LangGraph thread ID for persistent session tracking */
   threadId: Annotation<string>(),

@@ -1,4 +1,15 @@
 // @generated value-object stub — edit freely
+
+/**
+ * Shape of the resume value provided by the human when approving or rejecting a panel.
+ * This is what the caller passes when resuming the LangGraph thread after an interrupt.
+ */
+export interface HITLFeedbackData {
+  approved: boolean;
+  comment?: string;
+  regenerationHint?: string;
+}
+
 /**
  * HITLFeedback is an immutable value object.
  *

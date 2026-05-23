@@ -1,27 +1,31 @@
 import { StateGraph, START, END, MemorySaver, interrupt } from "@langchain/langgraph";
-import { ComicGraphState, ComicGraphStateType } from "../../domain/types/ComicGraphState";
-import { ImageGenerationPort } from "../../application/ports/out/ImageGenerationPort";
+import { ComicGraphState, ComicGraphStateType } from "../../domain/types/ComicGraphState.js";
+import type { HITLFeedbackData } from "../../domain/value-objects/HITLFeedback.vo.js";
+import type { ImageGenerationPort } from "../../application/ports/out/ImageGenerationPort.js";
 
 /**
  * LangGraph orchestration adapter that manages the comic generation workflow.
  * Implements HITL (Human-in-the-Loop) using LangGraph's interrupt() mechanism.
+ * The compiled graph is built once at construction and reused across all invocations.
  */
 export class LangGraphOrchestrationAdapter {
-  private imageGenPort: ImageGenerationPort;
-  private projectRepo: any; // Using any to avoid cross-package type issues
-  private checkpointer: MemorySaver;
+  private readonly imageGenPort: ImageGenerationPort;
+  private readonly projectRepo: any;
+  private readonly graph;
 
   constructor(imageGenPort: ImageGenerationPort, projectRepo: any) {
     this.imageGenPort = imageGenPort;
     this.projectRepo = projectRepo;
-    this.checkpointer = new MemorySaver();
+    this.graph = this.buildGraph();
   }
 
-  /**
-   * Creates and compiles the LangGraph workflow.
-   * The graph handles: story structuring → character bible → panel generation → HITL review loop.
-   */
-  async createGraph() {
+  getGraph() {
+    return this.graph;
+  }
+
+  private buildGraph() {
+    const checkpointer = new MemorySaver();
+
     const workflow = new StateGraph(ComicGraphState)
       .addNode("structureStory", this.structureStory.bind(this))
       .addNode("buildCharacterBible", this.buildCharacterBible.bind(this))
@@ -29,24 +33,21 @@ export class LangGraphOrchestrationAdapter {
       .addNode("hitlReview", this.hitlReview.bind(this))
       .addNode("finalizeComic", this.finalizeComic.bind(this));
 
-    // Initial flow
     workflow.addEdge(START, "structureStory");
     workflow.addEdge("structureStory", "buildCharacterBible");
     workflow.addEdge("buildCharacterBible", "generatePanel");
-
-    // After generating a panel: go to HITL if more panels exist, else finalize
-    workflow.addConditionalEdges("generatePanel", (state: ComicGraphStateType) => 
-      state.currentPanelIndex < state.project.panelCount ? "hitlReview" : "finalizeComic"
-    );
-
-    // After HITL review: regenerate if not approved, else continue to next panel/finalize
-    workflow.addConditionalEdges("hitlReview", (state: ComicGraphStateType) => 
-      state.currentPanelIndex < state.project.panelCount ? "generatePanel" : "finalizeComic"
-    );
-
+    // Every generated panel goes through HITL review
+    workflow.addEdge("generatePanel", "hitlReview");
+    // After review: regenerate if rejected, else advance to next panel or finalize
+    workflow.addConditionalEdges("hitlReview", (state: ComicGraphStateType) => {
+      if (!state.lastFeedback?.approved) return "generatePanel";
+      return state.currentPanelIndex < state.project.panelCount
+        ? "generatePanel"
+        : "finalizeComic";
+    });
     workflow.addEdge("finalizeComic", END);
 
-    return workflow.compile({ checkpointer: this.checkpointer });
+    return workflow.compile({ checkpointer });
   }
 
   private async structureStory(state: ComicGraphStateType) {
@@ -62,7 +63,7 @@ export class LangGraphOrchestrationAdapter {
   private async generatePanel(state: ComicGraphStateType) {
     const panelIndex = state.currentPanelIndex;
     const panel = state.project.panels[panelIndex];
-    
+
     if (!panel) {
       throw new Error(`Panel at index ${panelIndex} not found`);
     }
@@ -72,33 +73,35 @@ export class LangGraphOrchestrationAdapter {
       panelNumber: panelIndex + 1,
     });
 
-    // Update panel with generated image (entities are mutable by design)
-    panel.generatedImageUrl = imageUrl;
-    panel.status = "generated";
+    const updatedPanels = [...state.project.panels];
+    updatedPanels[panelIndex] = { ...panel, generatedImageUrl: imageUrl, status: "generated" };
 
     return {
       ...state,
+      project: { ...state.project, panels: updatedPanels },
       currentPanelIndex: panelIndex + 1,
     };
   }
 
   /**
-   * HITL (Human-in-the-Loop) review node.
-   * Uses LangGraph's interrupt() to pause execution and wait for human feedback.
+   * HITL review node: pauses graph execution via interrupt() and waits for human feedback.
+   * The interrupt payload is sent to the client; the resume value must match HITLFeedbackData.
    */
   private async hitlReview(state: ComicGraphStateType) {
-    const currentPanelIndex = state.currentPanelIndex - 1;
-    
-    // Interrupt graph execution to wait for human feedback
-    // The argument to interrupt() is sent to the client
-    const feedback = interrupt<any>({
-      panelIndex: currentPanelIndex,
-      panel: state.project.panels[currentPanelIndex],
-      message: "Review generated panel and provide feedback",
-    });
+    const reviewPanelIndex = state.currentPanelIndex - 1;
 
-    // If not approved, decrement index to regenerate the same panel
-    const newIndex = feedback?.approved ? state.currentPanelIndex : state.currentPanelIndex - 1;
+    // interrupt() sends its argument (display payload) to the client; the resume
+    // value is what the caller provides when continuing the thread. These are
+    // different shapes, so we cast the return value to HITLFeedbackData explicitly.
+    const feedback = interrupt({
+      panelIndex: reviewPanelIndex,
+      panel: state.project.panels[reviewPanelIndex],
+      message: "Review generated panel and provide feedback",
+    }) as HITLFeedbackData;
+
+    const newIndex = feedback.approved
+      ? state.currentPanelIndex
+      : state.currentPanelIndex - 1;
 
     return {
       ...state,
