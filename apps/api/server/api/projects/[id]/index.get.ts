@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
         id: p.id,
         index: idx,
         status: p.status,
+        prompt: p.prompt,
         imageUrl: p.generatedImageUrl,
       })),
     },
