@@ -1,7 +1,7 @@
-// Export domain types and entities
+// Export domain errors and value objects
 export * from "./domain/index.js";
 
-// Export application ports and commands
+// Export application layer
 export * from "./application/index.js";
 
 // Export infrastructure adapters
