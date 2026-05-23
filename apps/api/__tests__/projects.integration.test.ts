@@ -400,4 +400,94 @@ describe("Projects API Integration Tests", () => {
       expect(response.body).not.toHaveProperty("data");
     });
   });
+
+  describe("Error Handling (5xx vs 4xx messages)", () => {
+    it("should return generic message for 5xx errors (security fix)", async () => {
+      const response = await request(app).get("/error-test");
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty("success", false);
+      expect(response.body.error).toHaveProperty("code");
+      expect(response.body.error.message).toBe("Internal server error");
+    });
+
+    it("should return specific message for 4xx errors (validation)", async () => {
+      const response = await request(app)
+        .post("/api/projects")
+        .send({
+          prompt: "short",
+          panelCount: 4,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+      // 4xx errors should include the actual validation message, not generic response
+      expect(response.body.error.message).not.toBe("Internal server error");
+    });
+
+    it("should return specific message for 404 errors", async () => {
+      const fakeId = "00000000-0000-0000-0000-000000000000";
+      const response = await request(app).get(`/api/projects/${fakeId}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe("NOT_FOUND");
+      expect(response.body.error.message).not.toBe("Internal server error");
+    });
+  });
+
+  describe("Trim Validation (whitespace handling)", () => {
+    it("should accept prompt with leading/trailing spaces", async () => {
+      const response = await request(app)
+        .post("/api/projects")
+        .send({
+          prompt: "  A valid prompt with whitespace  ",
+          panelCount: 3,
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty("projectId");
+    });
+
+    it("should reject prompt that's too short after trimming", async () => {
+      const response = await request(app)
+        .post("/api/projects")
+        .send({
+          prompt: "     short     ",
+          panelCount: 3,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("should accept comment with leading/trailing spaces", async () => {
+      const createResponse = await request(app)
+        .post("/api/projects")
+        .send({
+          prompt: "A valid prompt here",
+          panelCount: 3,
+        });
+
+      const projectId = createResponse.body.data.projectId;
+
+      // ⚠️ CRITICAL: Manually set project to pending_review since workers are disabled in tests
+      const project = await projectRepo.load(projectId);
+      project.setStatus("pending_review");
+      await projectRepo.save(project);
+
+      const reviewResponse = await request(app)
+        .post(`/api/projects/${projectId}/review`)
+        .send({
+          approved: true,
+          comment: "  Comment with whitespace  ",
+        });
+
+      expect(reviewResponse.status).toBe(202);
+      expect(reviewResponse.body.success).toBe(true);
+    });
+
+  });
 });

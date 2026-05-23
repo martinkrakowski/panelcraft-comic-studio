@@ -42,6 +42,11 @@ export function createTestApp() {
   router.get('/api/projects/:id', getProjectHandler)
   router.post('/api/projects/:id/review', submitReviewHandler)
 
+  // Test-only route for error handler testing
+  router.get('/error-test', () => {
+    throw new Error('Intentional test error')
+  })
+
   app.use(router)
   return { app: toNodeListener(app), projectRepo, comicUseCase }
 }
