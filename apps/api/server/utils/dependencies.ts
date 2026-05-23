@@ -1,12 +1,9 @@
 import { ComicGenerationUseCase } from '@panelcraft/comic-generation'
 
-let _comicUseCase: ComicGenerationUseCase | null = null
-
-export function getComicUseCase(): ComicGenerationUseCase {
-  if (!_comicUseCase) throw new Error('Infrastructure not initialized')
-  return _comicUseCase
-}
-
-export function initComicUseCase(useCase: ComicGenerationUseCase): void {
-  _comicUseCase = useCase
+export function getComicUseCase(event: any): ComicGenerationUseCase {
+  const useCase = event?.context?.comicUseCase as ComicGenerationUseCase | undefined
+  if (!useCase) {
+    throw new Error('Infrastructure not initialized: comicUseCase missing from context')
+  }
+  return useCase
 }

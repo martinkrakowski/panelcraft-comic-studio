@@ -1,5 +1,4 @@
 import { createApp, createRouter, toNodeListener } from 'h3'
-import { initComicUseCase } from '../../server/utils/dependencies.js'
 import { handleServerError } from '../../server/utils/error.js'
 import { ComicGenerationUseCase } from '@panelcraft/comic-generation'
 import { InMemoryProjectRepository } from '@panelcraft/comic-project-management'
@@ -30,11 +29,16 @@ class MockJobQueue {
 export function createTestApp() {
   const projectRepo = new InMemoryProjectRepository()
   const comicUseCase = new ComicGenerationUseCase(projectRepo, new MockJobQueue() as any)
-  initComicUseCase(comicUseCase)
 
   // Pass shared error handler for test-production parity
   const app = createApp({ onError: handleServerError })
   const router = createRouter()
+
+  // Inject dependencies into request context (mirrors production init.ts behavior)
+  app.use((event) => {
+    event.context = event.context || {}
+    event.context.comicUseCase = comicUseCase
+  })
 
   // Mount all routes — h3 router resolves path params correctly
   router.get('/api/projects', listProjectsHandler)

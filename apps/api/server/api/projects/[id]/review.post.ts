@@ -17,7 +17,7 @@ import { SubmitReviewSchema } from '../../../utils/schemas.js'
 export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), { id: getRouterParam(event, 'id') })
   const { approved, comment } = parseBody(SubmitReviewSchema, await readBody(event))
-  await getComicUseCase().submitReview(id, approved, comment)
+  await getComicUseCase(event).submitReview(id, approved, comment)
   setResponseStatus(event, 202)
   return ok({ message: 'Review submitted. Workflow resumption queued.' })
 })

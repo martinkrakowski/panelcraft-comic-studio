@@ -12,7 +12,7 @@ import { CreateProjectSchema } from '../../utils/schemas.js'
  */
 export default defineEventHandler(async (event) => {
   const { prompt, panelCount } = parseBody(CreateProjectSchema, await readBody(event))
-  const projectId = await getComicUseCase().createProject(prompt, panelCount)
+  const projectId = await getComicUseCase(event).createProject(prompt, panelCount)
   setResponseStatus(event, 201)
   return ok({ projectId, status: 'created' })
 })
