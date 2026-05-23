@@ -7,6 +7,13 @@ import { XaiLLMClientAdapter } from '../adapters/XaiLLMClientAdapter.js'
 import { initComicWorker } from '../workers/comic-worker.js'
 import { initComicUseCase } from '../utils/dependencies.js'
 
+/**
+ * Nitro server initialization plugin.
+ * Bootstraps infrastructure on startup:
+ * - Redis/BullMQ queue and worker for async comic generation
+ * - Domain repositories and use cases
+ * - Graceful shutdown hooks for connection cleanup
+ */
 export default defineNitroPlugin(async (nitroApp) => {
   const config = useRuntimeConfig()
   const redisPort = Number.parseInt(config.redisPort, 10)
@@ -39,8 +46,14 @@ export default defineNitroPlugin(async (nitroApp) => {
   // Gracefully close BullMQ connections on server shutdown
   nitroApp.hooks.hook('close', async () => {
     console.log('[BullMQ] Closing worker and queue connections...')
-    await worker.close()
-    await bullMQQueue.close()
+    const results = await Promise.allSettled([
+      worker.close(),
+      bullMQQueue.close(),
+    ])
+    const rejected = results.filter((r) => r.status === 'rejected')
+    if (rejected.length > 0) {
+      console.error('[BullMQ] Shutdown errors:', rejected)
+    }
     console.log('[BullMQ] Connections closed.')
   })
 })

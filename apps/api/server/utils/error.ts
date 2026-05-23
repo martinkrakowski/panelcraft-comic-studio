@@ -1,12 +1,28 @@
 import { setResponseStatus, H3Event } from 'h3'
 import { errorToHttpStatus, DomainError, NotFoundError } from '@panelcraft/shared'
 
+/**
+ * Central error handler for Nitro API server.
+ * Normalizes thrown errors (domain errors, h3 validation errors, primitives) into
+ * consistent JSON response envelope format. Logs detailed errors server-side while
+ * returning generic messages for 5xx errors to prevent information disclosure.
+ *
+ * @param error - Unknown thrown value (Error, domain error, h3 error, or primitive)
+ * @param event - H3 request event for status setting
+ * @returns JSON error response with code and message fields
+ */
 export function handleServerError(error: unknown, event: H3Event) {
-  const h3err = error as any
+  const h3err =
+    error !== null && typeof error === 'object'
+      ? (error as Record<string, any>)
+      : {}
 
   // Extract the wrapped error if it exists AND is a proper Error instance.
   // When createError is called directly with options, h3err.cause holds the raw options object.
-  const originalError = (h3err.cause instanceof Error) ? h3err.cause : error
+  const originalError =
+    h3err.cause instanceof Error
+      ? h3err.cause
+      : (error instanceof Error ? error : undefined)
 
   // Extract error code from domain error or h3 error
   let code = h3err.code ?? h3err.data?.code ?? 'INTERNAL_SERVER_ERROR'
@@ -37,12 +53,13 @@ export function handleServerError(error: unknown, event: H3Event) {
     status = 500
   }
 
-  const message = (originalError instanceof Error ? originalError.message : null) ?? 'Internal server error'
+  const logMessage = (originalError instanceof Error ? originalError.message : null) ?? 'Internal server error'
+  const clientMessage = status >= 500 ? 'Internal server error' : logMessage
 
-  console.error(`[${status}] ${message}`)
+  console.error(`[${status}] ${logMessage}`)
   setResponseStatus(event, status)
 
-  return { success: false, error: { code, message } }
+  return { success: false, error: { code, message: clientMessage } }
 }
 
 export default handleServerError

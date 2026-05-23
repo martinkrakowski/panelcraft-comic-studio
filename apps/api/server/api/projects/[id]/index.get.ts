@@ -4,6 +4,13 @@ import { ok } from '../../../utils/envelope.js'
 import { parseParams } from '../../../utils/validation.js'
 import { getComicUseCase } from '../../../utils/dependencies.js'
 
+/**
+ * GET /api/projects/:id
+ * Fetch a single comic project with full details and panel information.
+ * @param event.params.id - Project UUID
+ * @returns 200 with project details including panels array, or 404 if not found
+ * @throws 400 if id is not a valid UUID
+ */
 export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), { id: getRouterParam(event, 'id') })
   const project = await getComicUseCase().getProject(id)

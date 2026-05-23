@@ -8,12 +8,25 @@ import getProjectHandler from '../../server/api/projects/[id]/index.get.js'
 import createProjectHandler from '../../server/api/projects/index.post.js'
 import submitReviewHandler from '../../server/api/projects/[id]/review.post.js'
 
+/**
+ * Mock job queue adapter for testing.
+ * Returns a fixed job ID without requiring Redis/BullMQ infrastructure.
+ */
 class MockJobQueue {
   async add(_name: string, _data: any) {
     return { id: 'mock-job' }
   }
 }
 
+/**
+ * Create an isolated test application with mock dependencies.
+ *
+ * Initializes an in-memory project repository, mock job queue, and h3 app
+ * with all project-related routes mounted. Useful for integration testing
+ * without external dependencies like Redis or real LLM services.
+ *
+ * @returns Object with app (h3 Node listener), projectRepo, and comicUseCase for assertions
+ */
 export function createTestApp() {
   const projectRepo = new InMemoryProjectRepository()
   const comicUseCase = new ComicGenerationUseCase(projectRepo, new MockJobQueue() as any)
