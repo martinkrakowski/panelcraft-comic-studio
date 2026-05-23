@@ -8,8 +8,12 @@ export const createProjectSchema = z.object({
     .max(1000, "Prompt cannot exceed 1000 characters"),
   panelCount: z
     .number({
-      required_error: "Panel count is required",
-      invalid_type_error: "Panel count must be a number",
+      error: (issue) => {
+        if (issue.input === undefined) {
+          return "Panel count is required";
+        }
+        return "Panel count must be a number";
+      },
     })
     .int()
     .min(1, "Comic must have at least 1 panel")
@@ -20,7 +24,7 @@ export type CreateProjectFormValues = z.infer<typeof createProjectSchema>;
 
 export const submitReviewSchema = z.object({
   approved: z.boolean({
-    required_error: "Please select whether you approve or reject this panel",
+    error: "Please select whether you approve or reject this panel",
   }),
   comment: z
     .string()
