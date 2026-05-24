@@ -12,6 +12,7 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
     return (
       <aside
         ref={ref}
+        aria-label="Sidebar navigation"
         className={`fixed left-0 top-0 h-screen w-64 overflow-y-auto bg-slate-900 border-r border-slate-700 z-30 ${className || ''}`}
       >
         {children}

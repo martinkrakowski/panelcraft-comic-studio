@@ -69,7 +69,7 @@ export function NewComicWizard() {
     Record<string, Blob>
   >({});
   const [moodBoardImageBlobs, setMoodBoardImageBlobs] = useState<Blob[]>([]);
-  const [moodBoardFiles, setMoodBoardFiles] = useState<File[]>([]);
+  const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Initialize form with IndexedDB state or defaults
   const {
@@ -89,12 +89,6 @@ export function NewComicWizard() {
         setActiveStep(saved.step);
         setReferenceImageBlobs(saved.referenceImageBlobs || {});
         setMoodBoardImageBlobs(saved.moodBoardImageBlobs || []);
-        // Restore moodBoardFiles from blobs
-        const restoredFiles = (saved.moodBoardImageBlobs || []).map(
-          (blob, i) =>
-            new File([blob], `mood-restored-${i}.webp`, { type: 'image/webp' })
-        );
-        setMoodBoardFiles(restoredFiles);
         return saved.formValues as WizardFormValues;
       }
       return getDefaultValues();
@@ -226,13 +220,6 @@ export function NewComicWizard() {
         Array.from(files).map(compressImageToWebP)
       );
       setMoodBoardImageBlobs((prev) => [...prev, ...compressed]);
-      const newFiles = compressed.map(
-        (blob, i) =>
-          new File([blob], `mood-${Date.now()}-${i}.webp`, {
-            type: 'image/webp',
-          })
-      );
-      setMoodBoardFiles((prev) => [...prev, ...newFiles]);
       saveToIndexedDB();
     } catch (err) {
       toast({
@@ -326,7 +313,17 @@ export function NewComicWizard() {
         // Ignore poll errors
       }
     }, 2000);
+    pollingIntervalRef.current = interval;
   };
+
+  // Cleanup polling on unmount
+  React.useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Handle layout selection
   const handleLayoutSelect = async (layout: string) => {
@@ -351,7 +348,7 @@ export function NewComicWizard() {
       <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
 
       {/* Sidebar */}
-      {activeStep < 4 && (
+      {activeStep < 3 && (
         <WizardSidebar className="pt-20">
           {/* Step 0: Genres, Tones, Panel Count, Layouts */}
           {activeStep === 0 && (
@@ -520,7 +517,7 @@ export function NewComicWizard() {
 
       {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col overflow-hidden ${activeStep < 4 ? 'ml-64' : ''}`}
+        className={`flex-1 flex flex-col overflow-hidden ${activeStep < 3 ? 'ml-64' : ''}`}
       >
         {/* Back button */}
         <div className="flex-shrink-0 px-4 pt-4 relative z-10">
@@ -829,15 +826,15 @@ export function NewComicWizard() {
                         }
                         className="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-violet-500 file:text-white hover:file:bg-violet-600"
                       />
-                      {moodBoardFiles.length > 0 && (
+                      {moodBoardImageBlobs.length > 0 && (
                         <div className="flex flex-wrap gap-2">
-                          {moodBoardFiles.map((file, i) => (
+                          {moodBoardImageBlobs.map((blob, i) => (
                             <div
                               key={i}
                               className="w-16 h-16 rounded bg-slate-800 overflow-hidden"
                             >
                               <img
-                                src={URL.createObjectURL(file)}
+                                src={URL.createObjectURL(blob)}
                                 alt={`Mood ${i}`}
                                 className="w-full h-full object-cover"
                               />

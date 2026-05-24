@@ -1,28 +1,6 @@
 import { z } from 'zod';
 
-// Step 1: Story Input
-export const step1Schema = z.object({
-  prompt: z
-    .string()
-    .trim()
-    .min(10, 'Prompt must be at least 10 characters')
-    .max(1000, 'Prompt cannot exceed 1000 characters'),
-  panelCount: z
-    .number()
-    .int()
-    .min(1, 'Must have at least 1 panel')
-    .max(4, 'Cannot exceed 4 panels (demo limit)'),
-  genres: z
-    .array(z.string())
-    .min(1, 'Select at least one genre')
-    .max(3, 'Max 3 genres'),
-  tones: z
-    .array(z.string())
-    .min(1, 'Select at least one tone')
-    .max(3, 'Max 3 tones'),
-});
-
-// Step 2: Character Bible
+// Character schema (used in wizardFormSchema)
 export const characterSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   role: z.string().min(1, 'Role is required'),
@@ -34,25 +12,16 @@ export const characterSchema = z.object({
   referenceImageKey: z.string().optional(),
 });
 
-export const step2Schema = z.object({
-  characters: z
-    .array(characterSchema)
-    .min(1, 'Add at least one character')
-    .max(10, 'Max 10 characters'),
-});
-
-// Step 3: Style & References
-export const step3Schema = z.object({
-  globalStylePrompt: z
+// Prompt-only schema for analyze feature (independent validation without full form)
+export const promptOnlySchema = z.object({
+  prompt: z
     .string()
-    .min(10, 'Style prompt required')
-    .max(500, 'Max 500 characters'),
-  moodBoardPreset: z.string().min(1, 'Select a style preset'),
-  artDirectionNotes: z.string().max(500, 'Max 500 characters').optional(),
+    .trim()
+    .min(10, 'Prompt must be at least 10 characters')
+    .max(1000, 'Prompt cannot exceed 1000 characters'),
 });
 
-// Step 4: Review (no new fields, validates all previous steps)
-// Make fields optional at form level - validation happens per-step
+// Full form schema - validates all fields for submission
 export const wizardFormSchema = z.object({
   prompt: z
     .string()
@@ -84,17 +53,5 @@ export const wizardFormSchema = z.object({
   artDirectionNotes: z.string().max(500, 'Max 500 characters').optional(),
 });
 
-// Prompt-only schema for analyze feature
-export const promptOnlySchema = z.object({
-  prompt: z
-    .string()
-    .trim()
-    .min(10, 'Prompt must be at least 10 characters')
-    .max(1000, 'Prompt cannot exceed 1000 characters'),
-});
-
-export type Step1Values = z.infer<typeof step1Schema>;
-export type Step2Values = z.infer<typeof step2Schema>;
-export type Step3Values = z.infer<typeof step3Schema>;
 export type WizardFormValues = z.infer<typeof wizardFormSchema>;
 export type PromptOnly = z.infer<typeof promptOnlySchema>;

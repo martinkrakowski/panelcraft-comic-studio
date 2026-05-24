@@ -16,10 +16,14 @@ export const CollapsibleSection = React.forwardRef<
 >(({ title, children, defaultOpen = true, className }, ref) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
+  const contentId = `collapsible-content-${Math.random().toString(36).substr(2, 9)}`;
+
   return (
     <div ref={ref} className={`border-b border-slate-700 ${className || ''}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls={contentId}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/50 transition-colors"
       >
         <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-widest">
@@ -29,11 +33,18 @@ export const CollapsibleSection = React.forwardRef<
           className={`h-4 w-4 text-slate-400 transition-transform ${
             isOpen ? 'rotate-0' : '-rotate-90'
           }`}
+          aria-hidden="true"
         />
       </button>
 
       {isOpen && (
-        <div className="px-4 py-3 space-y-3 bg-slate-800/20">{children}</div>
+        <div
+          id={contentId}
+          className="px-4 py-3 space-y-3 bg-slate-800/20"
+          role="region"
+        >
+          {children}
+        </div>
       )}
     </div>
   );
