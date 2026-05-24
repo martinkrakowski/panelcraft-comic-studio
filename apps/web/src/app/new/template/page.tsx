@@ -14,6 +14,13 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
 };
 
+/**
+ * Template library route page component (Step 3).
+ * Renders the animated UI placeholder screen for the upcoming pre-made layouts selection feature.
+ * 
+ * @component
+ * @returns React.Element template selection placeholder screen.
+ */
 export default function Page() {
   return (
     <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
