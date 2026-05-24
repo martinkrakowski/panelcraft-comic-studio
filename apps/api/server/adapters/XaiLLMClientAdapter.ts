@@ -93,14 +93,21 @@ export class XaiLLMClientAdapter implements LLMClientPort {
           throw new LLMResponseParsingError('xAI returned empty response');
         }
 
-        this.logger.debug(`[LLM Response] ${content.substring(0, 300)}...`);
+        this.logger.debug('[LLM Response] Content received', {
+          contentLength: content.length,
+          model: 'grok-2',
+        });
 
         try {
           return JSON.parse(content) as Record<string, unknown>;
         } catch (parseError) {
-          this.logger.warn(
-            `[LLM Parse Error] Invalid JSON: ${content.substring(0, 200)}`
-          );
+          this.logger.warn('[LLM Parse Error] Invalid JSON received', {
+            contentLength: content.length,
+            parseError:
+              parseError instanceof Error
+                ? parseError.message
+                : String(parseError),
+          });
           throw new LLMResponseParsingError(
             `LLM returned invalid JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
             content.substring(0, 200)

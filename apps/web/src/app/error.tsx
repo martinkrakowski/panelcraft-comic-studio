@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Alert, AlertTitle, AlertDescription, Button } from '@panelcraft/ui';
 import { RefreshCcw } from 'lucide-react';
 import { defaultLogger } from '@panelcraft/shared';
@@ -23,10 +23,13 @@ export default function Error({
   reset: () => void;
 }) {
   const logged = useRef(false);
-  if (!logged.current) {
-    defaultLogger.error('Workspace render crash captured:', error);
-    logged.current = true;
-  }
+
+  useEffect(() => {
+    if (!logged.current) {
+      defaultLogger.error('Workspace render crash captured:', error);
+      logged.current = true;
+    }
+  }, [error]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-6 text-center">

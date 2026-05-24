@@ -1536,7 +1536,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@panelcraft/shared@workspace:packages/shared"
   dependencies:
-    "@types/pino": "npm:^7.0.5"
     pino: "npm:^10.3.1"
     pino-pretty: "npm:^13.1.3"
     typescript: "npm:^5.5.4"
@@ -2635,15 +2634,6 @@ __metadata:
   dependencies:
     undici-types: "npm:>=7.24.0 <7.24.7"
   checksum: 10c0/9a04682842bebbcf21a1779dfeab9aa733d7bd7bbc0a0edb641ab3a9a3d43eac543225acf669c334f458f1956443ebc072bc3c72840c543b8b356cab5c82d456
-  languageName: node
-  linkType: hard
-
-"@types/pino@npm:^7.0.5":
-  version: 7.0.5
-  resolution: "@types/pino@npm:7.0.5"
-  dependencies:
-    pino: "npm:*"
-  checksum: 10c0/f4c5593d2ac113b7ea1e2ad70fa7f4c4b51ea55cf088ece7d2ffb8f39af4cfea718b077cd83f871608031132961288e536b1a82940e82f2b81a9da712bec09cd
   languageName: node
   linkType: hard
 
@@ -6912,7 +6902,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pino@npm:*, pino@npm:^10.3.1":
+"pino@npm:^10.3.1":
   version: 10.3.1
   resolution: "pino@npm:10.3.1"
   dependencies:
