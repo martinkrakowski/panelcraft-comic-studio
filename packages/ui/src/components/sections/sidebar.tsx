@@ -12,7 +12,17 @@ interface SidebarProps {
 
 /**
  * Fixed-width left sidebar panel (256px) with scrollable content.
- * Positioned absolutely on the left side of the viewport.
+ *
+ * Positioned absolutely on the left side of the viewport with z-index 30
+ * to sit above page content but below modals. Includes an `aria-label`
+ * for screen reader navigation landmarks.
+ *
+ * @example
+ * ```tsx
+ * <Sidebar className="pt-20">
+ *   <NavigationMenu />
+ * </Sidebar>
+ * ```
  */
 export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ children, className }, ref) => {

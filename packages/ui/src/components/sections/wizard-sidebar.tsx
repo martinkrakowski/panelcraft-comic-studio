@@ -13,7 +13,17 @@ interface WizardSidebarProps {
 
 /**
  * Specialized sidebar for wizard workflows.
- * Extends base Sidebar with wizard-specific header section.
+ *
+ * Wraps the base {@link Sidebar} component with a wizard-specific header
+ * containing the "Wizard Settings" title. Children are typically a series
+ * of {@link CollapsibleSection} components that hold step-specific controls.
+ *
+ * @example
+ * ```tsx
+ * <WizardSidebar className="pt-20">
+ *   <CollapsibleSection title="Genres">...</CollapsibleSection>
+ * </WizardSidebar>
+ * ```
  */
 export const WizardSidebar = React.forwardRef<
   HTMLDivElement,

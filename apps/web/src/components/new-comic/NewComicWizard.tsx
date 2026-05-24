@@ -23,10 +23,12 @@ import { useToast } from '@panelcraft/ui';
 import { WizardSidebar, CollapsibleSection } from '@panelcraft/ui';
 import { useCreateProject } from '../../lib/hooks/useCreateProject';
 import { compressImageToWebP } from '../../lib/compressImage';
+import api from '../../lib/api';
 import {
   getWizardState,
   setWizardState,
   clearWizardState,
+  IndexedDBQuotaExceededError,
   type WizardState,
 } from '../../lib/indexedDB';
 import {
@@ -109,37 +111,91 @@ export function NewComicWizard() {
   const characters = watch('characters');
   const moodBoardPreset = watch('moodBoardPreset');
 
-  // Save to IndexedDB on form value changes (no raw useEffect: use form callbacks)
-  const saveToIndexedDB = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    const formData = watch();
-    const state: WizardState = {
-      wizardStateVersion: 1,
-      step: activeStep,
-      formValues: {
-        prompt: formData.prompt,
-        panelCount: formData.panelCount,
-        genres: formData.genres,
-        tones: formData.tones,
-        characters: formData.characters,
-        globalStylePrompt: formData.globalStylePrompt,
-        moodBoardPreset: formData.moodBoardPreset,
-        artDirectionNotes: formData.artDirectionNotes,
-      },
-      referenceImageBlobs,
-      moodBoardImageBlobs,
-      preferredLayoutId: preferredLayoutId || undefined,
-      projectId: projectId || undefined,
-    };
-    await setWizardState(state);
-  }, [
-    activeStep,
-    watch,
-    projectId,
-    referenceImageBlobs,
-    moodBoardImageBlobs,
-    preferredLayoutId,
-  ]);
+  // Keep mutable refs of state that lives in setState updaters so saveToIndexedDB
+  // sees fresh values when invoked from an updater callback (which can run
+  // before the corresponding re-render has happened).
+  const referenceImageBlobsRef = React.useRef(referenceImageBlobs);
+  const moodBoardImageBlobsRef = React.useRef(moodBoardImageBlobs);
+  const preferredLayoutIdRef = React.useRef(preferredLayoutId);
+  const projectIdRef = React.useRef(projectId);
+  const activeStepRef = React.useRef(activeStep);
+  React.useEffect(() => {
+    referenceImageBlobsRef.current = referenceImageBlobs;
+  }, [referenceImageBlobs]);
+  React.useEffect(() => {
+    moodBoardImageBlobsRef.current = moodBoardImageBlobs;
+  }, [moodBoardImageBlobs]);
+  React.useEffect(() => {
+    preferredLayoutIdRef.current = preferredLayoutId;
+  }, [preferredLayoutId]);
+  React.useEffect(() => {
+    projectIdRef.current = projectId;
+  }, [projectId]);
+  React.useEffect(() => {
+    activeStepRef.current = activeStep;
+  }, [activeStep]);
+
+  // Save to IndexedDB on form value changes. Accepts optional overrides so
+  // callers (e.g. blob uploads) can pass freshly-computed values without
+  // waiting for state to flush and avoid stale-closure persists.
+  const saveToIndexedDB = useCallback(
+    async (overrides?: {
+      referenceImageBlobs?: Record<string, Blob>;
+      moodBoardImageBlobs?: Blob[];
+      preferredLayoutId?: string | null;
+      projectId?: string | null;
+      activeStep?: number;
+    }) => {
+      if (typeof window === 'undefined') return;
+      const formData = watch();
+      const refBlobs =
+        overrides?.referenceImageBlobs ?? referenceImageBlobsRef.current;
+      const moodBlobs =
+        overrides?.moodBoardImageBlobs ?? moodBoardImageBlobsRef.current;
+      const layoutId =
+        overrides?.preferredLayoutId !== undefined
+          ? overrides.preferredLayoutId
+          : preferredLayoutIdRef.current;
+      const projId =
+        overrides?.projectId !== undefined
+          ? overrides.projectId
+          : projectIdRef.current;
+      const step = overrides?.activeStep ?? activeStepRef.current;
+
+      const state: WizardState = {
+        wizardStateVersion: 1,
+        step,
+        formValues: {
+          prompt: formData.prompt,
+          panelCount: formData.panelCount,
+          genres: formData.genres,
+          tones: formData.tones,
+          characters: formData.characters,
+          globalStylePrompt: formData.globalStylePrompt,
+          moodBoardPreset: formData.moodBoardPreset,
+          artDirectionNotes: formData.artDirectionNotes,
+        },
+        referenceImageBlobs: refBlobs,
+        moodBoardImageBlobs: moodBlobs,
+        preferredLayoutId: layoutId || undefined,
+        projectId: projId || undefined,
+      };
+      try {
+        await setWizardState(state);
+      } catch (err) {
+        if (err instanceof IndexedDBQuotaExceededError) {
+          toast({
+            variant: 'destructive',
+            title: 'Storage full',
+            description: err.message,
+          });
+        } else {
+          console.warn('Failed to persist wizard state', err);
+        }
+      }
+    },
+    [watch, toast]
+  );
 
   // Handle next step with validation
   const handleNextStep = async () => {
@@ -187,13 +243,23 @@ export function NewComicWizard() {
 
     setIsAnalyzing(true);
     try {
-      // TODO: call POST /api/wizard/analyze-prompt
+      const result = await api.analyzePrompt(prompt);
+      // Intersect server suggestions with our allowed option lists so the
+      // sidebar pills stay in sync with the visible choices.
+      const allowedGenres = GENRE_OPTIONS as readonly string[];
+      const allowedTones = TONE_OPTIONS as readonly string[];
+      const nextGenres = (result.suggestedGenres || [])
+        .filter((g) => allowedGenres.includes(g))
+        .slice(0, 3);
+      const nextTones = (result.suggestedTones || [])
+        .filter((t) => allowedTones.includes(t))
+        .slice(0, 3);
+      if (nextGenres.length > 0) setValue('genres', nextGenres);
+      if (nextTones.length > 0) setValue('tones', nextTones);
       toast({
         title: 'Analysis complete',
-        description: 'Suggested genres/tones applied',
+        description: result.feedback || 'Suggested genres/tones applied',
       });
-      setValue('genres', ['Noir', 'Mystery']);
-      setValue('tones', ['Dark', 'Suspenseful']);
       await saveToIndexedDB();
     } catch (err) {
       toast({
@@ -211,9 +277,13 @@ export function NewComicWizard() {
     try {
       const compressed = await compressImageToWebP(file);
       const key = `char-${index}-${Date.now()}`;
-      setReferenceImageBlobs((prev) => ({ ...prev, [key]: compressed }));
+      const nextBlobs = {
+        ...referenceImageBlobsRef.current,
+        [key]: compressed,
+      };
+      setReferenceImageBlobs(nextBlobs);
       setValue(`characters.${index}.referenceImageKey`, key);
-      saveToIndexedDB();
+      await saveToIndexedDB({ referenceImageBlobs: nextBlobs });
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -229,8 +299,9 @@ export function NewComicWizard() {
       const compressed = await Promise.all(
         Array.from(files).map(compressImageToWebP)
       );
-      setMoodBoardImageBlobs((prev) => [...prev, ...compressed]);
-      saveToIndexedDB();
+      const nextBlobs = [...moodBoardImageBlobsRef.current, ...compressed];
+      setMoodBoardImageBlobs(nextBlobs);
+      await saveToIndexedDB({ moodBoardImageBlobs: nextBlobs });
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -282,8 +353,8 @@ export function NewComicWizard() {
       const res = await createProject(fd);
       setProjectId(res.projectId);
       setProjectStatus(res.status);
-      await saveToIndexedDB();
       setActiveStep(4); // Move to layout chooser step
+      await saveToIndexedDB({ projectId: res.projectId, activeStep: 4 });
       startPolling(res.projectId);
     } catch (err) {
       toast({
@@ -456,7 +527,7 @@ export function NewComicWizard() {
                         type="button"
                         onClick={() => {
                           setPreferredLayoutId(layout.id);
-                          saveToIndexedDB();
+                          saveToIndexedDB({ preferredLayoutId: layout.id });
                         }}
                         className={`w-full flex flex-col gap-2 p-2 rounded border text-left transition-all ${
                           preferredLayoutId === layout.id

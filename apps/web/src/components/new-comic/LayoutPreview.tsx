@@ -3,14 +3,21 @@
 import React from 'react';
 import type { LayoutTemplate } from '../../lib/layout-templates';
 
+/** Props for LayoutPreview component */
 interface LayoutPreviewProps {
+  /** Layout template defining panel positions (x, y, width, height) */
   layout: LayoutTemplate;
+  /** Additional CSS classes applied to the container */
   className?: string;
 }
 
 /**
  * Renders a visual preview of a panel layout.
- * Shows grid positions and panel numbering with calculations memoized.
+ *
+ * Calculates the bounding box from `layout.panels` and positions each
+ * panel proportionally inside a relative container, numbered 1..N.
+ * Wrapped in `React.memo` because layout objects are stable references
+ * and parent re-renders should not retrigger grid math.
  */
 const LayoutPreview = React.memo(function LayoutPreview({
   layout,

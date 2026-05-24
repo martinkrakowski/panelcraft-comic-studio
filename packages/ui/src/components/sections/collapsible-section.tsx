@@ -17,7 +17,18 @@ interface CollapsibleSectionProps {
 
 /**
  * Expandable section with chevron toggle and smooth animations.
- * Manages open/closed state locally with visual feedback.
+ *
+ * Manages its own open/closed state locally. Implements ARIA disclosure
+ * pattern: the trigger uses `aria-expanded` and `aria-controls` to point
+ * at the panel, which has `role="region"`. The trigger is always
+ * `type="button"` so it does not submit enclosing forms.
+ *
+ * @example
+ * ```tsx
+ * <CollapsibleSection title="Genres" defaultOpen>
+ *   <GenrePicker />
+ * </CollapsibleSection>
+ * ```
  */
 export const CollapsibleSection = React.forwardRef<
   HTMLDivElement,
@@ -30,6 +41,7 @@ export const CollapsibleSection = React.forwardRef<
   return (
     <div ref={ref} className={`border-b border-slate-700 ${className || ''}`}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-controls={contentId}

@@ -32,13 +32,22 @@ export interface CharacterFormValue {
   referenceImageKey?: string; // key to referenceImageBlobs
 }
 
+/** Thrown when persisting wizard state would exceed the browser storage quota. */
+export class IndexedDBQuotaExceededError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IndexedDBQuotaExceededError';
+  }
+}
+
 let dbInstance: IDBDatabase | null = null;
 
 /** Guard for SSR environments */
 const isClient = typeof window !== 'undefined';
 
 /**
- * Run database migrations based on version number
+ * Run database migrations based on version number.
+ * Called from `onupgradeneeded`; safe to extend by adding new `case` branches.
  */
 function runMigrations(
   db: IDBDatabase,
@@ -82,6 +91,13 @@ async function getDB(): Promise<IDBDatabase> {
   });
 }
 
+/**
+ * Retrieve the persisted wizard state from IndexedDB, or `null` if absent.
+ *
+ * Safe to call during SSR — returns `null` when `window` is undefined.
+ * Errors opening the database are swallowed (returns `null`) so the
+ * wizard falls back to default values rather than blocking the UI.
+ */
 export async function getWizardState(): Promise<WizardState | null> {
   if (!isClient) return null;
   try {
@@ -99,6 +115,17 @@ export async function getWizardState(): Promise<WizardState | null> {
   }
 }
 
+/**
+ * Persist wizard state to IndexedDB.
+ *
+ * Before writing, estimates whether the blob payload would exceed the
+ * browser's storage quota and throws {@link IndexedDBQuotaExceededError}
+ * if so — callers should surface this to the user (the wizard cannot
+ * silently drop image data). Other IDB errors (transaction failures,
+ * version mismatches) are propagated so the caller can react.
+ *
+ * @throws {IndexedDBQuotaExceededError} when the projected write would exceed quota
+ */
 export async function setWizardState(state: WizardState): Promise<void> {
   if (!isClient) return;
 
@@ -116,37 +143,42 @@ export async function setWizardState(state: WizardState): Promise<void> {
         );
       }
 
-      // Warn if would exceed quota (approximate blob sizes)
+      // Approximate blob payload size and refuse write if it would exceed quota
       const blobSize =
         Object.values(state.referenceImageBlobs).reduce(
           (sum, b) => sum + b.size,
           0
         ) + state.moodBoardImageBlobs.reduce((sum, b) => sum + b.size, 0);
       if (usage + blobSize > quota) {
-        throw new Error(
+        throw new IndexedDBQuotaExceededError(
           'IndexedDB quota exceeded. Please submit the form or clear data.'
         );
       }
     } catch (e) {
+      // Re-throw quota errors so the UI can surface them; only swallow estimate API failures
+      if (e instanceof IndexedDBQuotaExceededError) throw e;
       console.warn('Storage quota check failed:', e);
     }
   }
 
-  try {
-    const db = await getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.put({ id: 'wizardState', state });
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.put({ id: 'wizardState', state });
 
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  } catch {
-    // Fail silently for storage errors
-  }
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
 }
 
+/**
+ * Remove the persisted wizard state from IndexedDB.
+ *
+ * Called when the wizard completes successfully or the user explicitly
+ * resets. Safe to call during SSR (no-op) and swallows IDB errors —
+ * failing to clear is not user-blocking.
+ */
 export async function clearWizardState(): Promise<void> {
   if (!isClient) return;
   try {

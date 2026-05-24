@@ -116,6 +116,24 @@ export const api = {
   },
 
   /**
+   * Sends a story prompt to the LLM analyzer and receives suggested genres and tones.
+   *
+   * @param prompt - The user's story prompt (10-1000 chars).
+   * @returns Suggested genres and tones plus optional LLM feedback metadata.
+   */
+  async analyzePrompt(prompt: string): Promise<{
+    feedback?: string;
+    estimatedCharactersCount?: number;
+    suggestedGenres: string[];
+    suggestedTones: string[];
+  }> {
+    return request('/api/wizard/analyze-prompt', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    });
+  },
+
+  /**
    * Submits a panel feedback/approval review for the active generator node (HITL).
    *
    * @param id - The UUID string of the target project under review.
