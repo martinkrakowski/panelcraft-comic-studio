@@ -5,6 +5,11 @@ import { ComicProject } from '@panelcraft/comic-project-management';
 import type { LoggerPort } from '@panelcraft/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+interface ComicJobData {
+  projectId: string;
+  selectedLayout?: string;
+}
+
 export function initComicWorker(
   langGraphAdapter: LangGraphOrchestrationAdapter,
   projectRepo: RelationalDbPort,
@@ -16,7 +21,7 @@ export function initComicWorker(
 
   return new Worker(
     'comic-generation-queue',
-    async (job: Job<Record<string, unknown>>) => {
+    async (job: Job<ComicJobData>) => {
       const { projectId } = job.data;
 
       try {
@@ -40,7 +45,12 @@ export function initComicWorker(
             );
           } catch (err) {
             // Handle layout interrupt (NodeInterrupt from LangGraph)
-            if (err?.name === 'NodeInterrupt') {
+            if (
+              err &&
+              typeof err === 'object' &&
+              'name' in err &&
+              (err as { name: string }).name === 'NodeInterrupt'
+            ) {
               const state = await graph.getState({
                 configurable: { thread_id: projectId },
               });

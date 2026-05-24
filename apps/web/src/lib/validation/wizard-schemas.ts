@@ -11,7 +11,7 @@ export const step1Schema = z.object({
     .number()
     .int()
     .min(1, 'Must have at least 1 panel')
-    .max(20, 'Cannot exceed 20 panels'),
+    .max(4, 'Cannot exceed 4 panels (demo limit)'),
   genres: z
     .array(z.string())
     .min(1, 'Select at least one genre')

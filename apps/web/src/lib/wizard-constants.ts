@@ -56,11 +56,6 @@ export const STEP_LABELS = [
   'Layout',
 ] as const;
 
-export const PANEL_PREVIEW_LAYOUTS = [
-  [1],
-  [1, 1],
-  [1, 1, 1],
-  [2, 1],
-  [1, 2],
-  [2, 2],
-] as const;
+export const MAX_PANEL_COUNT = 4; // Limited to minimize token burn on demo
+
+export const PANEL_PREVIEW_LAYOUTS = [[1], [1, 1], [1, 1, 1], [2, 1]] as const;

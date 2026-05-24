@@ -37,8 +37,12 @@ import {
   TONE_OPTIONS,
   STYLE_PRESETS,
   STEP_LABELS,
-  PANEL_PREVIEW_LAYOUTS,
 } from '../../lib/wizard-constants';
+import {
+  getLayoutsForPanelCount,
+  type LayoutTemplate,
+} from '../../lib/layout-templates';
+import { LayoutPreview } from './LayoutPreview';
 import styles from './NewComicWizard.module.css';
 
 export function NewComicWizard() {
@@ -56,6 +60,9 @@ export function NewComicWizard() {
   const [projectStatus, setProjectStatus] = useState<string | null>(null);
   const [layoutOptions, setLayoutOptions] = useState<string[]>([]);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [preferredLayoutId, setPreferredLayoutId] = useState<string | null>(
+    null
+  );
   const [referenceImageBlobs, setReferenceImageBlobs] = useState<
     Record<string, Blob>
   >({});
@@ -167,8 +174,8 @@ export function NewComicWizard() {
         title: 'Analysis complete',
         description: 'Suggested genres/tones applied',
       });
-      setValue('genres', ['Noir', 'Mystery'], { shouldValidate: true });
-      setValue('tones', ['Dark', 'Suspenseful'], { shouldValidate: true });
+      setValue('genres', ['Noir', 'Mystery']);
+      setValue('tones', ['Dark', 'Suspenseful']);
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -186,9 +193,7 @@ export function NewComicWizard() {
       const compressed = await compressImageToWebP(file);
       const key = `char-${index}-${Date.now()}`;
       setReferenceImageBlobs((prev) => ({ ...prev, [key]: compressed }));
-      setValue(`characters.${index}.referenceImageKey`, key, {
-        shouldValidate: true,
-      });
+      setValue(`characters.${index}.referenceImageKey`, key);
       saveToIndexedDB();
     } catch (err) {
       toast({
@@ -325,13 +330,13 @@ export function NewComicWizard() {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950 flex flex-col items-center overflow-y-auto overflow-x-hidden">
       {/* Ambient orbs */}
       <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
 
       {/* Back button */}
-      <div className="w-full max-w-2xl mb-4 px-4 relative z-10">
+      <div className="w-full max-w-2xl mb-4 px-4 pt-16 relative z-10">
         <button
           type="button"
           onClick={() => router.push('/new')}
@@ -343,7 +348,7 @@ export function NewComicWizard() {
       </div>
 
       {/* Step Indicator */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-6 px-4 flex-wrap justify-center">
         {STEP_LABELS.map((label, i) => (
           <React.Fragment key={label}>
             <div
@@ -374,7 +379,10 @@ export function NewComicWizard() {
       </div>
 
       {/* Form Content */}
-      <div className={`${styles.container} relative z-10 w-full max-w-2xl`}>
+      <div
+        className={`${styles.container} relative z-10 w-full max-w-2xl px-4 pt-10`}
+        style={{ paddingBottom: '8rem' }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={activeStep}
@@ -382,6 +390,7 @@ export function NewComicWizard() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
+            className="w-full"
           >
             {/* Step 1: Story Input */}
             {activeStep === 0 && (
@@ -435,7 +444,7 @@ export function NewComicWizard() {
                           const next = current.includes(genre)
                             ? current.filter((g) => g !== genre)
                             : [...current, genre].slice(0, 3);
-                          setValue('genres', next, { shouldValidate: true });
+                          setValue('genres', next);
                           saveToIndexedDB();
                         }}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
@@ -469,7 +478,7 @@ export function NewComicWizard() {
                           const next = current.includes(tone)
                             ? current.filter((t) => t !== tone)
                             : [...current, tone].slice(0, 3);
-                          setValue('tones', next, { shouldValidate: true });
+                          setValue('tones', next);
                           saveToIndexedDB();
                         }}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
@@ -489,37 +498,66 @@ export function NewComicWizard() {
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-widest">
-                    Panel Count ({panelCount})
-                  </span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={20}
-                    {...register('panelCount', { valueAsNumber: true })}
-                    onChange={() => saveToIndexedDB()}
-                    className="w-full accent-violet-500"
-                  />
-                  <div className="grid grid-cols-3 gap-2">
-                    {PANEL_PREVIEW_LAYOUTS.slice(
-                      0,
-                      panelCount > 6 ? 6 : panelCount
-                    ).map((layout, i) => (
-                      <div
-                        key={i}
-                        className="bg-slate-800/50 rounded-lg p-2 flex gap-1"
-                      >
-                        {layout.map((cols, j) => (
-                          <div
-                            key={j}
-                            className="flex-1 bg-slate-700/50 rounded"
-                            style={{ height: `${40 + j * 10}px` }}
-                          />
-                        ))}
-                      </div>
-                    ))}
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-300 uppercase tracking-widest">
+                      Comic Length: {panelCount} Panel
+                      {panelCount !== 1 ? 's' : ''}
+                    </span>
+                    <input
+                      type="range"
+                      min={1}
+                      max={4}
+                      {...register('panelCount', { valueAsNumber: true })}
+                      onChange={() => saveToIndexedDB()}
+                      className="w-full accent-violet-500 mt-2"
+                    />
                   </div>
+
+                  <div>
+                    <p className="text-xs text-slate-400 mb-3">
+                      Recommended layouts for {panelCount} panel
+                      {panelCount !== 1 ? 's' : ''}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+                      {getLayoutsForPanelCount(panelCount as 1 | 2 | 3 | 4).map(
+                        (layout) => (
+                          <button
+                            key={layout.id}
+                            type="button"
+                            onClick={() => {
+                              setPreferredLayoutId(layout.id);
+                              saveToIndexedDB();
+                            }}
+                            className={`p-2 rounded-lg text-left transition-all border flex flex-col gap-2 ${
+                              preferredLayoutId === layout.id
+                                ? 'bg-violet-600/30 border-violet-500 ring-2 ring-violet-400/50'
+                                : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-violet-500/50'
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <p className="text-xs font-semibold text-white leading-tight">
+                                {layout.name}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                                {layout.description}
+                              </p>
+                              <div className="mt-2">
+                                <span className="inline-flex items-center rounded text-xs px-1.5 py-0.5 bg-slate-700/50 text-slate-300">
+                                  {layout.mood}
+                                </span>
+                              </div>
+                            </div>
+                            <LayoutPreview
+                              layout={layout}
+                              className="w-full h-80"
+                            />
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+
                   {errors.panelCount && (
                     <p className="text-xs text-red-400">
                       {errors.panelCount.message}
@@ -672,9 +710,7 @@ export function NewComicWizard() {
                         type="button"
                         key={preset.id}
                         onClick={() => {
-                          setValue('moodBoardPreset', preset.id, {
-                            shouldValidate: true,
-                          });
+                          setValue('moodBoardPreset', preset.id);
                           saveToIndexedDB();
                         }}
                         className={`p-3 rounded-lg border text-xs font-medium transition-colors ${

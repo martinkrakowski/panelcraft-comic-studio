@@ -1,5 +1,5 @@
 import { defineEventHandler, getRouterParam, setResponseStatus } from 'h3';
-import { fail } from '../../../utils/envelope.js';
+import { fail, ok } from '../../../utils/envelope.js';
 import { z } from 'zod';
 import { getSupabaseClient } from '../../../utils/supabase.js';
 
@@ -15,6 +15,8 @@ export default defineEventHandler(async (event) => {
   });
 
   try {
+    const supabase = getSupabaseClient();
+
     // 1. Verify project exists and get storage paths
     const { data: project, error: fetchError } = await supabase
       .from('comic_projects')
@@ -24,7 +26,7 @@ export default defineEventHandler(async (event) => {
 
     if (fetchError || !project) {
       setResponseStatus(event, 404);
-      return fail('Project not found');
+      return fail('NOT_FOUND', 'Project not found');
     }
 
     // 2. List all files in comics/${projectId}/ folder
@@ -97,7 +99,7 @@ export default defineEventHandler(async (event) => {
 
     if (deleteError) {
       setResponseStatus(event, 500);
-      return fail('Failed to delete project', deleteError.message);
+      return fail('DELETE_ERROR', deleteError.message);
     }
 
     setResponseStatus(event, 200);
@@ -105,8 +107,8 @@ export default defineEventHandler(async (event) => {
   } catch (error) {
     setResponseStatus(event, 500);
     return fail(
-      'Failed to delete project',
-      error instanceof Error ? error.message : ''
+      'DELETE_ERROR',
+      error instanceof Error ? error.message : 'Unknown error'
     );
   }
 });

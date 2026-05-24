@@ -36,12 +36,7 @@ export default defineEventHandler(async (event) => {
     PreviewStyleSchema,
     await readBody(event)
   );
-  const imageClient = getImageGenerationClient(event) as {
-    generatePreview: (
-      stylePrompt: string,
-      options?: { preset?: string; moodBoardImages?: string[] }
-    ) => Promise<Buffer>;
-  };
+  const imageClient = getImageGenerationClient(event);
 
   try {
     const imageBuffer = await imageClient.generatePreview(stylePrompt, {

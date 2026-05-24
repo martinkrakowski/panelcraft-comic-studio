@@ -7,6 +7,7 @@ import { ok } from '../../utils/envelope.js';
 import { CreateProjectSchema } from '../../utils/schemas.js';
 import { getComicUseCase } from '../../utils/dependencies.js';
 import { getSupabaseClient, uploadToStorage } from '../../utils/supabase.js';
+import { formatLayoutSuggestions } from '../../utils/layout-suggestions.js';
 import sharp from 'sharp';
 
 /**
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
   const files: Array<{ name: string; data: Buffer; type: string }> = [];
 
   for (const part of formData) {
-    if (part.filename) {
+    if (part.filename && part.name) {
       files.push({
         name: part.name,
         data: Buffer.from(part.data),
@@ -177,5 +178,6 @@ export default defineEventHandler(async (event) => {
     status: 'pending_creation',
     referenceImageUrls: referenceSignedUrls.filter(Boolean),
     moodBoardImageUrls: moodBoardSignedUrls.filter(Boolean),
+    suggestedLayouts: formatLayoutSuggestions(validated.panelCount),
   });
 });

@@ -4,7 +4,7 @@ export const UUIDSchema = z.string().uuid();
 
 export const CreateProjectSchema = z.object({
   prompt: z.string().trim().min(10).max(1000),
-  panelCount: z.number().int().min(1).max(20),
+  panelCount: z.number().int().min(1).max(4), // Limited to 4 for demo token efficiency
   genres: z.array(z.string()).optional(),
   tones: z.array(z.string()).optional(),
   characterBible: z.string().optional(), // JSON string of CharacterBible
@@ -39,5 +39,6 @@ export const PreviewStyleSchema = z.object({
 });
 
 export const SelectLayoutSchema = z.object({
-  selectedLayout: z.string().min(1),
+  selectedLayout: z.string().min(1, 'Layout selection required'),
+  layoutId: z.string().optional(), // Layout template ID (e.g., 'classic-flow', 'splash-full')
 });
