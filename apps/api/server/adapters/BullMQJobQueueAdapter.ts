@@ -1,5 +1,5 @@
-import { Queue } from "bullmq";
-import type { JobQueuePort } from "@panelcraft/comic-generation";
+import { Queue } from 'bullmq';
+import type { JobQueuePort } from '@panelcraft/comic-generation';
 
 /**
  * BullMQ implementation of JobQueuePort.
@@ -8,11 +8,15 @@ import type { JobQueuePort } from "@panelcraft/comic-generation";
 export class BullMQJobQueueAdapter implements JobQueuePort {
   constructor(private readonly queue: Queue) {}
 
-  async add(jobName: string, data: any, options?: any): Promise<void> {
+  async add(
+    jobName: string,
+    data: Record<string, unknown>,
+    options?: Record<string, unknown>
+  ): Promise<void> {
     const defaultOptions = {
       attempts: 3,
       backoff: {
-        type: "exponential",
+        type: 'exponential',
         delay: 2000,
       },
       removeOnComplete: true,

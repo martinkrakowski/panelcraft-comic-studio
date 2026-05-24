@@ -1,14 +1,15 @@
-import { Annotation } from "@langchain/langgraph";
-import type { HITLFeedbackData } from "../value-objects/HITLFeedback.vo.js";
+import { Annotation } from '@langchain/langgraph';
+import type { ComicProjectJSON } from '../../domain/types/ComicProjectJSON.js';
+import type { HITLFeedbackData } from '../../domain/value-objects/HITLFeedback.vo.js';
 
 /**
  * LangGraph state definition for the comic generation workflow.
  * Uses `Annotation.Root` to define state shape with type safety.
- * Uses `any` for ComicProject to avoid cross-package import issues.
+ * Project is always in JSON representation during workflow execution.
  */
 export const ComicGraphState = Annotation.Root({
-  /** Active comic project being generated */
-  project: Annotation<any>(),
+  /** Active comic project being generated (JSON representation) */
+  project: Annotation<ComicProjectJSON>(),
 
   /** 0-based index of the next panel to generate */
   currentPanelIndex: Annotation<number>(),

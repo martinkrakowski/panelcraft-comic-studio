@@ -1,7 +1,7 @@
-import { Worker, Job, Queue } from "bullmq";
-import type { LangGraphOrchestrationAdapter } from "@panelcraft/comic-generation";
-import type { RelationalDbPort } from "@panelcraft/comic-generation";
-import { ComicProject } from "@panelcraft/comic-project-management";
+import { Worker, Job, Queue } from 'bullmq';
+import type { LangGraphOrchestrationAdapter } from '@panelcraft/comic-generation';
+import type { RelationalDbPort } from '@panelcraft/comic-generation';
+import { ComicProject } from '@panelcraft/comic-project-management';
 
 /**
  * Comic generation worker processes jobs from the task queue.
@@ -15,7 +15,7 @@ export function initComicWorker(
   const graph = langGraphAdapter.getGraph();
 
   return new Worker(
-    "comic-generation-queue",
+    'comic-generation-queue',
     async (job: Job) => {
       const { projectId } = job.data;
 
@@ -25,13 +25,16 @@ export function initComicWorker(
           throw new Error(`Project ${projectId} not found`);
         }
 
-        if (job.name === "start-comic") {
-          console.log(`[Worker] Starting comic generation for project: ${projectId}`);
+        if (job.name === 'start-comic') {
+          console.log(
+            `[Worker] Starting comic generation for project: ${projectId}`
+          );
 
           // Invoke graph with thread ID matching projectId for state persistence
+          // Pass JSON representation to match adapter's ComicGraphStateType expectations
           await graph.invoke(
             {
-              project,
+              project: project.toJSON(),
               currentPanelIndex: 0,
               lastFeedback: null,
               threadId: projectId,
@@ -45,21 +48,24 @@ export function initComicWorker(
           // project variable loaded at the start of the job.
           // Without this fetch, we would save an empty project, losing all generated data.
           const currentThreadState = await graph.getState({
-            configurable: { thread_id: projectId }
+            configurable: { thread_id: projectId },
           });
           const projectJson = currentThreadState.values.project;
 
           // Convert JSON state back to ComicProject entity (workflow stores as JSON to avoid prototype issues)
           const updatedProject = ComicProject.fromJSON(projectJson);
-          updatedProject.setStatus("pending_review");
+          updatedProject.setStatus('pending_review');
           await projectRepo.save(updatedProject);
 
-          console.log(`[Worker] First panel generated for project ${projectId}. Waiting for HITL review.`);
-        }
-
-        else if (job.name === "resume-comic") {
+          console.log(
+            `[Worker] First panel generated for project ${projectId}. Waiting for HITL review.`
+          );
+        } else if (job.name === 'resume-comic') {
           const { feedback } = job.data;
-          console.log(`[Worker] Resuming workflow for project ${projectId} with feedback:`, feedback);
+          console.log(
+            `[Worker] Resuming workflow for project ${projectId} with feedback:`,
+            feedback
+          );
 
           // Resume the graph with human feedback
           // In LangGraph.js, providing resume payload passes it directly to the active interrupt node
@@ -69,25 +75,28 @@ export function initComicWorker(
 
           // Retrieve updated project state from graph
           const currentThreadState = await graph.getState({
-            configurable: { thread_id: projectId }
+            configurable: { thread_id: projectId },
           });
           const projectJson = currentThreadState.values.project;
 
           // Convert JSON state back to ComicProject entity
           const updatedProject = ComicProject.fromJSON(projectJson);
-          const panelCountValue = typeof updatedProject.getPanelCount() === 'number'
-            ? updatedProject.getPanelCount()
-            : updatedProject.getPanelCount().getValue();
+          const panelCountValue =
+            typeof updatedProject.getPanelCount() === 'number'
+              ? updatedProject.getPanelCount()
+              : updatedProject.getPanelCount().getValue();
 
           // Update project status based on workflow completion
           if (currentThreadState.values.currentPanelIndex >= panelCountValue) {
-            updatedProject.setStatus("completed");
-            console.log(`[Worker] Comic generation completed for project ${projectId}.`);
+            updatedProject.setStatus('completed');
+            console.log(
+              `[Worker] Comic generation completed for project ${projectId}.`
+            );
           } else {
-            updatedProject.setStatus("pending_review");
+            updatedProject.setStatus('pending_review');
             console.log(
               `[Worker] Panel ${currentThreadState.values.currentPanelIndex} generated. ` +
-              `Waiting for HITL review (${currentThreadState.values.currentPanelIndex}/${panelCountValue}).`
+                `Waiting for HITL review (${currentThreadState.values.currentPanelIndex}/${panelCountValue}).`
             );
           }
           await projectRepo.save(updatedProject);
@@ -102,20 +111,26 @@ export function initComicWorker(
             const project = await projectRepo.load(projectId);
             if (project) {
               const currentStatus = project.getStatus();
-              if (currentStatus === "processing") {
-                project.setStatus("pending_review");
-              } else if (job.name === "start-comic" && currentStatus === "created") {
-                project.setStatus("failed");
+              if (currentStatus === 'processing') {
+                project.setStatus('pending_review');
+              } else if (
+                job.name === 'start-comic' &&
+                currentStatus === 'created'
+              ) {
+                project.setStatus('failed');
               }
 
               await projectRepo.save(project);
               console.warn(
                 `[Worker] Job ${job.id} failed permanently. ` +
-                `Updated project ${projectId} to "${project.getStatus()}".`
+                  `Updated project ${projectId} to "${project.getStatus()}".`
               );
             }
           } catch (recoveryError) {
-            console.error(`[Worker] Failed to recover project ${projectId}:`, recoveryError);
+            console.error(
+              `[Worker] Failed to recover project ${projectId}:`,
+              recoveryError
+            );
           }
         }
 

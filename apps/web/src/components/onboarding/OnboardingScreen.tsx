@@ -25,9 +25,9 @@ interface TileConfig {
 }
 
 /** @example <OnboardingScreen /> */
-interface OnboardingScreenProps extends NoSemanticState<
+type OnboardingScreenProps = NoSemanticState<
   React.HTMLAttributes<HTMLDivElement>
-> {}
+>;
 
 const TILES: TileConfig[] = [
   {
@@ -77,7 +77,7 @@ const itemVariants = {
  * Onboarding screen component that presents three starting method options:
  * brainstorm, template selection, or loading an existing project.
  * Clicking a tile triggers `handleTileClick` which navigates via `router` to `ROUTE_MAP` based on the selected `StartingMethod`.
- * 
+ *
  * @component
  * @param props - Component props extending HTMLDivElement attributes via `OnboardingScreenProps`.
  * @returns An animated onboarding screen JSX.Element with method selection tiles.

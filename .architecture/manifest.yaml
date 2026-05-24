@@ -159,7 +159,8 @@ bounded_contexts:
           - GenerationSession
         value_objects:
           - HITLFeedback
-        domain_services: []
+        domain_services:
+          - PanelPromptValidationService
       application:
         use_cases:
           - ComicGenerationUseCase
@@ -173,4 +174,5 @@ bounded_contexts:
             - llm-client.out-port.ts
             - image-generation.out-port.ts
       infrastructure:
-        adapters: []
+        adapters:
+          - LangGraphOrchestrationAdapter

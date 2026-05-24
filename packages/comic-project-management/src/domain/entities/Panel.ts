@@ -1,9 +1,16 @@
-import { PanelId, PanelStatus } from "../value-objects/index.js";
-import { ValidationError } from "../errors/ValidationError.js";
+import { PanelId, PanelStatus } from '../value-objects/index.js';
+import { ValidationError } from '../errors/ValidationError.js';
 
 export interface PanelProps {
   prompt?: string;
   status: PanelStatus;
+  generatedImageUrl?: string | null;
+}
+
+export interface PanelJSON {
+  id: string;
+  prompt?: string;
+  status: string;
   generatedImageUrl?: string | null;
 }
 
@@ -16,7 +23,7 @@ export class Panel {
     private readonly id: PanelId,
     props: PanelProps
   ) {
-    this.prompt = props.prompt || "";
+    this.prompt = props.prompt || '';
     this.status = props.status;
     this.generatedImageUrl = props.generatedImageUrl || null;
   }
@@ -73,15 +80,17 @@ export class Panel {
    * Reconstructs all value objects and validates their contracts.
    * Throws ValidationError if any field fails to construct.
    */
-  static fromJSON(json: any): Panel {
+  static fromJSON(json: PanelJSON): Panel {
     const idResult = PanelId.create(json.id);
     if (!idResult.success) {
       throw new ValidationError(`Panel.fromJSON: ${idResult.error?.message}`);
     }
 
-    const statusResult = PanelStatus.create(json.status || "pending");
+    const statusResult = PanelStatus.create(json.status || 'pending');
     if (!statusResult.success) {
-      throw new ValidationError(`Panel.fromJSON: ${statusResult.error?.message}`);
+      throw new ValidationError(
+        `Panel.fromJSON: ${statusResult.error?.message}`
+      );
     }
 
     return new Panel(idResult.value!, {
@@ -91,4 +100,3 @@ export class Panel {
     });
   }
 }
-

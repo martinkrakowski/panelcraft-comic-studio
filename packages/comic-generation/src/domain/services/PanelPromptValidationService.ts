@@ -1,4 +1,4 @@
-import { LLMResponseValidationError } from "@panelcraft/shared";
+import { LLMResponseValidationError } from '@panelcraft/shared';
 
 /**
  * Validates LLM-generated panel prompts to ensure they meet structural and content requirements.
@@ -8,7 +8,10 @@ export class PanelPromptValidationService {
   /**
    * Validates that the LLM response is an array of the expected count.
    */
-  static validateArrayStructure(response: any, expectedCount: number): void {
+  static validateArrayStructure(
+    response: unknown,
+    expectedCount: number
+  ): void {
     if (!Array.isArray(response)) {
       throw new LLMResponseValidationError(
         `Panel prompts must be an array, got ${typeof response}`,
@@ -29,13 +32,14 @@ export class PanelPromptValidationService {
   /**
    * Validates that each panel prompt is a non-empty string.
    */
-  static validatePanelContent(prompts: any[]): void {
+  static validatePanelContent(prompts: unknown[]): void {
     for (let i = 0; i < prompts.length; i++) {
-      if (typeof prompts[i] !== 'string' || !prompts[i].trim()) {
+      const prompt = prompts[i];
+      if (typeof prompt !== 'string' || !prompt.trim()) {
         throw new LLMResponseValidationError(
           `Panel ${i} is empty or not a string`,
           'non-empty string',
-          prompts[i]
+          prompt
         );
       }
     }
@@ -44,8 +48,8 @@ export class PanelPromptValidationService {
   /**
    * Full validation: structure + content
    */
-  static validate(response: any, expectedCount: number): void {
+  static validate(response: unknown, expectedCount: number): void {
     this.validateArrayStructure(response, expectedCount);
-    this.validatePanelContent(response);
+    this.validatePanelContent(response as unknown[]);
   }
 }

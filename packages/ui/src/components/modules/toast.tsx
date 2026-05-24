@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import * as ToastPrimitive from "@radix-ui/react-toast";
-import { cva, type VariantProps } from "class-variance-authority";
-import { X } from "lucide-react";
-import { cn } from "../../lib/utils";
-import { useToast } from "../controllers/useToast";
-import { NoSemanticState } from "../../types";
+import * as React from 'react';
+import * as ToastPrimitive from '@radix-ui/react-toast';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { X } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { useToast } from '../controllers/useToast';
+import { NoSemanticState } from '../../types';
 
 /**
  * Context provider component that wraps the application and exposes Radix Toast context.
@@ -16,7 +16,7 @@ const ToastProvider = ToastPrimitive.Provider;
 /**
  * The visible viewport container for the active toast notifications queue.
  * Positioned in the top/bottom corners of the screen.
- * 
+ *
  * @component
  * @param props - Component props containing viewport HTML attributes.
  * @param ref - Forwarded reference to the underlying Radix Viewport element.
@@ -29,7 +29,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitive.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      'fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]',
       className
     )}
     {...props}
@@ -38,30 +38,30 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitive.Viewport.displayName;
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full',
   {
     variants: {
       variant: {
-        default: "border-slate-800 bg-slate-900 text-slate-100",
+        default: 'border-slate-800 bg-slate-900 text-slate-100',
         destructive:
-          "destructive group border-red-500 bg-red-950/40 text-red-300",
-        success:
-          "border-emerald-500 bg-emerald-950/40 text-emerald-300",
+          'destructive group border-red-500 bg-red-950/40 text-red-300',
+        success: 'border-emerald-500 bg-emerald-950/40 text-emerald-300',
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: 'default',
     },
   }
 );
 
 export interface ToastProps
-  extends NoSemanticState<React.ComponentPropsWithoutRef<typeof ToastPrimitive.Root>>,
+  extends
+    NoSemanticState<React.ComponentPropsWithoutRef<typeof ToastPrimitive.Root>>,
     VariantProps<typeof toastVariants> {}
 
 /**
  * Individual Toast notification card containing the message, action, and close controls.
- * 
+ *
  * @component
  * @param props - Toast properties including variant and Radix Toast attributes.
  * @param ref - Forwarded reference to the underlying Radix Toast Root element.
@@ -83,7 +83,7 @@ Toast.displayName = ToastPrimitive.Root.displayName;
 
 /**
  * Action button inside a Toast notification, for interactive actions like Retry or Undo.
- * 
+ *
  * @component
  * @param props - Action button properties.
  * @param ref - Forwarded reference to the underlying Radix Toast Action element.
@@ -96,7 +96,7 @@ const ToastAction = React.forwardRef<
   <ToastPrimitive.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-transparent px-3 text-sm font-medium transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none disabled:opacity-50 text-slate-100",
+      'inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-transparent px-3 text-sm font-medium transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none disabled:opacity-50 text-slate-100',
       className
     )}
     {...props}
@@ -106,7 +106,7 @@ ToastAction.displayName = ToastPrimitive.Action.displayName;
 
 /**
  * Close button control inside a Toast notification.
- * 
+ *
  * @component
  * @param props - Close button properties.
  * @param ref - Forwarded reference to the underlying Radix Toast Close element.
@@ -119,7 +119,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitive.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-md p-1 text-slate-400 opacity-0 transition-opacity hover:text-slate-100 focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100",
+      'absolute right-2 top-2 rounded-md p-1 text-slate-400 opacity-0 transition-opacity hover:text-slate-100 focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100',
       className
     )}
     toast-close=""
@@ -132,7 +132,7 @@ ToastClose.displayName = ToastPrimitive.Close.displayName;
 
 /**
  * Title element for the individual Toast notification.
- * 
+ *
  * @component
  * @param props - Text content props.
  * @param ref - Forwarded reference to the underlying Radix Toast Title element.
@@ -144,7 +144,7 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitive.Title
     ref={ref}
-    className={cn("text-sm font-semibold text-white", className)}
+    className={cn('text-sm font-semibold text-white', className)}
     {...props}
   />
 ));
@@ -152,7 +152,7 @@ ToastTitle.displayName = ToastPrimitive.Title.displayName;
 
 /**
  * Subtext description detail for the individual Toast notification message body.
- * 
+ *
  * @component
  * @param props - Description text props.
  * @param ref - Forwarded reference to the underlying Radix Toast Description element.
@@ -164,7 +164,7 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitive.Description
     ref={ref}
-    className={cn("text-sm opacity-90 text-slate-300", className)}
+    className={cn('text-sm opacity-90 text-slate-300', className)}
     {...props}
   />
 ));
@@ -175,7 +175,7 @@ export type ToastActionElement = React.ReactElement<typeof ToastAction>;
 /**
  * Application-wide Toaster component that subscribes to the useToast state and renders the list of active toasts.
  * Consumes useToast hook and handles rendering mapped toast notifications.
- * 
+ *
  * @component
  * @returns React.Element rendering all active toast alerts.
  */

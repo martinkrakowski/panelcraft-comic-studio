@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import type { ToastProps, ToastActionElement } from "../modules/toast";
+import * as React from 'react';
+import type { ToastProps, ToastActionElement } from '../modules/toast';
 
 const TOAST_LIMIT = 5;
 const TOAST_REMOVE_DELAY = 10000;
@@ -14,10 +14,10 @@ export type ToasterToast = ToastProps & {
 };
 
 const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
+  ADD_TOAST: 'ADD_TOAST',
+  UPDATE_TOAST: 'UPDATE_TOAST',
+  DISMISS_TOAST: 'DISMISS_TOAST',
+  REMOVE_TOAST: 'REMOVE_TOAST',
 } as const;
 
 let count = 0;
@@ -59,7 +59,7 @@ const addToRemoveQueue = (toastId: string) => {
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId);
     dispatch({
-      type: "REMOVE_TOAST",
+      type: actionTypes.REMOVE_TOAST,
       toastId: toastId,
     });
   }, TOAST_REMOVE_DELAY);
@@ -69,13 +69,13 @@ const addToRemoveQueue = (toastId: string) => {
 
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
-    case "ADD_TOAST":
+    case actionTypes.ADD_TOAST:
       return {
         ...state,
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       };
 
-    case "UPDATE_TOAST":
+    case actionTypes.UPDATE_TOAST:
       return {
         ...state,
         toasts: state.toasts.map((t) =>
@@ -83,7 +83,7 @@ const reducer = (state: State, action: Action): State => {
         ),
       };
 
-    case "DISMISS_TOAST": {
+    case actionTypes.DISMISS_TOAST: {
       const { toastId } = action;
 
       // Side effects in reducers are generally bad, but clean for simple custom hooks
@@ -107,7 +107,7 @@ const reducer = (state: State, action: Action): State => {
         ),
       };
     }
-    case "REMOVE_TOAST":
+    case actionTypes.REMOVE_TOAST:
       if (action.toastId === undefined) {
         return {
           ...state,
@@ -134,24 +134,25 @@ function dispatch(action: Action) {
 
 /**
  * Trigger a new toast notification programmatically.
- * Generates a unique toast id, registers the toast internally as open, and returns 
+ * Generates a unique toast id, registers the toast internally as open, and returns
  * methods to programmatically update or dismiss the notification.
- * 
+ *
  * @param props - Configuration properties for the toast, omitting the automatically generated unique id.
  * @returns Object containing the generated toast id string, a dismiss callback method, and an update callback method.
  */
-function toast({ ...props }: Omit<ToasterToast, "id">) {
+function toast({ ...props }: Omit<ToasterToast, 'id'>) {
   const id = genId();
 
   const update = (props: Partial<ToasterToast>) =>
     dispatch({
-      type: "UPDATE_TOAST",
+      type: actionTypes.UPDATE_TOAST,
       toast: { ...props, id },
     });
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
+  const dismiss = () =>
+    dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
 
   dispatch({
-    type: "ADD_TOAST",
+    type: actionTypes.ADD_TOAST,
     toast: {
       ...props,
       id,
@@ -171,10 +172,10 @@ function toast({ ...props }: Omit<ToasterToast, "id">) {
 
 /**
  * Custom React hook to hook into global toast notifications state.
- * Registers the component state listener callback exactly once on mount, 
+ * Registers the component state listener callback exactly once on mount,
  * unregisters the callback on unmount, and exposes state/action callbacks.
  * Registers a listener via React.useEffect.
- * 
+ *
  * @returns Object representing the current State plus the toast function and dismiss(toastId?: string) method.
  */
 function useToast() {
@@ -193,7 +194,8 @@ function useToast() {
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId?: string) =>
+      dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
   };
 }
 

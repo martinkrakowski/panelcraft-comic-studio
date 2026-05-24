@@ -1,16 +1,18 @@
-import * as React from "react";
-import { cn } from "../../lib/utils";
+import * as React from 'react';
+import { cn } from '../../lib/utils';
 
-import { NoSemanticState } from "../../types";
+import { NoSemanticState } from '../../types';
 
-export interface ProgressProps extends NoSemanticState<React.HTMLAttributes<HTMLDivElement>> {
+export interface ProgressProps extends NoSemanticState<
+  React.HTMLAttributes<HTMLDivElement>
+> {
   value?: number; // 0 to 100
 }
 
 /**
  * Progress bar component showing completion status (0 to 100%).
  * Filters out raw semantic data/fetching states to stay presentational.
- * 
+ *
  * @example
  * <Progress value={45} />
  */
@@ -27,7 +29,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         aria-valuemin={0}
         aria-valuemax={100}
         className={cn(
-          "relative h-2 w-full overflow-hidden rounded-full bg-slate-800",
+          'relative h-2 w-full overflow-hidden rounded-full bg-slate-800',
           className
         )}
         {...props}
@@ -40,6 +42,6 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
     );
   }
 );
-Progress.displayName = "Progress";
+Progress.displayName = 'Progress';
 
 export { Progress };

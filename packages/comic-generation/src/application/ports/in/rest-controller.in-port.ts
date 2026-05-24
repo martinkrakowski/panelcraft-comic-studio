@@ -1,3 +1,5 @@
+import type { ComicProject } from '@panelcraft/comic-project-management';
+
 /**
  * Project data structure returned by REST endpoints.
  */
@@ -5,7 +7,7 @@ export interface ProjectData {
   id: string;
   prompt: string;
   panelCount: number;
-  status: "created" | "processing" | "pending_review" | "completed" | "failed";
+  status: 'created' | 'processing' | 'pending_review' | 'completed' | 'failed';
   createdAt: string;
   panels?: Array<{
     id: string;
@@ -13,7 +15,7 @@ export interface ProjectData {
     status: string;
     imageUrl: string | null;
   }>;
-  characterBible?: any;
+  characterBible?: unknown;
 }
 
 export interface RestControllerPort {
@@ -28,13 +30,14 @@ export interface RestControllerPort {
 
   /**
    * Retrieves the current project status and panel list.
+   * Throws NotFoundError if project does not exist.
    */
-  getProject(id: string): Promise<ProjectData | null>;
+  getProject(id: string): Promise<ComicProject>;
 
   /**
    * Lists all projects.
    */
-  listProjects(): Promise<ProjectData[]>;
+  listProjects(): Promise<ComicProject[]>;
 
   /**
    * Resumes the generation thread with HITL approval/rejection feedback.
@@ -46,4 +49,3 @@ export interface RestControllerPort {
     regenerationHint?: string
   ): Promise<void>;
 }
-

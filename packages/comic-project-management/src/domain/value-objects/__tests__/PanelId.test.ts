@@ -15,7 +15,7 @@ describe('PanelId', () => {
   });
 
   it('rejects non-string values', () => {
-    const result = PanelId.create(123 as any);
+    const result = PanelId.create(123 as unknown as string);
     expect(result.success).toBe(false);
   });
 

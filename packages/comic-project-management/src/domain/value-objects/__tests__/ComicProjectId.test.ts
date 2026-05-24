@@ -33,7 +33,7 @@ describe('ComicProjectId', () => {
     });
 
     it('should reject non-string values', () => {
-      const result = ComicProjectId.create(123 as any);
+      const result = ComicProjectId.create(123 as unknown as string);
 
       expect(result.success).toBe(false);
       expect(result.error?.message).toContain('non-empty');

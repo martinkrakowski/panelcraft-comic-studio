@@ -25,7 +25,10 @@ export class DomainError extends Error {
  */
 export class LLMResponseParsingError extends DomainError {
   override readonly code = 'PARSE_ERROR';
-  constructor(message: string, readonly content?: string) {
+  constructor(
+    message: string,
+    readonly content?: string
+  ) {
     super(`LLM Response Parsing Error: ${message}`);
     Object.setPrototypeOf(this, LLMResponseParsingError.prototype);
   }
@@ -36,7 +39,11 @@ export class LLMResponseParsingError extends DomainError {
  */
 export class LLMResponseValidationError extends DomainError {
   override readonly code = 'VALIDATION_ERROR';
-  constructor(message: string, readonly expected?: any, readonly received?: any) {
+  constructor(
+    message: string,
+    readonly expected?: unknown,
+    readonly received?: unknown
+  ) {
     super(`LLM Response Validation Error: ${message}`);
     Object.setPrototypeOf(this, LLMResponseValidationError.prototype);
   }
@@ -62,7 +69,10 @@ export class ExternalServiceError extends DomainError {
  */
 export class ImageGenerationError extends DomainError {
   override readonly code = 'IMAGE_GENERATION_ERROR';
-  constructor(message: string, readonly reason?: string) {
+  constructor(
+    message: string,
+    readonly reason?: string
+  ) {
     super(`Image Generation Error: ${message}`);
     Object.setPrototypeOf(this, ImageGenerationError.prototype);
   }
@@ -73,7 +83,10 @@ export class ImageGenerationError extends DomainError {
  */
 export class NotFoundError extends DomainError {
   override readonly code = 'NOT_FOUND';
-  constructor(message: string, readonly resourceId?: string) {
+  constructor(
+    message: string,
+    readonly resourceId?: string
+  ) {
     super(`Not Found: ${message}`);
     Object.setPrototypeOf(this, NotFoundError.prototype);
   }
@@ -84,7 +97,11 @@ export class NotFoundError extends DomainError {
  */
 export class ValidationError extends DomainError {
   override readonly code = 'VALIDATION_ERROR';
-  constructor(message: string, readonly field?: string, readonly value?: unknown) {
+  constructor(
+    message: string,
+    readonly field?: string,
+    readonly value?: unknown
+  ) {
     super(`Validation Error: ${message}`);
     Object.setPrototypeOf(this, ValidationError.prototype);
   }

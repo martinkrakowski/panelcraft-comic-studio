@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useRef } from "react";
-import { Alert, AlertTitle, AlertDescription, Button } from "@panelcraft/ui";
-import { RefreshCcw } from "lucide-react";
+import { useRef } from 'react';
+import { Alert, AlertTitle, AlertDescription, Button } from '@panelcraft/ui';
+import { RefreshCcw } from 'lucide-react';
 
 /**
  * Workspace page-level error fallback component that acts as the routing boundary UI wrapper.
  * Displays a user-safe alert messaging interface and enables state retry action callbacks.
- * 
+ *
  * @component
  * @param props - Component properties.
  * @param props.error - Error object instance capturing the execution exception state.
@@ -23,7 +23,7 @@ export default function Error({
 }) {
   const logged = useRef(false);
   if (!logged.current) {
-    console.error("Workspace render crash captured:", error);
+    console.error('Workspace render crash captured:', error);
     logged.current = true;
   }
 
@@ -32,7 +32,8 @@ export default function Error({
       <Alert variant="destructive" className="max-w-md">
         <AlertTitle className="text-lg">Something went wrong!</AlertTitle>
         <AlertDescription className="mt-2 text-sm opacity-90">
-          An unexpected error occurred while loading this workspace. Please try again.
+          An unexpected error occurred while loading this workspace. Please try
+          again.
         </AlertDescription>
       </Alert>
       <Button

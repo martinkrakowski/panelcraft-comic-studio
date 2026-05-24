@@ -29,7 +29,7 @@ describe('PanelCount', () => {
   });
 
   it('rejects non-numeric values', () => {
-    const result = PanelCount.create('5' as any);
+    const result = PanelCount.create('5' as unknown as number);
     expect(result.success).toBe(false);
   });
 

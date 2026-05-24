@@ -1,49 +1,69 @@
-"use client";
+'use client';
 
-import React from "react";
-import Link from "next/link";
-import { useWorkspace } from "../../providers/WorkspaceProvider";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge, Button, buttonVariants, Progress, Skeleton } from "@panelcraft/ui";
-import { Calendar, Film, Plus, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
+import React from 'react';
+import Link from 'next/link';
+import { useWorkspace } from '../../providers/WorkspaceProvider';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  Badge,
+  Button,
+  buttonVariants,
+  Progress,
+  Skeleton,
+} from '@panelcraft/ui';
+import {
+  Calendar,
+  Film,
+  Plus,
+  Sparkles,
+  AlertCircle,
+  ArrowRight,
+} from 'lucide-react';
 
 /**
  * Main application dashboard landing page component.
  * Renders the welcome banner, project summaries grid list, and empty creation placeholders.
- * 
+ *
  * @component
  * @returns React.Element welcome card, creation button CTA, and grid cards.
  */
 export function Dashboard() {
-  const { projects, loadingProjects, errorProjects, refetchProjects } = useWorkspace();
+  const { projects, loadingProjects, errorProjects, refetchProjects } =
+    useWorkspace();
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "completed":
-        return "success";
-      case "pending_review":
-        return "warning";
-      case "failed":
-        return "destructive";
-      case "created":
-      case "processing":
-        return "default";
+      case 'completed':
+        return 'success';
+      case 'pending_review':
+        return 'warning';
+      case 'failed':
+        return 'destructive';
+      case 'created':
+      case 'processing':
+        return 'default';
       default:
-        return "secondary";
+        return 'secondary';
     }
   };
 
   const formatStatus = (status: string) => {
     switch (status) {
-      case "pending_review":
-        return "Pending Review";
-      case "completed":
-        return "Completed";
-      case "failed":
-        return "Failed";
-      case "created":
-        return "Created";
-      case "processing":
-        return "Generating...";
+      case 'pending_review':
+        return 'Pending Review';
+      case 'completed':
+        return 'Completed';
+      case 'failed':
+        return 'Failed';
+      case 'created':
+        return 'Created';
+      case 'processing':
+        return 'Generating...';
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
@@ -52,13 +72,13 @@ export function Dashboard() {
   const formatDate = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
       });
     } catch (_) {
-      return "Unknown Date";
+      return 'Unknown Date';
     }
   };
 
@@ -86,7 +106,8 @@ export function Dashboard() {
         </div>
         <h2 className="text-xl font-semibold">Failed to Load Projects</h2>
         <p className="text-slate-400 max-w-sm text-sm">
-          {errorProjects.message || "An error occurred while fetching your projects."}
+          {errorProjects.message ||
+            'An error occurred while fetching your projects.'}
         </p>
         <Button onClick={refetchProjects} variant="outline" className="mt-2">
           Retry Loading
@@ -110,9 +131,10 @@ export function Dashboard() {
         <Link
           href="/new"
           className={buttonVariants({
-            variant: "default",
-            size: "default",
-            className: "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none font-semibold flex items-center gap-2"
+            variant: 'default',
+            size: 'default',
+            className:
+              'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none font-semibold flex items-center gap-2',
           })}
         >
           <Plus className="h-4 w-4" />
@@ -130,14 +152,17 @@ export function Dashboard() {
             No Comics Generated Yet
           </CardTitle>
           <CardDescription className="max-w-md mx-auto mb-6">
-            Get started by entering a descriptive prompt. PanelCraft will outline your panels, structure characters, and generate scenes with human review at every step.
+            Get started by entering a descriptive prompt. PanelCraft will
+            outline your panels, structure characters, and generate scenes with
+            human review at every step.
           </CardDescription>
           <Link
             href="/new"
             className={buttonVariants({
-              variant: "default",
-              size: "default",
-              className: "bg-indigo-600 hover:bg-indigo-500 font-semibold flex items-center gap-2"
+              variant: 'default',
+              size: 'default',
+              className:
+                'bg-indigo-600 hover:bg-indigo-500 font-semibold flex items-center gap-2',
             })}
           >
             <Plus className="h-4 w-4" />
@@ -148,7 +173,7 @@ export function Dashboard() {
         /* Projects Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => {
-            const hasReviewPending = project.status === "pending_review";
+            const hasReviewPending = project.status === 'pending_review';
 
             return (
               <Link
@@ -159,8 +184,8 @@ export function Dashboard() {
                 <Card
                   className={`cursor-pointer transition-all duration-300 relative group overflow-hidden ${
                     hasReviewPending
-                      ? "border-amber-500/40 shadow-amber-500/5 hover:border-amber-500/60"
-                      : "hover:scale-[1.01]"
+                      ? 'border-amber-500/40 shadow-amber-500/5 hover:border-amber-500/60'
+                      : 'hover:scale-[1.01]'
                   }`}
                 >
                   {/* Visual Accent Glow for review actions */}
@@ -194,7 +219,7 @@ export function Dashboard() {
 
                   <CardFooter className="flex items-center justify-between pt-4 border-t border-slate-800/40">
                     <span className="text-xs text-indigo-400 font-semibold group-hover:underline flex items-center gap-1">
-                      {hasReviewPending ? "Review Panel" : "View Project"}
+                      {hasReviewPending ? 'Review Panel' : 'View Project'}
                       <ArrowRight className="h-3 w-3 transform group-hover:translate-x-0.5 transition-transform duration-200" />
                     </span>
                   </CardFooter>
