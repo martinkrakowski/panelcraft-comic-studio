@@ -10,6 +10,16 @@ export interface ImageGenerationPort {
    * @returns Public URL of the generated image
    */
   generatePanel(command: GeneratePanelCommand): Promise<string>;
+
+  /**
+   * Generates a cover image using the configured provider
+   * @returns Image buffer of the generated cover
+   */
+  generateCover(options: {
+    prompt: string;
+    style?: unknown;
+    characterBible?: unknown;
+  }): Promise<Buffer>;
 }
 
 // Re-export for convenience

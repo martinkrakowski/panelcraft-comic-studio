@@ -10,9 +10,16 @@ export interface CharacterBibleValue {
   characters: CharacterValue[];
 }
 
-export type PanelStatus = "pending" | "generated" | "completed" | "failed";
+export type PanelStatus = 'pending' | 'generated' | 'completed' | 'failed';
 
-export type ProjectStatus = "created" | "processing" | "pending_review" | "completed" | "failed";
+export type ProjectStatus =
+  | 'created'
+  | 'pending_creation'
+  | 'processing'
+  | 'pending_layout'
+  | 'pending_review'
+  | 'completed'
+  | 'failed';
 
 export interface PanelDTO {
   id: string;
@@ -28,6 +35,17 @@ export interface ComicProjectDTO {
   panelCount: number;
   panels: PanelDTO[];
   characterBible: CharacterBibleValue | null;
+  genres?: string[];
+  tones?: string[];
+  styleReferences?: {
+    globalStylePrompt: string;
+    moodBoardPreset: string;
+    moodBoardImages: string[];
+    artDirectionNotes?: string;
+  } | null;
+  coverImageUrl?: string | null;
+  selectedLayout?: string | null;
+  layoutOptions?: string[] | null;
   status: ProjectStatus;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;
@@ -36,7 +54,16 @@ export interface ComicProjectDTO {
 export interface CreateProjectInput {
   prompt: string;
   panelCount: number;
+  genres?: string[];
+  tones?: string[];
   characterBible?: CharacterBibleValue | null;
+  styleReferences?: {
+    globalStylePrompt: string;
+    moodBoardPreset: string;
+    moodBoardImages: string[];
+    artDirectionNotes?: string;
+  } | null;
+  referenceImages?: string[]; // Relative paths to Supabase Storage
 }
 
 export interface SubmitReviewInput {

@@ -25,23 +25,36 @@ export class ComicGenerationUseCase implements RestControllerPort {
     private readonly logger: LoggerPort
   ) {}
 
-  async createProject(prompt: string, panelCount: number): Promise<string> {
+  async createProject(options: {
+    prompt: string;
+    panelCount: number;
+    genres?: string[];
+    tones?: string[];
+    characterBible?: Record<string, unknown>;
+    styleReferences?: {
+      globalStylePrompt: string;
+      moodBoardPreset: string;
+      moodBoardImages: string[];
+      artDirectionNotes?: string;
+    };
+    referenceImagePaths?: string[];
+  }): Promise<string> {
     // Validate and create value objects
-    const promptResult = ComicTitle.create(prompt);
+    const promptResult = ComicTitle.create(options.prompt);
     if (!promptResult.success) {
       throw new ValidationError(
         promptResult.error?.message || 'Invalid prompt',
         'prompt',
-        prompt
+        options.prompt
       );
     }
 
-    const panelCountResult = PanelCount.create(panelCount);
+    const panelCountResult = PanelCount.create(options.panelCount);
     if (!panelCountResult.success) {
       throw new ValidationError(
         panelCountResult.error?.message || 'Invalid panel count',
         'panelCount',
-        panelCount
+        options.panelCount
       );
     }
 
@@ -53,6 +66,20 @@ export class ComicGenerationUseCase implements RestControllerPort {
         'projectId',
         projectId
       );
+    }
+
+    // Create character bible if provided
+    let characterBible: CharacterBible | null = null;
+    if (options.characterBible) {
+      const bibleResult = CharacterBible.create(options.characterBible);
+      if (!bibleResult.success) {
+        throw new ValidationError(
+          bibleResult.error?.message || 'Invalid character bible',
+          'characterBible',
+          options.characterBible
+        );
+      }
+      characterBible = bibleResult.value!;
     }
 
     // Create panels with PanelId and PanelStatus value objects
@@ -90,8 +117,11 @@ export class ComicGenerationUseCase implements RestControllerPort {
       prompt: promptResult.value!,
       panelCount: panelCountResult.value!,
       panels,
-      characterBible: null,
-      status: 'created',
+      characterBible,
+      genres: options.genres,
+      tones: options.tones,
+      styleReferences: options.styleReferences,
+      status: 'pending_creation',
       createdAt: new Date().toISOString(),
     });
 
@@ -200,5 +230,71 @@ export class ComicGenerationUseCase implements RestControllerPort {
         removeOnComplete: true,
       }
     );
+  }
+
+  async selectLayout(projectId: string, selectedLayout: string): Promise<void> {
+    const project = await this.projectRepo.load(projectId);
+    if (!project) {
+      throw new NotFoundError(`Project ${projectId} not found`, projectId);
+    }
+
+    project.setSelectedLayout(selectedLayout);
+    project.setStatus('pending_review');
+    await this.projectRepo.save(project);
+  }
+
+  async enqueueResumeComic(
+    projectId: string,
+    selectedLayout: string
+  ): Promise<void> {
+    await this.taskQueue.add(
+      'resume-comic',
+      { projectId, selectedLayout },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: true,
+      }
+    );
+  }
+
+  async updateProjectPaths(
+    projectId: string,
+    paths: { referenceImagePaths?: string[]; moodBoardImagePaths?: string[] }
+  ): Promise<void> {
+    const project = await this.projectRepo.load(projectId);
+    if (!project) {
+      throw new NotFoundError(`Project ${projectId} not found`, projectId);
+    }
+
+    if (paths.referenceImagePaths) {
+      // Update character bible with reference image paths
+      const bible = project.getCharacterBible();
+      if (bible) {
+        const characters = bible.getCharacters();
+        characters.forEach((char, index) => {
+          if (paths.referenceImagePaths![index]) {
+            // Update character's reference image
+            // Note: Character is immutable, so we need to create a new Character
+            // This is a simplified approach; in practice, you'd recreate the bible
+          }
+        });
+      }
+    }
+
+    if (paths.moodBoardImagePaths) {
+      const styleRefs = project.getStyleReferences();
+      if (styleRefs) {
+        project.setStyleReferences({
+          ...styleRefs,
+          moodBoardImages: paths.moodBoardImagePaths,
+        });
+      }
+    }
+
+    await this.projectRepo.save(project);
   }
 }

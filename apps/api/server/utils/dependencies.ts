@@ -1,6 +1,8 @@
-import { H3Event, EventHandlerRequest } from 'h3'
-import { ComicGenerationUseCase } from '@panelcraft/comic-generation'
-import '../types/context.js'
+import { H3Event, EventHandlerRequest } from 'h3';
+import { ComicGenerationUseCase } from '@panelcraft/comic-generation';
+import { LLMClientPort } from '@panelcraft/comic-generation';
+import { ImageGenerationPort } from '@panelcraft/comic-generation';
+import '../types/context.js';
 
 /**
  * Retrieve the injected ComicGenerationUseCase from the current request context.
@@ -21,9 +23,41 @@ import '../types/context.js'
  * })
  * ```
  */
-export function getComicUseCase(event: H3Event<EventHandlerRequest>): ComicGenerationUseCase {
+export function getComicUseCase(
+  event: H3Event<EventHandlerRequest>
+): ComicGenerationUseCase {
   if (!event.context?.comicUseCase) {
-    throw new Error('Infrastructure not initialized: comicUseCase missing from context')
+    throw new Error(
+      'Infrastructure not initialized: comicUseCase missing from context'
+    );
   }
-  return event.context.comicUseCase
+  return event.context.comicUseCase;
+}
+
+/**
+ * Retrieve the injected LLM client from the current request context.
+ */
+export function getLLMClient(
+  event: H3Event<EventHandlerRequest>
+): LLMClientPort {
+  if (!event.context?.llmClient) {
+    throw new Error(
+      'Infrastructure not initialized: llmClient missing from context'
+    );
+  }
+  return event.context.llmClient;
+}
+
+/**
+ * Retrieve the injected image generation client from the current request context.
+ */
+export function getImageGenerationClient(
+  event: H3Event<EventHandlerRequest>
+): ImageGenerationPort {
+  if (!event.context?.imageGenerationClient) {
+    throw new Error(
+      'Infrastructure not initialized: imageGenerationClient missing from context'
+    );
+  }
+  return event.context.imageGenerationClient;
 }

@@ -23,13 +23,16 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       throw new Error('XAI_API_KEY environment variable is not set');
     }
 
-    const fullPrompt = this.buildComicPrompt(command.prompt, command.styleModifiers);
+    const fullPrompt = this.buildComicPrompt(
+      command.prompt,
+      command.styleModifiers
+    );
 
     const response = await fetch(this.endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: this.model,
@@ -41,7 +44,9 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`xAI image generation failed (${response.status}): ${body}`);
+      throw new Error(
+        `xAI image generation failed (${response.status}): ${body}`
+      );
     }
 
     const json = (await response.json()) as XaiImageResponse;
@@ -52,6 +57,56 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     }
 
     return url;
+  }
+
+  async generateCover(options: {
+    prompt: string;
+    style?: unknown;
+    characterBible?: unknown;
+  }): Promise<Buffer> {
+    if (!this.apiKey) {
+      throw new Error('XAI_API_KEY environment variable is not set');
+    }
+
+    const styleDesc = options.style
+      ? `Style: ${(options.style as Record<string, unknown>)?.globalStylePrompt || ''}`
+      : '';
+    const characterDesc = options.characterBible
+      ? `Characters: ${JSON.stringify(options.characterBible)}`
+      : '';
+    const fullPrompt = `Comic book cover for story: ${options.prompt}. ${styleDesc} ${characterDesc}. Professional comic cover, bold title, vibrant colors, dynamic composition.`;
+
+    const response = await fetch(this.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        prompt: fullPrompt,
+        n: 1,
+        response_format: 'url',
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `xAI cover generation failed (${response.status}): ${body}`
+      );
+    }
+
+    const json = (await response.json()) as XaiImageResponse;
+    const imageUrl = json.data[0]?.url;
+    if (!imageUrl)
+      throw new Error('xAI cover generation returned no image URL');
+
+    // Fetch image and convert to buffer
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok)
+      throw new Error('Failed to fetch generated cover image');
+    return Buffer.from(await imageResponse.arrayBuffer());
   }
 
   private buildComicPrompt(basePrompt: string, modifiers?: string): string {

@@ -15,10 +15,12 @@
     "@panelcraft/comic-generation": "workspace:*",
     "@panelcraft/comic-project-management": "workspace:*",
     "@panelcraft/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.106.1",
     "bullmq": "^5.4.2",
     "h3": "^1.15.11",
     "nitropack": "^2.13.4",
     "redis": "^4.6.12",
+    "sharp": "^0.34.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {

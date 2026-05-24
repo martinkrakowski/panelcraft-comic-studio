@@ -4,6 +4,7 @@ export interface CharacterValue {
   visual: string;
   traits?: string;
   consistency: string;
+  referenceImage?: string | null;
 }
 
 /**
@@ -41,27 +42,46 @@ export class Character {
    * @param value - Raw character data
    * @returns Result containing Character or validation error
    */
-  static create(value: unknown): { success: boolean; value?: Character; error?: Error } {
+  static create(value: unknown): {
+    success: boolean;
+    value?: Character;
+    error?: Error;
+  } {
     if (!value || typeof value !== 'object') {
-      return { success: false, error: new Error('Character must be an object') };
+      return {
+        success: false,
+        error: new Error('Character must be an object'),
+      };
     }
 
     const obj = value as Record<string, unknown>;
 
     if (typeof obj.name !== 'string' || obj.name.length === 0) {
-      return { success: false, error: new Error('Character.name must be a non-empty string') };
+      return {
+        success: false,
+        error: new Error('Character.name must be a non-empty string'),
+      };
     }
 
     if (typeof obj.role !== 'string' || obj.role.length === 0) {
-      return { success: false, error: new Error('Character.role must be a non-empty string') };
+      return {
+        success: false,
+        error: new Error('Character.role must be a non-empty string'),
+      };
     }
 
     if (typeof obj.visual !== 'string' || obj.visual.length === 0) {
-      return { success: false, error: new Error('Character.visual must be a non-empty string') };
+      return {
+        success: false,
+        error: new Error('Character.visual must be a non-empty string'),
+      };
     }
 
     if (typeof obj.consistency !== 'string' || obj.consistency.length === 0) {
-      return { success: false, error: new Error('Character.consistency must be a non-empty string') };
+      return {
+        success: false,
+        error: new Error('Character.consistency must be a non-empty string'),
+      };
     }
 
     const data: CharacterValue = {
@@ -74,7 +94,21 @@ export class Character {
     if (typeof obj.traits === 'string') {
       data.traits = obj.traits;
     } else if (obj.traits !== undefined) {
-      return { success: false, error: new Error('Character.traits must be a string or undefined') };
+      return {
+        success: false,
+        error: new Error('Character.traits must be a string or undefined'),
+      };
+    }
+
+    if (typeof obj.referenceImage === 'string' || obj.referenceImage === null) {
+      data.referenceImage = obj.referenceImage;
+    } else if (obj.referenceImage !== undefined) {
+      return {
+        success: false,
+        error: new Error(
+          'Character.referenceImage must be a string, null, or undefined'
+        ),
+      };
     }
 
     return { success: true, value: new Character(data) };
@@ -97,7 +131,8 @@ export class Character {
       this.data.role === otherData.role &&
       this.data.visual === otherData.visual &&
       this.data.consistency === otherData.consistency &&
-      this.data.traits === otherData.traits
+      this.data.traits === otherData.traits &&
+      this.data.referenceImage === otherData.referenceImage
     );
   }
 }

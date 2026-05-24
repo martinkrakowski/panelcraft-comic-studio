@@ -141,4 +141,68 @@ export class XaiLLMClientAdapter implements LLMClientPort {
     }
     throw new ExternalServiceError('LLM call completed without response');
   }
+
+  async analyzePrompt(prompt: string): Promise<{
+    feedback: string;
+    estimatedCharactersCount: number;
+    suggestedGenres: string[];
+    suggestedTones: string[];
+  }> {
+    const systemPrompt = `You are Varo, an AI comic story analyst. Analyze the user's story prompt and provide:
+1. A friendly, encouraging feedback message about the prompt
+2. Estimated number of characters in the story (integer)
+3. Suggested genres (array of strings, e.g., ["Noir", "Mystery"])
+4. Suggested tones (array of strings, e.g., ["Dark", "Suspenseful"])
+
+Return ONLY valid JSON in this format: {
+  "feedback": "string",
+  "estimatedCharactersCount": number,
+  "suggestedGenres": string[],
+  "suggestedTones": string[]
+}`;
+
+    const response = await this.call(systemPrompt, prompt);
+
+    return {
+      feedback: String(response.feedback || 'Interesting story concept!'),
+      estimatedCharactersCount: Number(response.estimatedCharactersCount) || 3,
+      suggestedGenres: Array.isArray(response.suggestedGenres)
+        ? response.suggestedGenres.map(String)
+        : [],
+      suggestedTones: Array.isArray(response.suggestedTones)
+        ? response.suggestedTones.map(String)
+        : [],
+    };
+  }
+
+  async extractCharacters(
+    prompt: string,
+    options?: { genres?: string[]; tones?: string[] }
+  ): Promise<{ characters: Array<Record<string, unknown>> }> {
+    const genres = options?.genres?.join(', ') || 'any';
+    const tones = options?.tones?.join(', ') || 'any';
+
+    const systemPrompt = `You are Varo, an AI character extraction specialist. Extract characters from the story prompt and return them in this JSON format: {
+  "characters": [
+    {
+      "name": "string",
+      "role": "protagonist|antagonist|supporting",
+      "visual": "string describing visual appearance",
+      "consistency": "string describing consistency notes"
+    }
+  ]
+}
+
+Genres: ${genres}
+Tones: ${tones}
+
+Return ONLY valid JSON.`;
+
+    const response = await this.call(systemPrompt, prompt);
+    const characters = Array.isArray(response.characters)
+      ? response.characters
+      : [];
+
+    return { characters };
+  }
 }

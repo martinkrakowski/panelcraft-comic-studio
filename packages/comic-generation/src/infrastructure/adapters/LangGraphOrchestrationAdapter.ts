@@ -1,10 +1,4 @@
-import {
-  StateGraph,
-  START,
-  END,
-  MemorySaver,
-  interrupt,
-} from '@langchain/langgraph';
+import { StateGraph, START, END, interrupt } from '@langchain/langgraph';
 import {
   LLMResponseParsingError,
   LLMResponseValidationError,
@@ -22,6 +16,8 @@ import type { LLMClientPort } from '../../application/ports/out/llm-client.out-p
 import type { RelationalDbPort } from '../../application/ports/out/relational-db.out-port.js';
 import { PanelPromptValidationService } from '../../domain/services/PanelPromptValidationService.js';
 import { CharacterBibleValidationService } from '../../application/services/CharacterBibleValidationService.js';
+import { SupabaseCheckpointer } from './SupabaseCheckpointer.js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface Character {
   name: string;
@@ -45,18 +41,21 @@ export class LangGraphOrchestrationAdapter {
   private readonly llmClient: LLMClientPort;
   private readonly projectRepo: RelationalDbPort;
   private readonly logger: LoggerPort;
+  private readonly supabase: SupabaseClient;
   private readonly graph;
 
   constructor(
     imageGenPort: ImageGenerationPort,
     llmClient: LLMClientPort,
     projectRepo: RelationalDbPort,
-    logger: LoggerPort
+    logger: LoggerPort,
+    supabase: SupabaseClient
   ) {
     this.imageGenPort = imageGenPort;
     this.llmClient = llmClient;
     this.projectRepo = projectRepo;
     this.logger = logger;
+    this.supabase = supabase;
     this.graph = this.buildGraph();
   }
 
@@ -65,21 +64,25 @@ export class LangGraphOrchestrationAdapter {
   }
 
   private buildGraph() {
-    const checkpointer = new MemorySaver();
+    const checkpointer = new SupabaseCheckpointer(this.supabase);
 
     const workflow = new StateGraph(ComicGraphState)
       .addNode('structureStory', this.structureStory.bind(this))
       .addNode('buildCharacterBible', this.buildCharacterBible.bind(this))
+      .addNode('generateCover', this.generateCover.bind(this))
+      .addNode('suggestLayouts', this.suggestLayouts.bind(this))
+      .addNode('layoutInterrupt', this.layoutInterrupt.bind(this))
       .addNode('generatePanel', this.generatePanel.bind(this))
       .addNode('hitlReview', this.hitlReview.bind(this))
       .addNode('finalizeComic', this.finalizeComic.bind(this));
 
     workflow.addEdge(START, 'structureStory');
     workflow.addEdge('structureStory', 'buildCharacterBible');
-    workflow.addEdge('buildCharacterBible', 'generatePanel');
-    // Every generated panel goes through HITL review
+    workflow.addEdge('buildCharacterBible', 'generateCover');
+    workflow.addEdge('generateCover', 'suggestLayouts');
+    workflow.addEdge('suggestLayouts', 'layoutInterrupt');
+    workflow.addEdge('layoutInterrupt', 'generatePanel');
     workflow.addEdge('generatePanel', 'hitlReview');
-    // After review: regenerate if rejected, else advance to next panel or finalize
     workflow.addConditionalEdges('hitlReview', (state: ComicGraphStateType) => {
       if (!state.lastFeedback?.approved) return 'generatePanel';
       return state.currentPanelIndex < state.project.panelCount
@@ -92,6 +95,12 @@ export class LangGraphOrchestrationAdapter {
   }
 
   private async structureStory(state: ComicGraphStateType) {
+    // Skip if character bible is pre-seeded from wizard
+    if (state.project.characterBible) {
+      this.logger.info('Skipping structureStory: character bible pre-seeded');
+      return state;
+    }
+
     const { prompt, panelCount } = state.project;
 
     this.logger.info(`Structuring story into ${panelCount} panels...`);
@@ -158,6 +167,14 @@ Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown
   }
 
   private async buildCharacterBible(state: ComicGraphStateType) {
+    // Skip if character bible is pre-seeded from wizard
+    if (state.project.characterBible) {
+      this.logger.info(
+        'Skipping buildCharacterBible: character bible pre-seeded'
+      );
+      return state;
+    }
+
     const { prompt, panels } = state.project;
     const panelPrompts = (panels || [])
       .map((p: unknown) => {
@@ -228,6 +245,100 @@ Return ONLY valid JSON with no markdown or additional text:
         characterBible: characterData as CharacterBibleData,
       },
     };
+  }
+
+  private async generateCover(state: ComicGraphStateType) {
+    const { project } = state;
+    const projectId = project.id;
+    this.logger.info(`Generating cover for project ${projectId}`);
+
+    try {
+      // Generate cover image using image generation port
+      const coverBuffer = await this.imageGenPort.generateCover({
+        prompt: project.prompt,
+        style: project.styleReferences,
+        characterBible: project.characterBible,
+      });
+
+      // Upload to Supabase Storage with 3 retries
+      const bucket = 'comics';
+      const storagePath = `comics/${projectId}/covers/front.webp`;
+      let uploadError: Error | null = null;
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const { error } = await this.supabase.storage
+            .from(bucket)
+            .upload(storagePath, coverBuffer, {
+              contentType: 'image/webp',
+              upsert: true,
+            });
+          if (error) {
+            uploadError = error as unknown as Error;
+            this.logger.warn(
+              `Cover upload attempt ${attempt} failed: ${error.message}`
+            );
+            if (attempt < 3)
+              await new Promise((r) => setTimeout(r, 1000 * attempt));
+          } else {
+            uploadError = null;
+            break;
+          }
+        } catch (err) {
+          uploadError = err as Error;
+          if (attempt < 3)
+            await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+      }
+
+      if (uploadError) throw uploadError;
+
+      // Get signed URL (1 hour expiry)
+      const { data: signedUrlData } = await this.supabase.storage
+        .from(bucket)
+        .createSignedUrl(storagePath, 3600);
+
+      return {
+        ...state,
+        coverImageUrl: signedUrlData?.signedUrl || '',
+        project: { ...project, coverImageUrl: storagePath },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Cover generation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      const proj = ComicProject.fromJSON(state.project);
+      proj.setStatus('error');
+      await this.projectRepo.save(proj);
+      throw error;
+    }
+  }
+
+  private async suggestLayouts(state: ComicGraphStateType) {
+    this.logger.info('Generating layout options');
+    // Generate 4-6 layout variants
+    const layouts = [
+      '3-panel grid (1x3)',
+      '2-column vertical strip',
+      'Full-page splash with 2 insets',
+      '4-panel 2x2 grid',
+      '1 large panel + 3 thumbnails',
+      'Horizontal 6-panel strip',
+    ].slice(0, 4 + Math.floor(Math.random() * 3));
+
+    return { ...state, layoutOptions: layouts };
+  }
+
+  private async layoutInterrupt(state: ComicGraphStateType) {
+    this.logger.info('Pausing for layout selection');
+    const selection = interrupt({
+      type: 'layout_selection',
+      coverImageUrl: state.coverImageUrl,
+      layoutOptions: state.layoutOptions,
+      message: 'Select layout for Page 1',
+    }) as { selectedLayout: string };
+
+    return { ...state, selectedLayout: selection.selectedLayout };
   }
 
   private async generatePanel(state: ComicGraphStateType) {

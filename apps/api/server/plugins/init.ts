@@ -68,6 +68,8 @@ export default defineNitroPlugin(async (nitroApp) => {
   nitroApp.hooks.hook('request', (event) => {
     event.context = event.context || {};
     event.context.comicUseCase = comicUseCase;
+    event.context.llmClient = llmClient;
+    event.context.imageGenerationClient = imageGenPort;
   });
 
   const worker = initComicWorker(

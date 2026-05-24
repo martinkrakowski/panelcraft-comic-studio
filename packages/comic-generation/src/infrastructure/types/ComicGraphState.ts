@@ -19,6 +19,15 @@ export const ComicGraphState = Annotation.Root({
 
   /** LangGraph thread ID for persistent session tracking */
   threadId: Annotation<string>(),
+
+  /** Generated cover image signed URL */
+  coverImageUrl: Annotation<string | undefined>(),
+
+  /** Available layout options (4-6 variants) */
+  layoutOptions: Annotation<string[] | undefined>(),
+
+  /** User-selected layout */
+  selectedLayout: Annotation<string | undefined>(),
 });
 
 /** Type alias for the inferred state shape */
