@@ -1,44 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import api from '../api';
 import { ComicProjectDTO } from '@panelcraft/types';
 import { useMountEffect } from './useMountEffect';
-
-/**
- * Semantic helper hook to poll project status at intervals when active background generation is processing.
- * Satisfies the "War on useEffect" guidelines by isolating external timer synchronization.
- *
- * @component
- * @param isGenerating - Whether the project is currently in a generating state.
- * @param fetchProject - Callback function to fetch the project.
- */
-function useProjectPolling(
-  isGenerating: boolean,
-  fetchProject: (silent?: boolean) => Promise<ComicProjectDTO | null>
-) {
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (isGenerating) {
-      if (!pollIntervalRef.current) {
-        pollIntervalRef.current = setInterval(() => {
-          fetchProject(true); // Silent reload
-        }, 3000);
-      }
-    } else {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-    }
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-    };
-  }, [isGenerating, fetchProject]);
-}
+import { usePolling } from './usePolling';
 
 /**
  * Custom React hook to fetch and synchronize details of a specific comic project.
@@ -124,7 +88,12 @@ export function useProject(id: string) {
   );
 
   // Delegate background status checking to the semantic polling hook
-  useProjectPolling(isGenerating, fetchProject);
+  usePolling(
+    () => {
+      fetchProject(true);
+    },
+    { enabled: isGenerating, intervalMs: 3000 }
+  );
 
   return {
     project,

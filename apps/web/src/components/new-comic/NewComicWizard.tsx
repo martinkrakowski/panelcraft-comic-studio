@@ -1133,22 +1133,26 @@ export function NewComicWizard() {
           </div>
 
           {/* Navigation Buttons */}
-          {activeStep > 0 && activeStep < 4 && (
+          {activeStep < 4 && (
             <div className="flex-shrink-0 flex gap-3 justify-center px-4 py-6 border-t border-slate-700">
-              <Button
-                type="button"
-                onClick={handleBackStep}
-                className="bg-slate-800 hover:bg-slate-700 text-white"
-              >
-                Back
-              </Button>
-              <Button
-                type="button"
-                onClick={handleNextStep}
-                className="bg-violet-600 hover:bg-violet-500 text-white"
-              >
-                Next <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
+              {activeStep > 0 && (
+                <Button
+                  type="button"
+                  onClick={handleBackStep}
+                  className="bg-slate-800 hover:bg-slate-700 text-white"
+                >
+                  Back
+                </Button>
+              )}
+              {activeStep < 3 && (
+                <Button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="bg-violet-600 hover:bg-violet-500 text-white"
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
             </div>
           )}
         </div>

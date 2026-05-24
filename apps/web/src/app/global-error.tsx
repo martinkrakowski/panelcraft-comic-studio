@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
+import { useEffectOnce } from '../lib/hooks';
 import { Button } from '@panelcraft/ui';
 import { AlertCircle, RefreshCcw } from 'lucide-react';
 import { defaultLogger } from '@panelcraft/shared';
@@ -22,14 +23,9 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const logged = useRef(false);
-
-  useEffect(() => {
-    if (!logged.current) {
-      defaultLogger.error('Root layout critical crash captured:', error);
-      logged.current = true;
-    }
-  }, [error]);
+  useEffectOnce(() => {
+    defaultLogger.error('Root layout critical crash captured:', error);
+  });
 
   return (
     <html lang="en">

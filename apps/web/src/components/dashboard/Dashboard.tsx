@@ -10,7 +10,7 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-  Badge,
+  ProjectStatusBadge,
   Button,
   buttonVariants,
   Progress,
@@ -35,39 +35,6 @@ import {
 export function Dashboard() {
   const { projects, loadingProjects, errorProjects, refetchProjects } =
     useWorkspace();
-
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'success';
-      case 'pending_review':
-        return 'warning';
-      case 'failed':
-        return 'destructive';
-      case 'created':
-      case 'processing':
-        return 'default';
-      default:
-        return 'secondary';
-    }
-  };
-
-  const formatStatus = (status: string) => {
-    switch (status) {
-      case 'pending_review':
-        return 'Pending Review';
-      case 'completed':
-        return 'Completed';
-      case 'failed':
-        return 'Failed';
-      case 'created':
-        return 'Created';
-      case 'processing':
-        return 'Generating...';
-      default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
-    }
-  };
 
   const formatDate = (isoString: string) => {
     try {
@@ -195,9 +162,7 @@ export function Dashboard() {
 
                   <CardHeader className="pb-4">
                     <div className="flex justify-between items-start space-x-2">
-                      <Badge variant={getStatusVariant(project.status)}>
-                        {formatStatus(project.status)}
-                      </Badge>
+                      <ProjectStatusBadge status={project.status} />
                       <div className="flex items-center text-xs text-slate-500 space-x-1">
                         <Calendar className="h-3 w-3" />
                         <span>{formatDate(project.createdAt)}</span>
