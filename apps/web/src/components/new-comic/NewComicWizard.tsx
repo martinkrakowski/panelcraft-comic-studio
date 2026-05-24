@@ -166,10 +166,10 @@ export function NewComicWizard() {
     }
   };
 
-  // Handle back step
+  /** Navigate to previous step */
   const handleBackStep = () => setActiveStep((prev) => Math.max(prev - 1, 0));
 
-  // Analyze prompt (calls API)
+  /** Validate and analyze user's story prompt for genre/tone suggestions */
   const handleAnalyzePrompt = async () => {
     try {
       // Validate prompt independently without triggering full form validation

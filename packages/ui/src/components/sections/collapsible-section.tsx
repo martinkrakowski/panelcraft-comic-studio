@@ -3,13 +3,22 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
+/** Props for CollapsibleSection component */
 interface CollapsibleSectionProps {
+  /** Section title/heading */
   title: string;
+  /** Content to display when section is open */
   children: React.ReactNode;
+  /** Whether section is open by default */
   defaultOpen?: boolean;
+  /** Additional CSS classes */
   className?: string;
 }
 
+/**
+ * Expandable section with chevron toggle and smooth animations.
+ * Manages open/closed state locally with visual feedback.
+ */
 export const CollapsibleSection = React.forwardRef<
   HTMLDivElement,
   CollapsibleSectionProps

@@ -3,11 +3,18 @@
 import React from 'react';
 import { Sidebar } from './sidebar';
 
+/** Props for WizardSidebar component */
 interface WizardSidebarProps {
+  /** Content to display in wizard sidebar */
   children: React.ReactNode;
+  /** Additional CSS classes */
   className?: string;
 }
 
+/**
+ * Specialized sidebar for wizard workflows.
+ * Extends base Sidebar with wizard-specific header section.
+ */
 export const WizardSidebar = React.forwardRef<
   HTMLDivElement,
   WizardSidebarProps

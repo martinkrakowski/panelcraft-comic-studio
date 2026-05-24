@@ -2,11 +2,18 @@
 
 import React from 'react';
 
+/** Props for Sidebar component */
 interface SidebarProps {
+  /** Content to display in sidebar */
   children: React.ReactNode;
+  /** Additional CSS classes */
   className?: string;
 }
 
+/**
+ * Fixed-width left sidebar panel (256px) with scrollable content.
+ * Positioned absolutely on the left side of the viewport.
+ */
 export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ children, className }, ref) => {
     return (
