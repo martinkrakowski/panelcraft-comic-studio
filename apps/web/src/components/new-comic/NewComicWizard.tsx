@@ -17,7 +17,7 @@ import {
   ChevronRight,
   Check,
 } from 'lucide-react';
-import { Button } from '@panelcraft/ui';
+import { Button, SelectionChip } from '@panelcraft/ui';
 import { Textarea } from '@panelcraft/ui';
 import { useToast } from '@panelcraft/ui';
 import { WizardSidebar, CollapsibleSection } from '@panelcraft/ui';
@@ -719,6 +719,42 @@ export function NewComicWizard() {
                         <p id="prompt-error" className="text-xs text-red-400">
                           {errors.prompt.message}
                         </p>
+                      )}
+                      {(genres?.length > 0 || tones?.length > 0) && (
+                        <div
+                          className="flex gap-1.5 flex-wrap pt-1"
+                          role="group"
+                          aria-label="Active selections"
+                        >
+                          {genres.map((g) => (
+                            <SelectionChip
+                              key={`genres-${g}`}
+                              label={g}
+                              variant="genre"
+                              onDismiss={() => {
+                                setValue(
+                                  'genres',
+                                  genres.filter((x) => x !== g)
+                                );
+                                saveToIndexedDB();
+                              }}
+                            />
+                          ))}
+                          {tones.map((t) => (
+                            <SelectionChip
+                              key={`tones-${t}`}
+                              label={t}
+                              variant="tone"
+                              onDismiss={() => {
+                                setValue(
+                                  'tones',
+                                  tones.filter((x) => x !== t)
+                                );
+                                saveToIndexedDB();
+                              }}
+                            />
+                          ))}
+                        </div>
                       )}
                     </div>
 

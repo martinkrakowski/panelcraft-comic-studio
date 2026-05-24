@@ -9,6 +9,7 @@ export * from './components/elements/button';
 export * from './components/elements/card';
 export * from './components/elements/input';
 export * from './components/elements/progress';
+export * from './components/elements/selection-chip';
 export * from './components/elements/skeleton';
 export * from './components/elements/textarea';
 
