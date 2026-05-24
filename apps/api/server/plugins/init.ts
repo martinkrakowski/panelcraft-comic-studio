@@ -1,5 +1,5 @@
 import { defineNitroPlugin, useRuntimeConfig } from 'nitropack/runtime';
-import { Queue, Worker } from 'bullmq';
+import { Queue } from 'bullmq';
 import {
   ComicGenerationUseCase,
   LangGraphOrchestrationAdapter,
@@ -12,6 +12,7 @@ import { InMemoryProjectRepository } from '@panelcraft/comic-project-management'
 import { BullMQJobQueueAdapter } from '../adapters/BullMQJobQueueAdapter.js';
 import { XaiLLMClientAdapter } from '../adapters/XaiLLMClientAdapter.js';
 import { initComicWorker } from '../workers/comic-worker.js';
+import { createLogger } from '@panelcraft/shared';
 
 /**
  * Nitro server initialization plugin.
@@ -26,6 +27,7 @@ export default defineNitroPlugin(async (nitroApp) => {
   if (!Number.isInteger(redisPort) || redisPort < 1 || redisPort > 65535)
     throw new Error(`Invalid redisPort: ${config.redisPort}`);
 
+  const logger = createLogger('API');
   const redisConnection = { host: config.redisHost, port: redisPort };
   const projectRepo = new InMemoryProjectRepository();
   const bullMQQueue = new Queue('comic-generation-queue', {
@@ -43,7 +45,7 @@ export default defineNitroPlugin(async (nitroApp) => {
           },
         }
       : {
-          generatePanel: async (command: GeneratePanelCommand) => {
+          generatePanel: async (_command: GeneratePanelCommand) => {
             throw new Error(
               'Real image generation adapter not yet implemented. Set USE_MOCK_IMAGE=true for development.'
             );
@@ -53,9 +55,14 @@ export default defineNitroPlugin(async (nitroApp) => {
   const langGraphAdapter = new LangGraphOrchestrationAdapter(
     imageGenPort,
     llmClient,
-    projectRepo
+    projectRepo,
+    logger
   );
-  const comicUseCase = new ComicGenerationUseCase(projectRepo, jobQueueAdapter);
+  const comicUseCase = new ComicGenerationUseCase(
+    projectRepo,
+    jobQueueAdapter,
+    logger
+  );
 
   // Inject dependencies into request context (Nitro event.context pattern)
   nitroApp.hooks.hook('request', (event) => {
@@ -63,19 +70,24 @@ export default defineNitroPlugin(async (nitroApp) => {
     event.context.comicUseCase = comicUseCase;
   });
 
-  const worker = initComicWorker(langGraphAdapter, projectRepo, bullMQQueue);
+  const worker = initComicWorker(
+    langGraphAdapter,
+    projectRepo,
+    bullMQQueue,
+    logger
+  );
 
   // Gracefully close BullMQ connections on server shutdown
   nitroApp.hooks.hook('close', async () => {
-    console.log('[BullMQ] Closing worker and queue connections...');
+    logger.info('[BullMQ] Closing worker and queue connections...');
     const results = await Promise.allSettled([
       worker.close(),
       bullMQQueue.close(),
     ]);
     const rejected = results.filter((r) => r.status === 'rejected');
     if (rejected.length > 0) {
-      console.error('[BullMQ] Shutdown errors:', rejected);
+      logger.error('[BullMQ] Shutdown errors:', undefined, { rejected });
     }
-    console.log('[BullMQ] Connections closed.');
+    logger.info('[BullMQ] Connections closed.');
   });
 });

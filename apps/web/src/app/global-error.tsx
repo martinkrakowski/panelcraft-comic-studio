@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Button } from '@panelcraft/ui';
 import { AlertCircle, RefreshCcw } from 'lucide-react';
+import { defaultLogger } from '@panelcraft/shared';
 
 /**
  * Root-level global error fallback page component acting as the application-level error boundary.
@@ -22,10 +23,13 @@ export default function GlobalError({
   reset: () => void;
 }) {
   const logged = useRef(false);
-  if (!logged.current) {
-    console.error('Root layout critical crash captured:', error);
-    logged.current = true;
-  }
+
+  useEffect(() => {
+    if (!logged.current) {
+      defaultLogger.error('Root layout critical crash captured:', error);
+      logged.current = true;
+    }
+  }, [error]);
 
   return (
     <html lang="en">

@@ -11,7 +11,7 @@ import {
   FeedbackEntry,
 } from '@panelcraft/comic-project-management';
 import { randomUUID } from 'node:crypto';
-import { NotFoundError, ValidationError } from '@panelcraft/shared';
+import { NotFoundError, ValidationError, LoggerPort } from '@panelcraft/shared';
 
 /**
  * Application use case for comic generation workflow orchestration.
@@ -21,7 +21,8 @@ import { NotFoundError, ValidationError } from '@panelcraft/shared';
 export class ComicGenerationUseCase implements RestControllerPort {
   constructor(
     private readonly projectRepo: RelationalDbPort,
-    private readonly taskQueue: JobQueuePort
+    private readonly taskQueue: JobQueuePort,
+    private readonly logger: LoggerPort
   ) {}
 
   async createProject(prompt: string, panelCount: number): Promise<string> {
@@ -170,7 +171,7 @@ export class ComicGenerationUseCase implements RestControllerPort {
 
     // If recovering from stuck state, log it
     if (isStuckProcessing) {
-      console.warn(
+      this.logger.warn(
         `[Recovery] Project ${projectId} was stuck in "processing" for ` +
           `${Math.round((Date.now() - new Date(project.getLastReviewSubmittedAt()!).getTime()) / 1000)}s. ` +
           `Allowing retry.`

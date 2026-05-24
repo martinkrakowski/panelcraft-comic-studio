@@ -16,6 +16,7 @@ dist/
 build/
 docs/
 out/
+!packages/*/src/**/out/
 *.tsbuildinfo
 
 # --- Lockfiles (choose one) ---

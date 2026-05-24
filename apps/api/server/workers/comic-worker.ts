@@ -2,6 +2,7 @@ import { Worker, Job, Queue } from 'bullmq';
 import type { LangGraphOrchestrationAdapter } from '@panelcraft/comic-generation';
 import type { RelationalDbPort } from '@panelcraft/comic-generation';
 import { ComicProject } from '@panelcraft/comic-project-management';
+import type { LoggerPort } from '@panelcraft/shared';
 
 /**
  * Comic generation worker processes jobs from the task queue.
@@ -10,7 +11,8 @@ import { ComicProject } from '@panelcraft/comic-project-management';
 export function initComicWorker(
   langGraphAdapter: LangGraphOrchestrationAdapter,
   projectRepo: RelationalDbPort,
-  queue: Queue
+  queue: Queue,
+  logger: LoggerPort
 ) {
   const graph = langGraphAdapter.getGraph();
 
@@ -26,7 +28,7 @@ export function initComicWorker(
         }
 
         if (job.name === 'start-comic') {
-          console.log(
+          logger.info(
             `[Worker] Starting comic generation for project: ${projectId}`
           );
 
@@ -57,14 +59,14 @@ export function initComicWorker(
           updatedProject.setStatus('pending_review');
           await projectRepo.save(updatedProject);
 
-          console.log(
+          logger.info(
             `[Worker] First panel generated for project ${projectId}. Waiting for HITL review.`
           );
         } else if (job.name === 'resume-comic') {
           const { feedback } = job.data;
-          console.log(
+          logger.info(
             `[Worker] Resuming workflow for project ${projectId} with feedback:`,
-            feedback
+            { feedback }
           );
 
           // Resume the graph with human feedback
@@ -89,12 +91,12 @@ export function initComicWorker(
           // Update project status based on workflow completion
           if (currentThreadState.values.currentPanelIndex >= panelCountValue) {
             updatedProject.setStatus('completed');
-            console.log(
+            logger.info(
               `[Worker] Comic generation completed for project ${projectId}.`
             );
           } else {
             updatedProject.setStatus('pending_review');
-            console.log(
+            logger.info(
               `[Worker] Panel ${currentThreadState.values.currentPanelIndex} generated. ` +
                 `Waiting for HITL review (${currentThreadState.values.currentPanelIndex}/${panelCountValue}).`
             );
@@ -102,7 +104,10 @@ export function initComicWorker(
           await projectRepo.save(updatedProject);
         }
       } catch (error) {
-        console.error(`[Worker] Error processing job ${job.id}:`, error);
+        logger.error(
+          `[Worker] Error processing job ${job.id}:`,
+          error as Error
+        );
 
         // If this is the last attempt, reset project status to allow recovery
         const totalAttempts = job.opts.attempts ?? 1;
@@ -121,15 +126,15 @@ export function initComicWorker(
               }
 
               await projectRepo.save(project);
-              console.warn(
+              logger.warn(
                 `[Worker] Job ${job.id} failed permanently. ` +
                   `Updated project ${projectId} to "${project.getStatus()}".`
               );
             }
           } catch (recoveryError) {
-            console.error(
+            logger.error(
               `[Worker] Failed to recover project ${projectId}:`,
-              recoveryError
+              recoveryError as Error
             );
           }
         }
