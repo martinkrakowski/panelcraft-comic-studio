@@ -3,7 +3,7 @@ import {
   readMultipartFormData,
   setResponseStatus,
 } from 'h3';
-import { ok } from '../../utils/envelope.js';
+import { ok, fail } from '../../utils/envelope.js';
 import { CreateProjectSchema } from '../../utils/schemas.js';
 import { getComicUseCase } from '../../utils/dependencies.js';
 import { getSupabaseClient, uploadToStorage } from '../../utils/supabase.js';
@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
   const formData = await readMultipartFormData(event);
   if (!formData) {
     setResponseStatus(event, 400);
-    return { error: 'Invalid multipart form data' };
+    return fail('PARSE_ERROR', 'Invalid multipart form data');
   }
 
   // Parse fields from form data
@@ -44,11 +44,14 @@ export default defineEventHandler(async (event) => {
   for (const file of files) {
     if (!file.type.startsWith('image/')) {
       setResponseStatus(event, 400);
-      return { error: `File ${file.name} is not an image (got ${file.type})` };
+      return fail(
+        'VALIDATION_ERROR',
+        `File ${file.name} is not an image (got ${file.type})`
+      );
     }
     if (file.data.length > MAX_FILE_SIZE) {
       setResponseStatus(event, 400);
-      return { error: `File ${file.name} exceeds 10MB limit` };
+      return fail('VALIDATION_ERROR', `File ${file.name} exceeds 10MB limit`);
     }
   }
 
@@ -59,7 +62,7 @@ export default defineEventHandler(async (event) => {
       genres = JSON.parse(fields.genres);
     } catch {
       setResponseStatus(event, 400);
-      return { error: 'Invalid genres JSON' };
+      return fail('PARSE_ERROR', 'Invalid genres JSON');
     }
   }
 
@@ -69,14 +72,14 @@ export default defineEventHandler(async (event) => {
       tones = JSON.parse(fields.tones);
     } catch {
       setResponseStatus(event, 400);
-      return { error: 'Invalid tones JSON' };
+      return fail('PARSE_ERROR', 'Invalid tones JSON');
     }
   }
 
   // Validate input
   const validationResult = CreateProjectSchema.safeParse({
     prompt: fields.prompt,
-    panelCount: fields.panelCount ? parseInt(fields.panelCount) : undefined,
+    panelCount: fields.panelCount ? Number(fields.panelCount) : undefined,
     genres,
     tones,
     characterBible: fields.characterBible,
@@ -87,10 +90,11 @@ export default defineEventHandler(async (event) => {
 
   if (!validationResult.success) {
     setResponseStatus(event, 400);
-    return {
-      error: 'Validation failed',
-      details: validationResult.error.flatten(),
-    };
+    return fail(
+      'VALIDATION_ERROR',
+      'Validation failed',
+      validationResult.error.flatten()
+    );
   }
 
   const validated = validationResult.data;
@@ -113,50 +117,86 @@ export default defineEventHandler(async (event) => {
     referenceImagePaths: [],
   });
 
-  // Step 2: Process and upload files with correct project ID
+  // Step 2: Process and upload files with correct project ID.
+  // Atomicity: if any upload (or the subsequent path update) fails, compensate
+  // by removing whatever has already been uploaded under this projectId, then
+  // re-throw so the caller sees the failure rather than a half-created project.
   const referenceImagePaths: string[] = [];
   const moodBoardImagePaths: string[] = [];
   const supabase = getSupabaseClient();
+  const uploadedPaths: string[] = [];
 
-  for (const file of files) {
-    // Resize and convert to WebP using sharp
-    const processedImage = await sharp(file.data)
-      .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toBuffer();
+  try {
+    for (const file of files) {
+      const processedImage = await sharp(file.data)
+        .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toBuffer();
 
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 9);
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 9);
 
-    let uploadPath = '';
-    if (file.name === 'referenceImages') {
-      uploadPath = `comics/${projectId}/references/${timestamp}-${randomId}.webp`;
-      const { path } = await uploadToStorage(
-        'comics',
-        uploadPath,
-        processedImage
-      );
-      referenceImagePaths.push(path);
-    } else if (file.name === 'moodBoardImages') {
-      uploadPath = `comics/${projectId}/mood-boards/${timestamp}-${randomId}.webp`;
-      const { path } = await uploadToStorage(
-        'comics',
-        uploadPath,
-        processedImage
-      );
-      moodBoardImagePaths.push(path);
+      let uploadPath = '';
+      const match = file.name.match(/^referenceImages(?:_(\d+))?$/);
+      if (match) {
+        uploadPath = `comics/${projectId}/references/${timestamp}-${randomId}.webp`;
+        const { path } = await uploadToStorage(
+          'comics',
+          uploadPath,
+          processedImage
+        );
+        const charIndex = match[1] ? parseInt(match[1], 10) : null;
+        if (charIndex !== null) {
+          referenceImagePaths[charIndex] = path;
+        } else {
+          referenceImagePaths.push(path);
+        }
+        uploadedPaths.push(path);
+      } else if (file.name === 'moodBoardImages') {
+        uploadPath = `comics/${projectId}/mood-boards/${timestamp}-${randomId}.webp`;
+        const { path } = await uploadToStorage(
+          'comics',
+          uploadPath,
+          processedImage
+        );
+        moodBoardImagePaths.push(path);
+        uploadedPaths.push(path);
+      }
     }
-  }
 
-  // Step 3: Update project with correct file paths
-  await getComicUseCase(event).updateProjectPaths(projectId, {
-    referenceImagePaths,
-    moodBoardImagePaths,
-  });
+    // Step 3: Update project with correct file paths
+    await getComicUseCase(event).updateProjectPaths(projectId, {
+      referenceImagePaths,
+      moodBoardImagePaths,
+    });
+  } catch (uploadOrUpdateErr) {
+    // Compensation: best-effort cleanup of any uploaded objects so we don't
+    // leave orphans pinned to a project that may never finish provisioning.
+    if (uploadedPaths.length > 0) {
+      try {
+        await supabase.storage.from('comics').remove(uploadedPaths);
+      } catch (cleanupErr) {
+        console.error(
+          `[projects.post] Failed to clean up uploads for project ${projectId}:`,
+          cleanupErr
+        );
+      }
+    }
+    setResponseStatus(event, 500);
+    return {
+      error: 'Failed to attach uploaded assets to project',
+      details:
+        uploadOrUpdateErr instanceof Error
+          ? uploadOrUpdateErr.message
+          : 'Unknown upload error',
+      projectId, // surface so the caller (or ops) can re-issue cleanup
+    };
+  }
 
   // Generate signed URLs for response
   const referenceSignedUrls = await Promise.all(
-    referenceImagePaths.map(async (path) => {
+    Array.from(referenceImagePaths).map(async (path) => {
+      if (!path) return '';
       const { data } = await supabase.storage
         .from('comics')
         .createSignedUrl(path, 3600);

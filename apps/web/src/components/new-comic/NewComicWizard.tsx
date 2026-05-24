@@ -42,10 +42,7 @@ import {
   STYLE_PRESETS,
   STEP_LABELS,
 } from '../../lib/wizard-constants';
-import {
-  getLayoutsForPanelCount,
-  type LayoutTemplate,
-} from '../../lib/layout-templates';
+import { getLayoutsForPanelCount } from '../../lib/layout-templates';
 import { LayoutPreview } from './LayoutPreview';
 import styles from './NewComicWizard.module.css';
 
@@ -329,12 +326,12 @@ export function NewComicWizard() {
       if (formData.artDirectionNotes)
         fd.append('artDirectionNotes', formData.artDirectionNotes);
 
-      // Append character reference images from persisted blobs
+      // Append character reference images from persisted blobs with indexed field names to preserve character identity
       formData.characters.forEach((char, i) => {
         const key = char.referenceImageKey;
         if (key && referenceImageBlobs[key]) {
           fd.append(
-            'referenceImages',
+            `referenceImages_${i}`,
             new File([referenceImageBlobs[key]], `char-${i}.webp`, {
               type: 'image/webp',
             })
@@ -368,6 +365,10 @@ export function NewComicWizard() {
 
   // Poll project status for layout selection
   const startPolling = (id: string) => {
+    // Clear any existing polling interval to prevent multiple simultaneous pollers
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
     setIsPolling(true);
     const interval = setInterval(async () => {
       try {
@@ -710,7 +711,7 @@ export function NewComicWizard() {
                           errors.prompt ? 'prompt-error' : undefined
                         }
                         {...register('prompt')}
-                        onBlur={saveToIndexedDB}
+                        onBlur={() => saveToIndexedDB()}
                         placeholder="A futuristic detective tracking down a rogue AI in a neon-drenched city..."
                         className="h-32 resize-none bg-slate-900/30 border-slate-700 text-white"
                       />
@@ -776,7 +777,7 @@ export function NewComicWizard() {
                               </label>
                               <input
                                 {...register(`characters.${index}.name`)}
-                                onBlur={saveToIndexedDB}
+                                onBlur={() => saveToIndexedDB()}
                                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white"
                               />
                               {errors.characters?.[index]?.name && (
@@ -791,7 +792,7 @@ export function NewComicWizard() {
                               </label>
                               <input
                                 {...register(`characters.${index}.role`)}
-                                onBlur={saveToIndexedDB}
+                                onBlur={() => saveToIndexedDB()}
                                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white"
                               />
                             </div>
@@ -803,7 +804,7 @@ export function NewComicWizard() {
                             </label>
                             <Textarea
                               {...register(`characters.${index}.visual`)}
-                              onBlur={saveToIndexedDB}
+                              onBlur={() => saveToIndexedDB()}
                               placeholder="Mid-40s, sharp jaw, dark trench coat..."
                               className="h-20 resize-none bg-slate-800 border border-slate-700 text-white text-sm"
                             />
@@ -895,7 +896,7 @@ export function NewComicWizard() {
                       </label>
                       <Textarea
                         {...register('globalStylePrompt')}
-                        onBlur={saveToIndexedDB}
+                        onBlur={() => saveToIndexedDB()}
                         placeholder="Gritty noir style with high contrast, heavy shadows..."
                         className="h-24 resize-none bg-slate-900/30 border-slate-700 text-white"
                       />
