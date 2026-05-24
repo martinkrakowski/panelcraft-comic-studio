@@ -4,6 +4,17 @@ export interface ComicProjectJSON {
   panelCount: number;
   panels?: unknown[];
   characterBible?: unknown;
+  genres?: string[];
+  tones?: string[];
+  styleReferences?: {
+    globalStylePrompt: string;
+    moodBoardPreset: string;
+    moodBoardImages: string[];
+    artDirectionNotes?: string;
+  } | null;
+  coverImageUrl?: string | null;
+  selectedLayout?: string | null;
+  layoutOptions?: string[] | null;
   status: string;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;

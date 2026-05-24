@@ -3,23 +3,18 @@ import api from '../api';
 import { CreateProjectInput } from '@panelcraft/types';
 
 /**
- * Custom React hook providing project-creation action state and a create operation for UI flows.
- * Returns loading and error states, and exposing a trigger function `createProject`.
- *
- * @returns Object containing the action callbacks and status states:
- * @returns.createProject - Async function accepting CreateProjectInput parameter that registers loading, clears error, and calls api.createProject, returning the API response or throwing an Error.
- * @returns.loading - Boolean indicating whether the project creation is currently in progress.
- * @returns.error - Error object if creation failed, or null.
+ * Custom React hook providing project-creation action state for the wizard flow.
+ * Handles multipart form data upload to support image files.
  */
 export function useCreateProject() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const createProject = async (input: CreateProjectInput) => {
+  const createProject = async (formData: FormData) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.createProject(input);
+      const res = await api.createProjectMultipart(formData);
       return res;
     } catch (err) {
       const finalErr =
@@ -31,8 +26,24 @@ export function useCreateProject() {
     }
   };
 
+  const selectLayout = async (projectId: string, layout: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.selectLayout(projectId, layout);
+    } catch (err) {
+      const finalErr =
+        err instanceof Error ? err : new Error('Failed to select layout');
+      setError(finalErr);
+      throw finalErr;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     createProject,
+    selectLayout,
     loading,
     error,
   };

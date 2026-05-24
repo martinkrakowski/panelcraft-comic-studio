@@ -7,7 +7,14 @@ export interface ProjectData {
   id: string;
   prompt: string;
   panelCount: number;
-  status: 'created' | 'processing' | 'pending_review' | 'completed' | 'failed';
+  status:
+    | 'created'
+    | 'processing'
+    | 'pending_creation'
+    | 'pending_review'
+    | 'pending_layout'
+    | 'completed'
+    | 'failed';
   createdAt: string;
   panels?: Array<{
     id: string;
@@ -16,17 +23,40 @@ export interface ProjectData {
     imageUrl: string | null;
   }>;
   characterBible?: unknown;
+  // Wizard-specific fields
+  genres?: string[];
+  tones?: string[];
+  styleReferences?: {
+    globalStylePrompt: string;
+    moodBoardPreset: string;
+    moodBoardImages: string[];
+    artDirectionNotes?: string;
+  };
+  coverImageUrl?: string | null;
+  selectedLayout?: string | null;
+  layoutOptions?: string[] | null;
 }
 
 export interface RestControllerPort {
   /**
-   * Creates a new project and triggers the story structure, character bible generation,
-   * and the first panel generation.
-   * Runs the workflow asynchronously.
-   *
+   * Creates a new project with wizard support and triggers the workflow.
+   * @param options - Project creation options including wizard data
    * @returns The generated project ID.
    */
-  createProject(prompt: string, panelCount: number): Promise<string>;
+  createProject(options: {
+    prompt: string;
+    panelCount: number;
+    genres?: string[];
+    tones?: string[];
+    characterBible?: Record<string, unknown>;
+    styleReferences?: {
+      globalStylePrompt: string;
+      moodBoardPreset: string;
+      moodBoardImages: string[];
+      artDirectionNotes?: string;
+    };
+    referenceImagePaths?: string[];
+  }): Promise<string>;
 
   /**
    * Retrieves the current project status and panel list.
@@ -47,5 +77,23 @@ export interface RestControllerPort {
     approved: boolean,
     comment?: string,
     regenerationHint?: string
+  ): Promise<void>;
+
+  /**
+   * Selects a layout for the project and updates status.
+   */
+  selectLayout(projectId: string, selectedLayout: string): Promise<void>;
+
+  /**
+   * Enqueues a resume-comic job with the selected layout.
+   */
+  enqueueResumeComic(projectId: string, selectedLayout: string): Promise<void>;
+
+  /**
+   * Updates project with file paths after upload.
+   */
+  updateProjectPaths(
+    projectId: string,
+    paths: { referenceImagePaths?: string[]; moodBoardImagePaths?: string[] }
   ): Promise<void>;
 }

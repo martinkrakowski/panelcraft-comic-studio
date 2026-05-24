@@ -13,6 +13,7 @@ import { BullMQJobQueueAdapter } from '../adapters/BullMQJobQueueAdapter.js';
 import { XaiLLMClientAdapter } from '../adapters/XaiLLMClientAdapter.js';
 import { initComicWorker } from '../workers/comic-worker.js';
 import { createLogger } from '@panelcraft/shared';
+import { getSupabaseClient } from '../utils/supabase.js';
 
 /**
  * Nitro server initialization plugin.
@@ -43,6 +44,8 @@ export default defineNitroPlugin(async (nitroApp) => {
             await new Promise((r) => setTimeout(r, 500));
             return `https://example.com/panels/${command.panelNumber || 1}.png`;
           },
+          generateCover: async () => Buffer.from(''),
+          generatePreview: async () => Buffer.from(''),
         }
       : {
           generatePanel: async (_command: GeneratePanelCommand) => {
@@ -50,13 +53,20 @@ export default defineNitroPlugin(async (nitroApp) => {
               'Real image generation adapter not yet implemented. Set USE_MOCK_IMAGE=true for development.'
             );
           },
+          generateCover: async () => {
+            throw new Error('Real image generation not implemented');
+          },
+          generatePreview: async () => {
+            throw new Error('Real image generation not implemented');
+          },
         };
 
   const langGraphAdapter = new LangGraphOrchestrationAdapter(
     imageGenPort,
     llmClient,
     projectRepo,
-    logger
+    logger,
+    getSupabaseClient()
   );
   const comicUseCase = new ComicGenerationUseCase(
     projectRepo,
@@ -68,13 +78,16 @@ export default defineNitroPlugin(async (nitroApp) => {
   nitroApp.hooks.hook('request', (event) => {
     event.context = event.context || {};
     event.context.comicUseCase = comicUseCase;
+    event.context.llmClient = llmClient;
+    event.context.imageGenerationClient = imageGenPort;
   });
 
   const worker = initComicWorker(
     langGraphAdapter,
     projectRepo,
     bullMQQueue,
-    logger
+    logger,
+    getSupabaseClient()
   );
 
   // Gracefully close BullMQ connections on server shutdown

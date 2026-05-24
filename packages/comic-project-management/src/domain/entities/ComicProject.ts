@@ -12,6 +12,17 @@ export interface ComicProjectProps {
   panelCount: PanelCount;
   panels?: Panel[];
   characterBible?: CharacterBible | null;
+  genres?: string[];
+  tones?: string[];
+  styleReferences?: {
+    globalStylePrompt: string;
+    moodBoardPreset: string;
+    moodBoardImages: string[];
+    artDirectionNotes?: string;
+  } | null;
+  coverImageUrl?: string | null;
+  selectedLayout?: string | null;
+  layoutOptions?: string[] | null;
   status: string;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;
@@ -23,6 +34,17 @@ export interface ComicProjectJSON {
   panelCount: number;
   panels?: unknown[];
   characterBible?: unknown;
+  genres?: string[];
+  tones?: string[];
+  styleReferences?: {
+    globalStylePrompt: string;
+    moodBoardPreset: string;
+    moodBoardImages: string[];
+    artDirectionNotes?: string;
+  } | null;
+  coverImageUrl?: string | null;
+  selectedLayout?: string | null;
+  layoutOptions?: string[] | null;
   status: string;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;
@@ -33,6 +55,17 @@ export class ComicProject {
   private panelCount: PanelCount;
   private panels: Panel[];
   private characterBible: CharacterBible | null;
+  private genres: string[];
+  private tones: string[];
+  private styleReferences: {
+    globalStylePrompt: string;
+    moodBoardPreset: string;
+    moodBoardImages: string[];
+    artDirectionNotes?: string;
+  } | null;
+  private coverImageUrl: string | null;
+  private selectedLayout: string | null;
+  private layoutOptions: string[] | null;
   private status: string;
   private createdAt: string;
   private lastReviewSubmittedAt: string | null;
@@ -43,8 +76,19 @@ export class ComicProject {
   ) {
     this.prompt = props.prompt;
     this.panelCount = props.panelCount;
-    this.panels = props.panels || [];
+    this.panels = props.panels ? [...props.panels] : [];
     this.characterBible = props.characterBible || null;
+    this.genres = props.genres ? [...props.genres] : [];
+    this.tones = props.tones ? [...props.tones] : [];
+    this.styleReferences = props.styleReferences
+      ? {
+          ...props.styleReferences,
+          moodBoardImages: [...props.styleReferences.moodBoardImages],
+        }
+      : null;
+    this.coverImageUrl = props.coverImageUrl || null;
+    this.selectedLayout = props.selectedLayout || null;
+    this.layoutOptions = props.layoutOptions ? [...props.layoutOptions] : null;
     this.status = props.status;
     this.createdAt = props.createdAt;
     this.lastReviewSubmittedAt = props.lastReviewSubmittedAt || null;
@@ -71,11 +115,11 @@ export class ComicProject {
   }
 
   getPanels(): Panel[] {
-    return this.panels;
+    return [...this.panels];
   }
 
   setPanels(panels: Panel[]): void {
-    this.panels = panels;
+    this.panels = [...panels];
   }
 
   getCharacterBible(): CharacterBible | null {
@@ -84,6 +128,76 @@ export class ComicProject {
 
   setCharacterBible(bible: CharacterBible | null): void {
     this.characterBible = bible;
+  }
+
+  getGenres(): string[] {
+    return [...this.genres];
+  }
+
+  setGenres(genres: string[]): void {
+    this.genres = [...genres];
+  }
+
+  getTones(): string[] {
+    return [...this.tones];
+  }
+
+  setTones(tones: string[]): void {
+    this.tones = [...tones];
+  }
+
+  getStyleReferences(): {
+    globalStylePrompt: string;
+    moodBoardPreset: string;
+    moodBoardImages: string[];
+    artDirectionNotes?: string;
+  } | null {
+    return this.styleReferences
+      ? {
+          ...this.styleReferences,
+          moodBoardImages: [...this.styleReferences.moodBoardImages],
+        }
+      : null;
+  }
+
+  setStyleReferences(
+    refs: {
+      globalStylePrompt: string;
+      moodBoardPreset: string;
+      moodBoardImages: string[];
+      artDirectionNotes?: string;
+    } | null
+  ): void {
+    this.styleReferences = refs
+      ? {
+          ...refs,
+          moodBoardImages: [...refs.moodBoardImages],
+        }
+      : null;
+  }
+
+  getCoverImageUrl(): string | null {
+    return this.coverImageUrl;
+  }
+
+  setCoverImageUrl(url: string | null): void {
+    this.coverImageUrl = url;
+  }
+
+  getSelectedLayout(): string | null {
+    return this.selectedLayout;
+  }
+
+  setSelectedLayout(layout: string | null): void {
+    this.selectedLayout = layout;
+  }
+
+  getLayoutOptions(): string[] | null {
+    return this.layoutOptions ? [...this.layoutOptions] : null;
+  }
+
+  setLayoutOptions(options: string[] | null): void {
+    this.layoutOptions = options ? [...options] : null;
   }
 
   /** Returns the current workflow status (e.g., 'created', 'pending_review', 'completed'). */
@@ -125,6 +239,17 @@ export class ComicProject {
       characterBible: this.characterBible
         ? this.characterBible.getValue()
         : null,
+      genres: this.genres.length > 0 ? [...this.genres] : undefined,
+      tones: this.tones.length > 0 ? [...this.tones] : undefined,
+      styleReferences: this.styleReferences
+        ? {
+            ...this.styleReferences,
+            moodBoardImages: [...this.styleReferences.moodBoardImages],
+          }
+        : null,
+      coverImageUrl: this.coverImageUrl,
+      selectedLayout: this.selectedLayout,
+      layoutOptions: this.layoutOptions ? [...this.layoutOptions] : null,
       status: this.status,
       createdAt: this.createdAt,
       lastReviewSubmittedAt: this.lastReviewSubmittedAt,
@@ -175,7 +300,15 @@ export class ComicProject {
       panelCount: panelCountResult.value!,
       panels: (json.panels || []).map((p) => Panel.fromJSON(p as PanelJSON)),
       characterBible,
-      status: json.status || 'pending',
+      genres: Array.isArray(json.genres) ? json.genres : [],
+      tones: Array.isArray(json.tones) ? json.tones : [],
+      styleReferences: json.styleReferences || null,
+      coverImageUrl: json.coverImageUrl || null,
+      selectedLayout: json.selectedLayout || null,
+      layoutOptions: Array.isArray(json.layoutOptions)
+        ? json.layoutOptions
+        : null,
+      status: json.status || 'pending_creation',
       createdAt: json.createdAt || new Date().toISOString(),
       lastReviewSubmittedAt: json.lastReviewSubmittedAt || null,
     });

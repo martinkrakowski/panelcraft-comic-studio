@@ -20,4 +20,27 @@ export interface LLMClientPort {
     systemPrompt: string,
     userPrompt: string
   ): Promise<Record<string, unknown>>;
+
+  /**
+   * Analyze a story prompt and return feedback + suggestions
+   * @param prompt User's story prompt
+   * @returns Feedback, estimated character count, suggested genres/tones
+   */
+  analyzePrompt(prompt: string): Promise<{
+    feedback: string;
+    estimatedCharactersCount: number;
+    suggestedGenres: string[];
+    suggestedTones: string[];
+  }>;
+
+  /**
+   * Extract characters from a story prompt
+   * @param prompt User's story prompt
+   * @param options Genres and tones for context
+   * @returns List of extracted characters
+   */
+  extractCharacters(
+    prompt: string,
+    options?: { genres?: string[]; tones?: string[] }
+  ): Promise<{ characters: Array<Record<string, unknown>> }>;
 }

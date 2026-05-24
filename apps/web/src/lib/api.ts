@@ -23,10 +23,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
  */
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
+  const isFormData = options?.body instanceof FormData;
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      // Only set JSON content type if not sending FormData
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options?.headers || {}),
     },
   });
@@ -76,17 +78,58 @@ export const api = {
   },
 
   /**
-   * Launches a new comic creation workflow in the background.
+   * Launches a new comic creation workflow with multipart form data (wizard flow).
    *
-   * @param input - The CreateProjectInput containing prompt and panelCount.
+   * @param formData - FormData containing all wizard fields and image files.
    * @returns A promise that resolves to the CreateProjectResponse containing new projectId.
    */
-  async createProject(
-    input: CreateProjectInput
+  async createProjectMultipart(
+    formData: FormData
   ): Promise<CreateProjectResponse> {
     return request<CreateProjectResponse>('/api/projects', {
       method: 'POST',
-      body: JSON.stringify(input),
+      body: formData,
+    });
+  },
+
+  /**
+   * Selects a layout for a project and resumes the LangGraph workflow.
+   *
+   * @param id - Project UUID
+   * @param layout - Selected layout identifier
+   */
+  async selectLayout(id: string, layout: string): Promise<void> {
+    return request<void>(`/api/projects/${id}/layout`, {
+      method: 'POST',
+      body: JSON.stringify({ selectedLayout: layout }),
+    });
+  },
+
+  /**
+   * Retrieves latest project status.
+   *
+   * @param id - Project UUID
+   * @returns Updated project details
+   */
+  async getProjectStatus(id: string): Promise<ProjectDetailResponse> {
+    return request<ProjectDetailResponse>(`/api/projects/${id}`);
+  },
+
+  /**
+   * Sends a story prompt to the LLM analyzer and receives suggested genres and tones.
+   *
+   * @param prompt - The user's story prompt (10-1000 chars).
+   * @returns Suggested genres and tones plus optional LLM feedback metadata.
+   */
+  async analyzePrompt(prompt: string): Promise<{
+    feedback?: string;
+    estimatedCharactersCount?: number;
+    suggestedGenres: string[];
+    suggestedTones: string[];
+  }> {
+    return request('/api/wizard/analyze-prompt', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
     });
   },
 

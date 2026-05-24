@@ -141,4 +141,93 @@ export class XaiLLMClientAdapter implements LLMClientPort {
     }
     throw new ExternalServiceError('LLM call completed without response');
   }
+
+  /**
+   * Analyzes the comic story prompt to suggest initial genres, tones, and character count.
+   * Parses the JSON output from the LLM, defaulting fields if they are missing or malformed.
+   *
+   * @param prompt - The input comic story prompt or idea to analyze.
+   * @returns A promise that resolves to the prompt analysis result:
+   *  - `feedback`: Friendly feedback on the prompt (defaults to 'Interesting story concept!').
+   *  - `estimatedCharactersCount`: Predicted character count (defaults to 3).
+   *  - `suggestedGenres`: Array of suggested genres (defaults to empty array).
+   *  - `suggestedTones`: Array of suggested tones (defaults to empty array).
+   * @throws {ExternalServiceError} If the API call fails or times out.
+   * @throws {LLMResponseParsingError} If the response is not valid JSON.
+   */
+  async analyzePrompt(prompt: string): Promise<{
+    feedback: string;
+    estimatedCharactersCount: number;
+    suggestedGenres: string[];
+    suggestedTones: string[];
+  }> {
+    const systemPrompt = `You are Varo, an AI comic story analyst. Analyze the user's story prompt and provide:
+1. A friendly, encouraging feedback message about the prompt
+2. Estimated number of characters in the story (integer)
+3. Suggested genres (array of strings, e.g., ["Noir", "Mystery"])
+4. Suggested tones (array of strings, e.g., ["Dark", "Suspenseful"])
+
+Return ONLY valid JSON in this format: {
+  "feedback": "string",
+  "estimatedCharactersCount": number,
+  "suggestedGenres": string[],
+  "suggestedTones": string[]
+}`;
+
+    const response = await this.call(systemPrompt, prompt);
+
+    return {
+      feedback: String(response.feedback || 'Interesting story concept!'),
+      estimatedCharactersCount: Number(response.estimatedCharactersCount) || 3,
+      suggestedGenres: Array.isArray(response.suggestedGenres)
+        ? response.suggestedGenres.map(String)
+        : [],
+      suggestedTones: Array.isArray(response.suggestedTones)
+        ? response.suggestedTones.map(String)
+        : [],
+    };
+  }
+
+  /**
+   * Extracts characters from the story prompt with their roles, visual descriptions, and consistency notes.
+   *
+   * @param prompt - The input comic story prompt containing character actions/descriptions.
+   * @param options - Optional context parameters.
+   * @param options.genres - Array of genres to guide character styling and role assumptions.
+   * @param options.tones - Array of tones to influence character personality and descriptions.
+   * @returns A promise that resolves to an object containing:
+   *  - `characters`: Array of extracted character objects, each with a name, role, visual details, and consistency guidelines.
+   * @throws {ExternalServiceError} If the API call fails or times out.
+   * @throws {LLMResponseParsingError} If the response is not valid JSON.
+   */
+  async extractCharacters(
+    prompt: string,
+    options?: { genres?: string[]; tones?: string[] }
+  ): Promise<{ characters: Array<Record<string, unknown>> }> {
+    const genres = options?.genres?.join(', ') || 'any';
+    const tones = options?.tones?.join(', ') || 'any';
+
+    const systemPrompt = `You are Varo, an AI character extraction specialist. Extract characters from the story prompt and return them in this JSON format: {
+  "characters": [
+    {
+      "name": "string",
+      "role": "protagonist|antagonist|supporting",
+      "visual": "string describing visual appearance",
+      "consistency": "string describing consistency notes"
+    }
+  ]
+}
+
+Genres: ${genres}
+Tones: ${tones}
+
+Return ONLY valid JSON.`;
+
+    const response = await this.call(systemPrompt, prompt);
+    const characters = Array.isArray(response.characters)
+      ? response.characters
+      : [];
+
+    return { characters };
+  }
 }
