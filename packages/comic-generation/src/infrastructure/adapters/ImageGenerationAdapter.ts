@@ -28,7 +28,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       command.styleModifiers
     );
 
-    const response = await fetch(this.endpoint, {
+    const response = await this.fetchWithTimeout(this.endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       : '';
     const fullPrompt = `Comic book cover for story: ${options.prompt}. ${styleDesc} ${characterDesc}. Professional comic cover, bold title, vibrant colors, dynamic composition.`;
 
-    const response = await fetch(this.endpoint, {
+    const response = await this.fetchWithTimeout(this.endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -103,7 +103,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       throw new Error('xAI cover generation returned no image URL');
 
     // Fetch image and convert to buffer
-    const imageResponse = await fetch(imageUrl);
+    const imageResponse = await this.fetchWithTimeout(imageUrl, {});
     if (!imageResponse.ok)
       throw new Error('Failed to fetch generated cover image');
     return Buffer.from(await imageResponse.arrayBuffer());
@@ -111,15 +111,30 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
 
   async generatePreview(
     stylePrompt: string,
-    _options?: { preset?: string; moodBoardImages?: string[] }
+    options?: { preset?: string; moodBoardImages?: string[] }
   ): Promise<Buffer> {
     if (!this.apiKey) {
       throw new Error('XAI_API_KEY environment variable is not set');
     }
 
-    const fullPrompt = `Quick style preview: ${stylePrompt}. Simple comic object on neutral background, clean lines, flat colors.`;
+    // Incorporate the chosen preset as a style guide and acknowledge any
+    // mood board references the caller supplied. The image API does not
+    // currently accept reference images directly, so we describe their
+    // count in the prompt to bias the generation.
+    const presetSegment = options?.preset
+      ? ` Style preset: ${options.preset}.`
+      : '';
+    const moodBoardSegment =
+      options?.moodBoardImages && options.moodBoardImages.length > 0
+        ? ` Inspired by ${options.moodBoardImages.length} mood board reference${
+            options.moodBoardImages.length === 1 ? '' : 's'
+          }.`
+        : '';
+    const fullPrompt =
+      `Quick style preview: ${stylePrompt}.${presetSegment}${moodBoardSegment} ` +
+      `Simple comic object on neutral background, clean lines, flat colors.`;
 
-    const response = await fetch(this.endpoint, {
+    const response = await this.fetchWithTimeout(this.endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -146,10 +161,40 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       throw new Error('xAI preview generation returned no image URL');
     }
 
-    const imageResponse = await fetch(imageUrl);
+    const imageResponse = await this.fetchWithTimeout(imageUrl, {});
     if (!imageResponse.ok)
       throw new Error('Failed to fetch generated preview image');
     return Buffer.from(await imageResponse.arrayBuffer());
+  }
+
+  private async fetchWithTimeout(
+    url: string,
+    options: RequestInit,
+    timeoutMs = 15000
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return response;
+    } catch (err) {
+      if (
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err &&
+          typeof err === 'object' &&
+          'name' in err &&
+          (err as { name: string }).name === 'AbortError')
+      ) {
+        throw new Error(`Request to ${url} timed out after ${timeoutMs}ms`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(id);
+    }
   }
 
   private buildComicPrompt(basePrompt: string, modifiers?: string): string {

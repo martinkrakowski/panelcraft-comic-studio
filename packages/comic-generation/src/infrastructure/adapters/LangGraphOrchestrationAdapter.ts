@@ -95,12 +95,6 @@ export class LangGraphOrchestrationAdapter {
   }
 
   private async structureStory(state: ComicGraphStateType) {
-    // Skip if character bible is pre-seeded from wizard
-    if (state.project.characterBible) {
-      this.logger.info('Skipping structureStory: character bible pre-seeded');
-      return state;
-    }
-
     const { prompt, panelCount } = state.project;
 
     this.logger.info(`Structuring story into ${panelCount} panels...`);

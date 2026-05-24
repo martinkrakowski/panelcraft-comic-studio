@@ -57,6 +57,15 @@ export function initComicWorker(
               const updatedProject = ComicProject.fromJSON(
                 state.values.project
               );
+              // Persist the cover + layout options that live at the LangGraph
+              // root state into the project entity so the layout chooser UI
+              // can read them back after the interrupt.
+              if (state.values.coverImageUrl) {
+                updatedProject.setCoverImageUrl(state.values.coverImageUrl);
+              }
+              if (Array.isArray(state.values.layoutOptions)) {
+                updatedProject.setLayoutOptions(state.values.layoutOptions);
+              }
               updatedProject.setStatus('pending_layout');
               await projectRepo.save(updatedProject);
               logger.info(
@@ -72,6 +81,16 @@ export function initComicWorker(
           });
           const projectJson = currentThreadState.values.project;
           const updatedProject = ComicProject.fromJSON(projectJson);
+          if (currentThreadState.values.coverImageUrl) {
+            updatedProject.setCoverImageUrl(
+              currentThreadState.values.coverImageUrl
+            );
+          }
+          if (Array.isArray(currentThreadState.values.layoutOptions)) {
+            updatedProject.setLayoutOptions(
+              currentThreadState.values.layoutOptions
+            );
+          }
           updatedProject.setStatus('pending_review');
           await projectRepo.save(updatedProject);
 
@@ -84,18 +103,43 @@ export function initComicWorker(
             `[Worker] Resuming workflow for project ${projectId} with layout: ${selectedLayout}`
           );
 
-          await graph.invoke(
-            { selectedLayout },
-            {
-              configurable: { thread_id: projectId },
+          try {
+            await graph.invoke(
+              { selectedLayout },
+              {
+                configurable: { thread_id: projectId },
+              }
+            );
+          } catch (err) {
+            if (
+              err &&
+              typeof err === 'object' &&
+              'name' in err &&
+              (err as { name: string }).name === 'NodeInterrupt'
+            ) {
+              logger.info(
+                `[Worker] Project ${projectId} paused by expected workflow interrupt`
+              );
+            } else {
+              throw err;
             }
-          );
+          }
 
           const currentThreadState = await graph.getState({
             configurable: { thread_id: projectId },
           });
           const projectJson = currentThreadState.values.project;
           const updatedProject = ComicProject.fromJSON(projectJson);
+          if (currentThreadState.values.coverImageUrl) {
+            updatedProject.setCoverImageUrl(
+              currentThreadState.values.coverImageUrl
+            );
+          }
+          if (Array.isArray(currentThreadState.values.layoutOptions)) {
+            updatedProject.setLayoutOptions(
+              currentThreadState.values.layoutOptions
+            );
+          }
           const panelCountValue =
             typeof updatedProject.getPanelCount() === 'number'
               ? updatedProject.getPanelCount()
