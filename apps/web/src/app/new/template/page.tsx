@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
 
 const containerVariants = {
   hidden: {},
@@ -11,13 +11,17 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 18 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+  },
 };
 
 /**
  * Template library route page component (Step 3).
  * Renders the animated UI placeholder screen for the upcoming pre-made layouts selection feature.
- * 
+ *
  * @component
  * @returns React.Element template selection placeholder screen.
  */
@@ -35,7 +39,10 @@ export default function Page() {
         transition={{ delay: 0.05, duration: 0.5 }}
         className="w-full max-w-lg mb-8 px-4 relative z-10"
       >
-        <Link href="/new" className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors duration-200 group">
+        <Link
+          href="/new"
+          className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors duration-200 group"
+        >
           <ArrowLeft className="h-4 w-4 mr-2 transform group-hover:-translate-x-0.5 transition-transform duration-200" />
           Back
         </Link>
@@ -48,7 +55,10 @@ export default function Page() {
         animate="visible"
       >
         {/* Step indicator */}
-        <motion.div variants={itemVariants} className="flex items-center justify-center gap-2 mb-6">
+        <motion.div
+          variants={itemVariants}
+          className="flex items-center justify-center gap-2 mb-6"
+        >
           <div className="w-8 h-2 rounded-full bg-slate-700" />
           <div className="w-8 h-2 rounded-full bg-slate-700" />
           <div className="w-8 h-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600" />
@@ -76,7 +86,8 @@ export default function Page() {
             Templates are coming soon.
           </p>
           <p className="text-slate-500 text-xs">
-            This feature will allow you to explore and customize pre-made comic layouts.
+            This feature will allow you to explore and customize pre-made comic
+            layouts.
           </p>
         </motion.div>
       </motion.div>

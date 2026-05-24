@@ -29,7 +29,7 @@ describe('CharacterBible', () => {
   });
 
   it('rejects non-object input', () => {
-    const result = CharacterBible.create('not an object' as any);
+    const result = CharacterBible.create('not an object' as unknown);
     expect(result.success).toBe(false);
   });
 

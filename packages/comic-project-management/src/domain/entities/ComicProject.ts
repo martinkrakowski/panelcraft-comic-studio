@@ -1,12 +1,28 @@
-import { Panel } from "./Panel.js";
-import { ComicProjectId, ComicTitle, PanelCount, CharacterBible } from "../value-objects/index.js";
-import { ValidationError } from "../errors/ValidationError.js";
+import { Panel, PanelJSON } from './Panel.js';
+import {
+  ComicProjectId,
+  ComicTitle,
+  PanelCount,
+  CharacterBible,
+} from '../value-objects/index.js';
+import { ValidationError } from '../errors/ValidationError.js';
 
 export interface ComicProjectProps {
   prompt: ComicTitle;
   panelCount: PanelCount;
   panels?: Panel[];
   characterBible?: CharacterBible | null;
+  status: string;
+  createdAt: string;
+  lastReviewSubmittedAt?: string | null;
+}
+
+export interface ComicProjectJSON {
+  id: string;
+  prompt: string;
+  panelCount: number;
+  panels?: unknown[];
+  characterBible?: unknown;
   status: string;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;
@@ -105,8 +121,10 @@ export class ComicProject {
       id: this.id.getValue(),
       prompt: this.prompt.getValue(),
       panelCount: this.panelCount.getValue(),
-      panels: this.panels.map(p => p.toJSON()),
-      characterBible: this.characterBible ? this.characterBible.getValue() : null,
+      panels: this.panels.map((p) => p.toJSON()),
+      characterBible: this.characterBible
+        ? this.characterBible.getValue()
+        : null,
       status: this.status,
       createdAt: this.createdAt,
       lastReviewSubmittedAt: this.lastReviewSubmittedAt,
@@ -119,27 +137,35 @@ export class ComicProject {
    * Throws ValidationError if any field fails to construct.
    * Used to recover typed entities from persistent or serialized state.
    */
-  static fromJSON(json: any): ComicProject {
+  static fromJSON(json: ComicProjectJSON): ComicProject {
     const idResult = ComicProjectId.create(json.id);
     if (!idResult.success) {
-      throw new ValidationError(`ComicProject.fromJSON id: ${idResult.error?.message}`);
+      throw new ValidationError(
+        `ComicProject.fromJSON id: ${idResult.error?.message}`
+      );
     }
 
     const promptResult = ComicTitle.create(json.prompt);
     if (!promptResult.success) {
-      throw new ValidationError(`ComicProject.fromJSON prompt: ${promptResult.error?.message}`);
+      throw new ValidationError(
+        `ComicProject.fromJSON prompt: ${promptResult.error?.message}`
+      );
     }
 
     const panelCountResult = PanelCount.create(json.panelCount);
     if (!panelCountResult.success) {
-      throw new ValidationError(`ComicProject.fromJSON panelCount: ${panelCountResult.error?.message}`);
+      throw new ValidationError(
+        `ComicProject.fromJSON panelCount: ${panelCountResult.error?.message}`
+      );
     }
 
     let characterBible: CharacterBible | null = null;
     if (json.characterBible) {
       const charBibleResult = CharacterBible.create(json.characterBible);
       if (!charBibleResult.success) {
-        throw new ValidationError(`ComicProject.fromJSON characterBible: ${charBibleResult.error?.message}`);
+        throw new ValidationError(
+          `ComicProject.fromJSON characterBible: ${charBibleResult.error?.message}`
+        );
       }
       characterBible = charBibleResult.value!;
     }
@@ -147,12 +173,11 @@ export class ComicProject {
     return new ComicProject(idResult.value!, {
       prompt: promptResult.value!,
       panelCount: panelCountResult.value!,
-      panels: (json.panels || []).map((p: any) => Panel.fromJSON(p)),
+      panels: (json.panels || []).map((p) => Panel.fromJSON(p as PanelJSON)),
       characterBible,
-      status: json.status || "pending",
+      status: json.status || 'pending',
       createdAt: json.createdAt || new Date().toISOString(),
       lastReviewSubmittedAt: json.lastReviewSubmittedAt || null,
     });
   }
 }
-

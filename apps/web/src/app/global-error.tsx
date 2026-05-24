@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import React, { useRef } from "react";
-import { Button } from "@panelcraft/ui";
-import { AlertCircle, RefreshCcw } from "lucide-react";
+import React, { useRef } from 'react';
+import { Button } from '@panelcraft/ui';
+import { AlertCircle, RefreshCcw } from 'lucide-react';
 
 /**
  * Root-level global error fallback page component acting as the application-level error boundary.
  * Renders a user-safe fallback page in production to prevent leaking raw system exception messages.
- * 
+ *
  * @component
  * @param props - Component properties.
  * @param props.error - Error object containing the exception message and optional security digest tracking tag.
@@ -23,7 +23,7 @@ export default function GlobalError({
 }) {
   const logged = useRef(false);
   if (!logged.current) {
-    console.error("Root layout critical crash captured:", error);
+    console.error('Root layout critical crash captured:', error);
     logged.current = true;
   }
 
@@ -35,9 +35,12 @@ export default function GlobalError({
             <AlertCircle className="h-10 w-10 animate-pulse" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-white">Critical System Error</h1>
+            <h1 className="text-2xl font-bold text-white">
+              Critical System Error
+            </h1>
             <p className="text-sm text-slate-400">
-              An unexpected critical error occurred at the system root level. Please try restarting the application.
+              An unexpected critical error occurred at the system root level.
+              Please try restarting the application.
             </p>
           </div>
           <Button

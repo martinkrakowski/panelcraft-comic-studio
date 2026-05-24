@@ -33,7 +33,9 @@ describe('FeedbackEntry', () => {
       regenerationHint: 'Make it more dynamic',
     });
     expect(result.success).toBe(true);
-    expect(result.value?.getValue().regenerationHint).toBe('Make it more dynamic');
+    expect(result.value?.getValue().regenerationHint).toBe(
+      'Make it more dynamic'
+    );
   });
 
   it('creates a feedback entry with both comment and regenerationHint', () => {
@@ -43,20 +45,20 @@ describe('FeedbackEntry', () => {
       regenerationHint: 'Try again with more detail',
     });
     expect(result.success).toBe(true);
-    const value = result.value?.getValue()!;
+    const value = result.value!.getValue();
     expect(value.comment).toBe('Not quite right');
     expect(value.regenerationHint).toBe('Try again with more detail');
   });
 
   it('rejects non-object input', () => {
-    const result = FeedbackEntry.create('not an object' as any);
+    const result = FeedbackEntry.create('not an object' as unknown);
     expect(result.success).toBe(false);
   });
 
   it('rejects missing approved field', () => {
     const result = FeedbackEntry.create({
       comment: 'Some comment',
-    } as any);
+    } as unknown);
     expect(result.success).toBe(false);
     expect(result.error?.message).toContain('approved');
   });
@@ -64,7 +66,7 @@ describe('FeedbackEntry', () => {
   it('rejects non-boolean approved value', () => {
     const result = FeedbackEntry.create({
       approved: 'yes',
-    } as any);
+    } as unknown);
     expect(result.success).toBe(false);
     expect(result.error?.message).toContain('approved');
   });
@@ -73,7 +75,7 @@ describe('FeedbackEntry', () => {
     const result = FeedbackEntry.create({
       approved: true,
       comment: 123,
-    } as any);
+    } as unknown);
     expect(result.success).toBe(false);
     expect(result.error?.message).toContain('comment');
   });
@@ -82,7 +84,7 @@ describe('FeedbackEntry', () => {
     const result = FeedbackEntry.create({
       approved: true,
       regenerationHint: { hint: 'test' },
-    } as any);
+    } as unknown);
     expect(result.success).toBe(false);
     expect(result.error?.message).toContain('regenerationHint');
   });

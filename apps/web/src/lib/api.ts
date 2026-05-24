@@ -6,15 +6,15 @@ import {
   CreateProjectInput,
   SubmitReviewInput,
   ReviewResponse,
-} from "@panelcraft/types";
+} from '@panelcraft/types';
 
 // Determine default API URL (automatically handles server-side rendering vs client browser execution)
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 /**
  * Performs a type-safe HTTP fetch request against the PanelCraft API.
  * Wraps results in the standard ResponseEnvelope structure.
- * 
+ *
  * @template T - The expected return type of the wrapped envelope's data.
  * @param path - Target API endpoint path (e.g. '/api/projects').
  * @param options - Optional HTTP fetch RequestInit options.
@@ -26,7 +26,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(options?.headers || {}),
     },
   });
@@ -46,7 +46,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   const envelope = (await response.json()) as ResponseEnvelope<T>;
   if (!envelope.success) {
-    throw new Error(envelope.error?.message || "API request failed");
+    throw new Error(envelope.error?.message || 'API request failed');
   }
 
   return envelope.data;
@@ -58,46 +58,51 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   /**
    * Retrieves the list of all active comic book projects.
-   * 
+   *
    * @returns A promise that resolves to the ProjectListResponse containing all summaries.
    */
   async getProjects(): Promise<ProjectListResponse> {
-    return request<ProjectListResponse>("/api/projects");
+    return request<ProjectListResponse>('/api/projects');
   },
-  
+
   /**
    * Retrieves full details and panel data of a specific comic project by uuid.
-   * 
+   *
    * @param id - The UUID string of the target project.
    * @returns A promise that resolves to the ProjectDetailResponse containing project details.
    */
   async getProject(id: string): Promise<ProjectDetailResponse> {
     return request<ProjectDetailResponse>(`/api/projects/${id}`);
   },
-  
+
   /**
    * Launches a new comic creation workflow in the background.
-   * 
+   *
    * @param input - The CreateProjectInput containing prompt and panelCount.
    * @returns A promise that resolves to the CreateProjectResponse containing new projectId.
    */
-  async createProject(input: CreateProjectInput): Promise<CreateProjectResponse> {
-    return request<CreateProjectResponse>("/api/projects", {
-      method: "POST",
+  async createProject(
+    input: CreateProjectInput
+  ): Promise<CreateProjectResponse> {
+    return request<CreateProjectResponse>('/api/projects', {
+      method: 'POST',
       body: JSON.stringify(input),
     });
   },
-  
+
   /**
    * Submits a panel feedback/approval review for the active generator node (HITL).
-   * 
+   *
    * @param id - The UUID string of the target project under review.
    * @param input - The SubmitReviewInput containing approved status and feedback comments.
    * @returns A promise that resolves to the ReviewResponse.
    */
-  async submitReview(id: string, input: SubmitReviewInput): Promise<ReviewResponse> {
+  async submitReview(
+    id: string,
+    input: SubmitReviewInput
+  ): Promise<ReviewResponse> {
     return request<ReviewResponse>(`/api/projects/${id}/review`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify(input),
     });
   },

@@ -61,6 +61,7 @@ describe('Character', () => {
   });
 
   it('rejects non-object input', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = Character.create('not an object' as any);
     expect(result.success).toBe(false);
   });

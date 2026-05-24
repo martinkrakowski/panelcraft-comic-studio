@@ -1,4 +1,4 @@
-import { ComicEditor } from "../../../components/editor/ComicEditor";
+import { ComicEditor } from '../../../components/editor/ComicEditor';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -7,7 +7,7 @@ interface PageProps {
 /**
  * Dynamic project detail route page component.
  * Resolves the dynamic id path parameter asynchronously and mounts the workspace editor.
- * 
+ *
  * @component
  * @param props - Component properties.
  * @param props.params - Promise resolving to the dynamic route path parameters containing the target project id.

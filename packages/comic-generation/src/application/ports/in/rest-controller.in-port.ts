@@ -5,7 +5,7 @@ export interface ProjectData {
   id: string;
   prompt: string;
   panelCount: number;
-  status: "created" | "processing" | "pending_review" | "completed" | "failed";
+  status: 'created' | 'processing' | 'pending_review' | 'completed' | 'failed';
   createdAt: string;
   panels?: Array<{
     id: string;
@@ -13,7 +13,7 @@ export interface ProjectData {
     status: string;
     imageUrl: string | null;
   }>;
-  characterBible?: any;
+  characterBible?: unknown;
 }
 
 export interface RestControllerPort {
@@ -46,4 +46,3 @@ export interface RestControllerPort {
     regenerationHint?: string
   ): Promise<void>;
 }
-

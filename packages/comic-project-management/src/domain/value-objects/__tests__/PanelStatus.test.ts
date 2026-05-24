@@ -19,7 +19,7 @@ describe('PanelStatus', () => {
   });
 
   it('rejects non-string values', () => {
-    const result = PanelStatus.create(123 as any);
+    const result = PanelStatus.create(123 as unknown as string);
     expect(result.success).toBe(false);
   });
 
