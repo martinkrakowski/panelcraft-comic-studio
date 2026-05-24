@@ -428,7 +428,7 @@ export function NewComicWizard() {
               </CollapsibleSection>
 
               <CollapsibleSection title="Recommended Layouts">
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <div className="space-y-3">
                   {getLayoutsForPanelCount(panelCount as 1 | 2 | 3 | 4).map(
                     (layout) => (
                       <button
@@ -438,18 +438,24 @@ export function NewComicWizard() {
                           setPreferredLayoutId(layout.id);
                           saveToIndexedDB();
                         }}
-                        className={`w-full p-2 rounded text-left text-xs transition-all border ${
+                        className={`w-full flex flex-col gap-2 p-2 rounded border text-left transition-all ${
                           preferredLayoutId === layout.id
                             ? 'bg-violet-600/30 border-violet-500 ring-1 ring-violet-400/50'
                             : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-violet-500/50'
                         }`}
                       >
-                        <p className="font-semibold text-white">
-                          {layout.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          {layout.description}
-                        </p>
+                        <div>
+                          <p className="text-xs font-semibold text-white">
+                            {layout.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            {layout.description}
+                          </p>
+                        </div>
+                        <LayoutPreview
+                          layout={layout}
+                          className="w-full h-24"
+                        />
                       </button>
                     )
                   )}
@@ -567,7 +573,8 @@ export function NewComicWizard() {
               <img
                 src="/tell-your-story.jpg"
                 alt="Tell your story"
-                className="w-full rounded-lg"
+                className="rounded-lg"
+                style={{ maxWidth: '784px', width: '100%', maxHeight: '100%' }}
               />
             </div>
           )}
