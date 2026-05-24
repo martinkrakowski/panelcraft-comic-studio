@@ -1,7 +1,12 @@
 import { RestControllerPort } from '../ports/in/rest-controller.in-port.js';
 import type { RelationalDbPort } from '../ports/out/relational-db.out-port.js';
 import type { JobQueuePort } from '../ports/out/job-queue.out-port.js';
-import { ComicProject, Panel } from '@panelcraft/comic-project-management';
+import {
+  ComicProject,
+  Panel,
+  Character,
+  CharacterBible,
+} from '@panelcraft/comic-project-management';
 import {
   ComicProjectId,
   ComicTitle,
@@ -275,13 +280,28 @@ export class ComicGenerationUseCase implements RestControllerPort {
       const bible = project.getCharacterBible();
       if (bible) {
         const characters = bible.getCharacters();
-        characters.forEach((char, index) => {
+        const updatedCharacters = characters.map((char, index) => {
           if (paths.referenceImagePaths![index]) {
-            // Update character's reference image
-            // Note: Character is immutable, so we need to create a new Character
-            // This is a simplified approach; in practice, you'd recreate the bible
+            const charValue = char.getValue();
+            // Create new Character with updated referenceImage (Character is immutable)
+            const updatedCharResult = Character.create({
+              ...charValue,
+              referenceImage: paths.referenceImagePaths[index],
+            });
+            if (updatedCharResult.success) {
+              return updatedCharResult.value!;
+            }
           }
+          return char; // Keep original if no update or update failed
         });
+
+        // Create new CharacterBible with updated characters
+        const newBibleResult = CharacterBible.create({
+          characters: updatedCharacters,
+        });
+        if (newBibleResult.success) {
+          project.setCharacterBible(newBibleResult.value!);
+        }
       }
     }
 

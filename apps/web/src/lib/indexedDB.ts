@@ -3,7 +3,6 @@
 const DB_NAME = 'comicWizard';
 const STORE_NAME = 'wizardState';
 const DB_VERSION = 1;
-const WIZARD_STATE_VERSION = 1;
 
 export interface WizardState {
   wizardStateVersion: 1;
@@ -37,6 +36,26 @@ let dbInstance: IDBDatabase | null = null;
 /** Guard for SSR environments */
 const isClient = typeof window !== 'undefined';
 
+/**
+ * Run database migrations based on version number
+ */
+function runMigrations(
+  db: IDBDatabase,
+  oldVersion: number,
+  newVersion: number
+): void {
+  for (let v = oldVersion + 1; v <= newVersion; v++) {
+    switch (v) {
+      case 2:
+        // Future migration: add new fields to wizard state
+        // Example: migrate old form structure to new version
+        console.warn('IndexedDB: migrating to version 2');
+        break;
+      // Add more cases for future versions
+    }
+  }
+}
+
 async function getDB(): Promise<IDBDatabase> {
   if (!isClient) throw new Error('IndexedDB not available on server');
   if (dbInstance) return dbInstance;
@@ -44,11 +63,13 @@ async function getDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
+      const oldVersion = (event as IDBVersionChangeEvent).oldVersion;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'id' });
       }
+      runMigrations(db, oldVersion, DB_VERSION);
     };
 
     request.onsuccess = () => {
@@ -79,6 +100,37 @@ export async function getWizardState(): Promise<WizardState | null> {
 
 export async function setWizardState(state: WizardState): Promise<void> {
   if (!isClient) return;
+
+  // Check storage quota before saving blobs
+  if (state.referenceImageBlobs || state.moodBoardImageBlobs.length > 0) {
+    try {
+      const estimate = await navigator.storage.estimate();
+      const usage = estimate.usage || 0;
+      const quota = estimate.quota || Infinity;
+      const percentUsed = (usage / quota) * 100;
+
+      if (percentUsed > 80) {
+        console.warn(
+          `IndexedDB storage ${percentUsed.toFixed(1)}% full. Consider submitting to free up space.`
+        );
+      }
+
+      // Warn if would exceed quota (approximate blob sizes)
+      const blobSize =
+        Object.values(state.referenceImageBlobs).reduce(
+          (sum, b) => sum + b.size,
+          0
+        ) + state.moodBoardImageBlobs.reduce((sum, b) => sum + b.size, 0);
+      if (usage + blobSize > quota) {
+        throw new Error(
+          'IndexedDB quota exceeded. Please submit the form or clear data.'
+        );
+      }
+    } catch (e) {
+      console.warn('Storage quota check failed:', e);
+    }
+  }
+
   try {
     const db = await getDB();
     return new Promise((resolve, reject) => {

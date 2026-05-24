@@ -38,6 +38,19 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Validate uploaded files (MIME type + size)
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      setResponseStatus(event, 400);
+      return { error: `File ${file.name} is not an image (got ${file.type})` };
+    }
+    if (file.data.length > MAX_FILE_SIZE) {
+      setResponseStatus(event, 400);
+      return { error: `File ${file.name} exceeds 10MB limit` };
+    }
+  }
+
   // Parse JSON fields
   let genres = undefined;
   if (fields.genres) {

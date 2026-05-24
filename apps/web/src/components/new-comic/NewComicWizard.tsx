@@ -29,43 +29,14 @@ import {
   type WizardState,
 } from '../../lib/indexedDB';
 import { wizardFormSchema } from '../../lib/validation/wizard-schemas';
+import {
+  GENRE_OPTIONS,
+  TONE_OPTIONS,
+  STYLE_PRESETS,
+  STEP_LABELS,
+  PANEL_PREVIEW_LAYOUTS,
+} from '../../lib/wizard-constants';
 import styles from './NewComicWizard.module.css';
-
-const GENRE_OPTIONS = [
-  'Action',
-  'Noir',
-  'Fantasy',
-  'Comedy',
-  'Cozy',
-  'Cyberpunk',
-  'Mystery',
-  'Romance',
-];
-const TONE_OPTIONS = [
-  'Dark',
-  'Suspenseful',
-  'Lighthearted',
-  'Dramatic',
-  'Gritty',
-  'Whimsical',
-  'Epic',
-  'Intimate',
-];
-const STYLE_PRESETS = [
-  { id: 'noir', label: 'Noir', preview: '/previews/noir.jpg' },
-  { id: 'anime', label: 'Anime', preview: '/previews/anime.jpg' },
-  { id: 'cyberpunk', label: 'Cyberpunk', preview: '/previews/cyberpunk.jpg' },
-  {
-    id: 'watercolor',
-    label: 'Watercolor',
-    preview: '/previews/watercolor.jpg',
-  },
-  { id: 'retro-comic', label: 'Retro Comic', preview: '/previews/retro.jpg' },
-  { id: 'charcoal', label: 'Charcoal', preview: '/previews/charcoal.jpg' },
-];
-
-const STEP_LABELS = ['Story', 'Characters', 'Style', 'Review', 'Layout'];
-const PANEL_PREVIEW_LAYOUTS = [[1], [1, 1], [1, 1, 1], [2, 1], [1, 2], [2, 2]];
 
 export function NewComicWizard() {
   const router = useRouter();
