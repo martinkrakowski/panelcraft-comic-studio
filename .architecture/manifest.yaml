@@ -83,12 +83,12 @@ generator:
       enabled: true
 apps:
   - name: web
-    framework: plain-ts
+    framework: nextjs
     depends_on: &ref_0
       - comic-generation
       - comic-project-management
   - name: api
-    framework: plain-ts
+    framework: nitro
     depends_on: *ref_0
 bounded_contexts:
   - name: shared

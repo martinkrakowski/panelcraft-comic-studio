@@ -1,4 +1,4 @@
-import { setResponseStatus, H3Event } from 'h3'
+import { setResponseStatus, H3Event, send } from 'h3'
 import { errorToHttpStatus, DomainError, NotFoundError } from '@panelcraft/shared'
 
 /**
@@ -59,7 +59,11 @@ export function handleServerError(error: unknown, event: H3Event) {
   console.error(`[${status}] ${logMessage}`)
   setResponseStatus(event, status)
 
-  return { success: false, error: { code, message: clientMessage } }
+  return send(
+    event,
+    JSON.stringify({ success: false, error: { code, message: clientMessage } }),
+    'application/json'
+  )
 }
 
 export default handleServerError

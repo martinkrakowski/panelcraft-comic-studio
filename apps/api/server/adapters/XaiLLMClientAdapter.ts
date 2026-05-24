@@ -15,9 +15,6 @@ export class XaiLLMClientAdapter implements LLMClientPort {
 
   constructor() {
     this.apiKey = process.env['XAI_API_KEY'] || '';
-    if (!this.apiKey) {
-      throw new Error('XAI_API_KEY environment variable is not set');
-    }
   }
 
   /**
@@ -30,7 +27,10 @@ export class XaiLLMClientAdapter implements LLMClientPort {
     systemPrompt: string,
     userPrompt: string,
     maxRetries: number = 2
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
+    if (!this.apiKey) {
+      throw new Error('XAI_API_KEY environment variable is not set. Please set it in your .env file.');
+    }
     const retries = Math.max(0, Math.floor(maxRetries));
 
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -93,7 +93,7 @@ export class XaiLLMClientAdapter implements LLMClientPort {
         }
 
         try {
-          return JSON.parse(content);
+          return JSON.parse(content) as Record<string, unknown>;
         } catch (parseError) {
           if (this.debug) {
             console.warn(`[LLM Parse Error] Invalid JSON: ${content.substring(0, 200)}`);
@@ -129,5 +129,6 @@ export class XaiLLMClientAdapter implements LLMClientPort {
         clearTimeout(timeoutId);
       }
     }
+    throw new ExternalServiceError('LLM call completed without response');
   }
 }
