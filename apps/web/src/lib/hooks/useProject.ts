@@ -51,7 +51,7 @@ export function useProject(id: string) {
   const [project, setProject] = useState<ComicProjectDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const inFlightRequestRef = useRef<{ id: string; promise: Promise<any> } | null>(null);
+  const inFlightRequestRef = useRef<{ id: string; promise: Promise<ComicProjectDTO | null> } | null>(null);
 
   const fetchProject = useCallback(async (silent = false) => {
     // If there is an active in-flight request for the SAME project id, return its promise

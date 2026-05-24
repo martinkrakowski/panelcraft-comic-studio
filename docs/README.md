@@ -19,7 +19,8 @@ Implementation plans and task breakdowns for major features and refactors.
 
 Architecture decisions, bounded context diagrams, and design patterns.
 
-- [**Authoritative UI Contract**](../DESIGN.md) — Definitive contract for UI development, design tokens, CSS variables, and layout API boundaries.
+- [**Authoritative UI Contract**](./architecture/design.md) — Definitive contract for UI development, design tokens, CSS variables, and layout API boundaries.
+- [**UI Library Architecture**](./architecture/ui-library.md) — Documentation detailing directory structure, presentation-only guidelines, and type constraints for @panelcraft/ui.
 
 ## Remediation
 

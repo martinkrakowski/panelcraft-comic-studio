@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { useProjects } from "../lib/hooks/useProjects";
+import { ProjectSummaryDTO } from "@panelcraft/types";
 
 interface WorkspaceContextType {
-  projects: any[];
+  projects: ProjectSummaryDTO[];
   loadingProjects: boolean;
   errorProjects: Error | null;
   refetchProjects: () => void;

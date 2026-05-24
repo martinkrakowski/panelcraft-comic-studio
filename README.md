@@ -41,9 +41,8 @@ Created as a technical demo for the Adobe Firefly team — showcasing stateful A
 │   ├── shared/                    # Value Objects and cross-cutting monorepo utilities
 │   ├── types/                     # Shared DTO definitions and API payload schemas
 │   └── ui/                        # Layered semantic UI components (primitives and controllers)
-├── docs/                          # Comprehensive project documentation
+├── docs/                          # Comprehensive project documentation (Design contracts, E2E, reviews)
 ├── AGENTS.md                      # Development workflow guidelines for AI agents
-└── DESIGN.md                      # Authoritative UI and design token contract
 ```
 
 ---

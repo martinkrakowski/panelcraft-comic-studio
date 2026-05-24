@@ -57,14 +57,16 @@ export interface ResponseEnvelope<T> {
   };
 }
 
+export interface ProjectSummaryDTO {
+  id: string;
+  prompt: string;
+  panelCount: number;
+  status: ProjectStatus;
+  createdAt: string;
+}
+
 export interface ProjectListResponse {
-  projects: {
-    id: string;
-    prompt: string;
-    panelCount: number;
-    status: string;
-    createdAt: string;
-  }[];
+  projects: ProjectSummaryDTO[];
 }
 
 export interface ProjectDetailResponse {
