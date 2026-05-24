@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useProject } from "../../lib/hooks/useProject";
 import api from "../../lib/api";
 import { submitReviewSchema, type SubmitReviewFormValues } from "../../lib/validation/form-schemas";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge, Button, Textarea, Progress, useToast, Skeleton } from "@panelcraft/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge, Button, buttonVariants, Textarea, Progress, useToast, Skeleton } from "@panelcraft/ui";
 import { ArrowLeft, CheckCircle, RefreshCw, AlertCircle, Sparkles, User, HelpCircle, Film, Image as ImageIcon, Send } from "lucide-react";
 
 interface ComicEditorProps {
@@ -148,8 +148,11 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
         <p className="text-slate-400 max-w-sm text-sm">
           {error?.message || "This project could not be loaded."}
         </p>
-        <Link href="/">
-          <Button variant="outline">Back to Dashboard</Button>
+        <Link
+          href="/"
+          className={buttonVariants({ variant: "outline" })}
+        >
+          Back to Dashboard
         </Link>
       </div>
     );
@@ -295,14 +298,20 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
                   </div>
 
                   <form onSubmit={handleSubmit(onSubmitReview)} className="space-y-3">
-                    <div className="space-y-1.5">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Feedback Comment</span>
-                      <Textarea
-                        placeholder="Provide details if requesting regeneration (e.g. 'Change the detective's coat to red and add rain effects'). Leave empty if approving."
-                        className="h-20 text-xs resize-none"
-                        {...register("comment")}
-                      />
-                    </div>
+                     <div className="space-y-1.5">
+                       <label
+                         htmlFor="feedback-comment"
+                         className="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                       >
+                         Feedback Comment
+                       </label>
+                       <Textarea
+                         id="feedback-comment"
+                         placeholder="Provide details if requesting regeneration (e.g. 'Change the detective's coat to red and add rain effects'). Leave empty if approving."
+                         className="h-20 text-xs resize-none"
+                         {...register("comment")}
+                       />
+                     </div>
 
                     <div className="flex items-center space-x-2 pt-2">
                       <Button

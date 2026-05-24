@@ -44,6 +44,10 @@ export interface SubmitReviewInput {
   comment?: string;
 }
 
+/**
+ * Standard API response envelope wrapping all server response payloads.
+ * Represents success status, typed data, and optional structured error details.
+ */
 export interface ResponseEnvelope<T> {
   success: boolean;
   data: T;

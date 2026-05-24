@@ -4,7 +4,7 @@ import React, { startTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "../../providers/WorkspaceProvider";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge, Button, Progress, Skeleton } from "@panelcraft/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge, Button, buttonVariants, Progress, Skeleton } from "@panelcraft/ui";
 import { Calendar, Film, Plus, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
 
 export function Dashboard() {
@@ -108,11 +108,16 @@ export function Dashboard() {
             Create, manage, and review AI-orchestrated panel storylines.
           </p>
         </div>
-        <Link href="/new">
-          <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none font-semibold flex items-center gap-2">
-            <Plus className="h-4.5 w-4.5" />
-            Create New Comic
-          </Button>
+        <Link
+          href="/new"
+          className={buttonVariants({
+            variant: "default",
+            size: "default",
+            className: "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none font-semibold flex items-center gap-2"
+          })}
+        >
+          <Plus className="h-4 w-4" />
+          Create New Comic
         </Link>
       </div>
 
@@ -128,11 +133,16 @@ export function Dashboard() {
           <CardDescription className="max-w-md mx-auto mb-6">
             Get started by entering a descriptive prompt. PanelCraft will outline your panels, structure characters, and generate scenes with human review at every step.
           </CardDescription>
-          <Link href="/new">
-            <Button className="bg-indigo-600 hover:bg-indigo-500 font-semibold flex items-center gap-2">
-              <Plus className="h-4.5 w-4.5" />
-              Start Your First Comic
-            </Button>
+          <Link
+            href="/new"
+            className={buttonVariants({
+              variant: "default",
+              size: "default",
+              className: "bg-indigo-600 hover:bg-indigo-500 font-semibold flex items-center gap-2"
+            })}
+          >
+            <Plus className="h-4 w-4" />
+            Start Your First Comic
           </Link>
         </Card>
       ) : (
@@ -145,7 +155,16 @@ export function Dashboard() {
               <Card
                 key={project.id}
                 onClick={() => handleCardClick(project.id)}
-                className={`cursor-pointer transition-all duration-300 relative group overflow-hidden ${
+                tabIndex={0}
+                role="button"
+                aria-label={`Open comic project: ${project.prompt}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleCardClick(project.id);
+                  }
+                }}
+                className={`cursor-pointer transition-all duration-300 relative group overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                   hasReviewPending
                     ? "border-amber-500/40 shadow-amber-500/5 hover:border-amber-500/60"
                     : "hover:scale-[1.01]"

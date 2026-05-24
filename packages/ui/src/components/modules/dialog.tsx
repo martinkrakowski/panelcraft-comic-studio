@@ -33,6 +33,9 @@ const DialogPortal = DialogPrimitive.Portal;
 
 const DialogClose = DialogPrimitive.Close;
 
+/**
+ * Semi-transparent overlay backdrop for the Dialog modal viewport.
+ */
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   NoSemanticState<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>>
@@ -48,6 +51,10 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/**
+ * Main content container for the modal dialog.
+ * Embeds viewport-centering animations, borders, shadows, and default close button.
+ */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   NoSemanticState<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>>
@@ -72,6 +79,9 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+/**
+ * Header section container inside the dialog, typically used to group title and description.
+ */
 const DialogHeader = ({
   className,
   ...props
@@ -86,6 +96,9 @@ const DialogHeader = ({
 );
 DialogHeader.displayName = "DialogHeader";
 
+/**
+ * Footer container section inside the dialog, used to group action buttons.
+ */
 const DialogFooter = ({
   className,
   ...props
@@ -100,6 +113,9 @@ const DialogFooter = ({
 );
 DialogFooter.displayName = "DialogFooter";
 
+/**
+ * Title element for the dialog, read aloud by screen readers on modal entry.
+ */
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -115,6 +131,9 @@ const DialogTitle = React.forwardRef<
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
+/**
+ * Subtext description detail for the dialog, read by screen readers on modal entry.
+ */
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>

@@ -10,6 +10,10 @@ import { NoSemanticState } from "../../types";
 
 const ToastProvider = ToastPrimitive.Provider;
 
+/**
+ * The visible viewport container for the active toast notifications queue.
+ * Positioned in the top/bottom corners of the screen.
+ */
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitive.Viewport>
@@ -54,6 +58,9 @@ export interface ToastProps
   extends NoSemanticState<React.ComponentPropsWithoutRef<typeof ToastPrimitive.Root>>,
     VariantProps<typeof toastVariants> {}
 
+/**
+ * Individual Toast notification card containing the message, action, and close controls.
+ */
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Root>,
   ToastProps
@@ -68,6 +75,9 @@ const Toast = React.forwardRef<
 });
 Toast.displayName = ToastPrimitive.Root.displayName;
 
+/**
+ * Action button inside a Toast notification, for interactive actions like Retry or Undo.
+ */
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Action>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitive.Action>
@@ -83,6 +93,9 @@ const ToastAction = React.forwardRef<
 ));
 ToastAction.displayName = ToastPrimitive.Action.displayName;
 
+/**
+ * Close button control inside a Toast notification.
+ */
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitive.Close>
@@ -101,6 +114,9 @@ const ToastClose = React.forwardRef<
 ));
 ToastClose.displayName = ToastPrimitive.Close.displayName;
 
+/**
+ * Title element for the individual Toast notification.
+ */
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitive.Title>
@@ -113,6 +129,9 @@ const ToastTitle = React.forwardRef<
 ));
 ToastTitle.displayName = ToastPrimitive.Title.displayName;
 
+/**
+ * Subtext description detail for the individual Toast notification message body.
+ */
 const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitive.Description>
@@ -127,6 +146,9 @@ ToastDescription.displayName = ToastPrimitive.Description.displayName;
 
 export type ToastActionElement = React.ReactElement<typeof ToastAction>;
 
+/**
+ * Application-wide Toaster component that subscribes to the useToast state and renders the list of active toasts.
+ */
 function Toaster() {
   const { toasts } = useToast();
 

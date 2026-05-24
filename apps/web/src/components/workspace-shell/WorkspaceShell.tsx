@@ -4,12 +4,16 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sparkles, Plus, Home, Film, CheckCircle } from "lucide-react";
-import { Button } from "@panelcraft/ui";
+import { Button, buttonVariants } from "@panelcraft/ui";
 
 interface WorkspaceShellProps {
   children: React.ReactNode;
 }
 
+/**
+ * Main application workspace shell wrapper that structures the layout grid.
+ * Houses global navigation header, top bar metadata badge, and project footer.
+ */
 export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const pathname = usePathname();
 
@@ -41,14 +45,16 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
 
             {/* Navigation links */}
             <nav className="hidden md:flex items-center space-x-1">
-              <Link href="/">
-                <Button
-                  variant={pathname === "/" ? "secondary" : "ghost"}
-                  className="gap-2 text-sm font-medium"
-                >
-                  <Home className="h-4 w-4" />
-                  Dashboard
-                </Button>
+              <Link
+                href="/"
+                className={buttonVariants({
+                  variant: pathname === "/" ? "secondary" : "ghost",
+                  size: "default",
+                  className: "gap-2 text-sm font-medium"
+                })}
+              >
+                <Home className="h-4 w-4" />
+                Dashboard
               </Link>
             </nav>
           </div>
@@ -60,11 +66,16 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
               <span>Adobe Firefly Demo</span>
             </div>
 
-            <Link href="/new">
-              <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none font-semibold shadow-lg shadow-indigo-500/25 flex items-center gap-2 hover:scale-[1.02] transition-transform duration-200">
-                <Plus className="h-4 w-4" />
-                <span>New Comic</span>
-              </Button>
+            <Link
+              href="/new"
+              className={buttonVariants({
+                variant: "default",
+                size: "default",
+                className: "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none font-semibold shadow-lg shadow-indigo-500/25 flex items-center gap-2 hover:scale-[1.02] transition-transform duration-200"
+              })}
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Comic</span>
             </Link>
           </div>
         </div>

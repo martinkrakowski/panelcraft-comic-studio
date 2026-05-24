@@ -1,9 +1,13 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useRef } from "react";
 import { Button } from "@panelcraft/ui";
 import { AlertCircle, RefreshCcw } from "lucide-react";
 
+/**
+ * Root-level global error fallback page for Next.js.
+ * Displays a user-safe message and prevents raw error exposure in production.
+ */
 export default function GlobalError({
   error,
   reset,
@@ -11,9 +15,11 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
+  const logged = useRef(false);
+  if (!logged.current) {
     console.error("Root layout critical crash captured:", error);
-  }, [error]);
+    logged.current = true;
+  }
 
   return (
     <html lang="en">
@@ -25,14 +31,14 @@ export default function GlobalError({
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-white">Critical System Error</h1>
             <p className="text-sm text-slate-400">
-              {error.message || "A critical error occurred at the system root layout level."}
+              An unexpected critical error occurred at the system root level. Please try restarting the application.
             </p>
           </div>
           <Button
             onClick={() => reset()}
             className="bg-indigo-600 hover:bg-indigo-500 font-semibold shadow-md flex items-center gap-2 mx-auto"
           >
-            <RefreshCcw className="h-4.5 w-4.5" />
+            <RefreshCcw className="h-4 w-4" />
             Restart Application
           </Button>
         </div>
