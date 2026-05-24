@@ -20,6 +20,15 @@ export interface ImageGenerationPort {
     style?: unknown;
     characterBible?: unknown;
   }): Promise<Buffer>;
+
+  /**
+   * Generates a quick style preview image
+   * @returns Image buffer of the preview
+   */
+  generatePreview(
+    stylePrompt: string,
+    options?: { preset?: string; moodBoardImages?: string[] }
+  ): Promise<Buffer>;
 }
 
 // Re-export for convenience

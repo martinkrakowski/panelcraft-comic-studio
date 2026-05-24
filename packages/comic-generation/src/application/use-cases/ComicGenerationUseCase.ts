@@ -270,6 +270,7 @@ export class ComicGenerationUseCase implements RestControllerPort {
     projectId: string,
     paths: { referenceImagePaths?: string[]; moodBoardImagePaths?: string[] }
   ): Promise<void> {
+    const { referenceImagePaths, moodBoardImagePaths } = paths;
     const project = await this.projectRepo.load(projectId);
     if (!project) {
       throw new NotFoundError(`Project ${projectId} not found`, projectId);
@@ -281,12 +282,12 @@ export class ComicGenerationUseCase implements RestControllerPort {
       if (bible) {
         const characters = bible.getCharacters();
         const updatedCharacters = characters.map((char, index) => {
-          if (paths.referenceImagePaths![index]) {
+          if (referenceImagePaths?.[index]) {
             const charValue = char.getValue();
             // Create new Character with updated referenceImage (Character is immutable)
             const updatedCharResult = Character.create({
               ...charValue,
-              referenceImage: paths.referenceImagePaths[index],
+              referenceImage: referenceImagePaths[index],
             });
             if (updatedCharResult.success) {
               return updatedCharResult.value!;

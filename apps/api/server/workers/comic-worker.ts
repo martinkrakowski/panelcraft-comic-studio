@@ -16,7 +16,7 @@ export function initComicWorker(
 
   return new Worker(
     'comic-generation-queue',
-    async (job: Job) => {
+    async (job: Job<Record<string, unknown>>) => {
       const { projectId } = job.data;
 
       try {

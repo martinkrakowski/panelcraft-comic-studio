@@ -1,7 +1,6 @@
-import { defineEventHandler, setResponseStatus } from 'h3';
-import { ok, fail } from '../../../utils/envelope.js';
-import { parseBody } from '../../../utils/validation.js';
-import { ParamIdSchema } from '../../../utils/schemas.js';
+import { defineEventHandler, getRouterParam, setResponseStatus } from 'h3';
+import { fail } from '../../../utils/envelope.js';
+import { z } from 'zod';
 import { getSupabaseClient } from '../../../utils/supabase.js';
 
 /**
@@ -11,8 +10,9 @@ import { getSupabaseClient } from '../../../utils/supabase.js';
  * @returns 200 on success, 404 if not found, 500 on error
  */
 export default defineEventHandler(async (event) => {
-  const { id: projectId } = parseBody(ParamIdSchema, event.context.params);
-  const supabase = getSupabaseClient();
+  const { id: projectId } = z.object({ id: z.string().uuid() }).parse({
+    id: getRouterParam(event, 'id'),
+  });
 
   try {
     // 1. Verify project exists and get storage paths

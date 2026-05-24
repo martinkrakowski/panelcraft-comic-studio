@@ -109,6 +109,49 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     return Buffer.from(await imageResponse.arrayBuffer());
   }
 
+  async generatePreview(
+    stylePrompt: string,
+    _options?: { preset?: string; moodBoardImages?: string[] }
+  ): Promise<Buffer> {
+    if (!this.apiKey) {
+      throw new Error('XAI_API_KEY environment variable is not set');
+    }
+
+    const fullPrompt = `Quick style preview: ${stylePrompt}. Simple comic object on neutral background, clean lines, flat colors.`;
+
+    const response = await fetch(this.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        prompt: fullPrompt,
+        n: 1,
+        response_format: 'url',
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `xAI preview generation failed (${response.status}): ${body}`
+      );
+    }
+
+    const json = (await response.json()) as XaiImageResponse;
+    const imageUrl = json.data[0]?.url;
+    if (!imageUrl) {
+      throw new Error('xAI preview generation returned no image URL');
+    }
+
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok)
+      throw new Error('Failed to fetch generated preview image');
+    return Buffer.from(await imageResponse.arrayBuffer());
+  }
+
   private buildComicPrompt(basePrompt: string, modifiers?: string): string {
     const style = modifiers ? `, ${modifiers}` : '';
     return `${basePrompt}. Professional comic book panel, bold black outlines, vibrant colors, dynamic composition, high detail${style}. Comic art style.`;

@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
 
   // Parse fields from form data
   const fields: Record<string, string> = {};
-  const files: { name: string; data: Buffer; type: string }[] = [];
+  const files: Array<{ name: string; data: Buffer; type: string }> = [];
 
   for (const part of formData) {
     if (part.filename) {

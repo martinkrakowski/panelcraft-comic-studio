@@ -28,7 +28,10 @@ import {
   clearWizardState,
   type WizardState,
 } from '../../lib/indexedDB';
-import { wizardFormSchema } from '../../lib/validation/wizard-schemas';
+import {
+  wizardFormSchema,
+  type WizardFormValues,
+} from '../../lib/validation/wizard-schemas';
 import {
   GENRE_OPTIONS,
   TONE_OPTIONS,

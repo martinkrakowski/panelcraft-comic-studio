@@ -15,8 +15,11 @@ import { checkRateLimit } from '../../utils/rate-limiter.js';
  */
 export default defineEventHandler(async (event) => {
   // Rate limiting: 10 requests per minute per IP
+  const headerValue = event.node.req.headers['x-forwarded-for'];
   const clientIp =
-    event.node.req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    (Array.isArray(headerValue) ? headerValue[0] : headerValue)
+      ?.split(',')[0]
+      ?.trim() ||
     event.node.req.socket.remoteAddress ||
     'unknown';
   const { allowed, retryAfter } = checkRateLimit(clientIp);
@@ -33,7 +36,12 @@ export default defineEventHandler(async (event) => {
     PreviewStyleSchema,
     await readBody(event)
   );
-  const imageClient = getImageGenerationClient(event);
+  const imageClient = getImageGenerationClient(event) as {
+    generatePreview: (
+      stylePrompt: string,
+      options?: { preset?: string; moodBoardImages?: string[] }
+    ) => Promise<Buffer>;
+  };
 
   try {
     const imageBuffer = await imageClient.generatePreview(stylePrompt, {

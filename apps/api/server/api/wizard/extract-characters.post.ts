@@ -13,8 +13,11 @@ import { checkRateLimit } from '../../utils/rate-limiter.js';
  */
 export default defineEventHandler(async (event) => {
   // Rate limiting: 10 requests per minute per IP
+  const headerValue = event.node.req.headers['x-forwarded-for'];
   const clientIp =
-    event.node.req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    (Array.isArray(headerValue) ? headerValue[0] : headerValue)
+      ?.split(',')[0]
+      ?.trim() ||
     event.node.req.socket.remoteAddress ||
     'unknown';
   const { allowed, retryAfter } = checkRateLimit(clientIp);
