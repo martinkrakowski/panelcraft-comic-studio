@@ -35,6 +35,11 @@ const DialogClose = DialogPrimitive.Close;
 
 /**
  * Semi-transparent overlay backdrop for the Dialog modal viewport.
+ * 
+ * @component
+ * @param props - Component props containing HTML attributes and optional className overrides.
+ * @param ref - Forwarded reference to the underlying Radix DialogOverlay primitive.
+ * @returns React.Element wrapping the Radix DialogPrimitive.Overlay component.
  */
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
@@ -54,6 +59,11 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 /**
  * Main content container for the modal dialog.
  * Embeds viewport-centering animations, borders, shadows, and default close button.
+ * 
+ * @component
+ * @param props - Component props containing HTML attributes, className, and child nodes.
+ * @param ref - Forwarded reference to the underlying Radix DialogContent primitive.
+ * @returns React.Element containing DialogOverlay and the Radix DialogPrimitive.Content portal.
  */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
@@ -81,6 +91,10 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 /**
  * Header section container inside the dialog, typically used to group title and description.
+ * 
+ * @component
+ * @param props - Component props containing HTML div attributes.
+ * @returns React.Element div styled as dialog header.
  */
 const DialogHeader = ({
   className,
@@ -98,6 +112,10 @@ DialogHeader.displayName = "DialogHeader";
 
 /**
  * Footer container section inside the dialog, used to group action buttons.
+ * 
+ * @component
+ * @param props - Component props containing HTML div attributes.
+ * @returns React.Element div styled as dialog footer.
  */
 const DialogFooter = ({
   className,
@@ -115,6 +133,11 @@ DialogFooter.displayName = "DialogFooter";
 
 /**
  * Title element for the dialog, read aloud by screen readers on modal entry.
+ * 
+ * @component
+ * @param props - Component props containing DialogTitle attributes.
+ * @param ref - Forwarded reference to the underlying Radix DialogTitle primitive.
+ * @returns React.Element heading styled for the dialog title.
  */
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
@@ -133,6 +156,11 @@ DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
 /**
  * Subtext description detail for the dialog, read by screen readers on modal entry.
+ * 
+ * @component
+ * @param props - Component props containing DialogDescription attributes.
+ * @param ref - Forwarded reference to the underlying Radix DialogDescription primitive.
+ * @returns React.Element paragraph containing the dialog description subtext.
  */
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,

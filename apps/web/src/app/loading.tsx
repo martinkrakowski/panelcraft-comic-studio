@@ -1,5 +1,12 @@
 import { Skeleton } from "@panelcraft/ui";
 
+/**
+ * Route-level loading boundary fallback interface.
+ * Renders a stylized skeletons container preview grid while dynamic router content is streaming.
+ * 
+ * @component
+ * @returns React.Element skeletons dashboard mock layout.
+ */
 export default function Loading() {
   return (
     <div className="space-y-6 animate-pulse">

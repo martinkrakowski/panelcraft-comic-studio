@@ -14,6 +14,16 @@ interface ComicEditorProps {
   projectId: string;
 }
 
+/**
+ * Image viewer component that displays a source image or renders a stylized fallback visual container on load failure.
+ * 
+ * @component
+ * @param props - Component properties.
+ * @param props.src - The source URL string of the image.
+ * @param props.alt - Alternative accessibility text string.
+ * @param props.className - Optional Tailwind CSS class names.
+ * @returns React.Element rendering image or an alert fallback block.
+ */
 function ImageWithFallback({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [error, setError] = React.useState(false);
 
@@ -36,6 +46,14 @@ function ImageWithFallback({ src, alt, className }: { src: string; alt: string; 
   );
 }
 
+/**
+ * Main application editor interface for viewing a comic project and approving/rejecting generation frames (HITL).
+ * 
+ * @component
+ * @param props - Component properties containing the target projectId.
+ * @param props.projectId - Unique UUID string of the project being loaded.
+ * @returns React.Element layout grid structuring progress panels, character outline, and active review editor.
+ */
 export function ComicEditor({ projectId }: ComicEditorProps) {
   const { toast } = useToast();
   const { project, loading, error, refetch } = useProject(projectId);
@@ -216,7 +234,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           <Card className="border-slate-800/80 bg-slate-900/40">
             <CardHeader className="p-4 border-b border-slate-800/40">
               <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <User className="h-4.5 w-4.5 text-indigo-400" />
+                <User className="h-4 w-4 text-indigo-400" />
                 Character Bible
               </CardTitle>
               <CardDescription className="text-xs">

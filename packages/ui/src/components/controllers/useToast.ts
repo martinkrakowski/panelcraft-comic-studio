@@ -134,10 +134,11 @@ function dispatch(action: Action) {
 
 /**
  * Trigger a new toast notification programmatically.
- * Returns tools to update or dismiss the notification.
+ * Generates a unique toast id, registers the toast internally as open, and returns 
+ * methods to programmatically update or dismiss the notification.
  * 
- * @param props - Configuration properties for the toast.
- * @returns Object containing the generated toast id, and dismiss/update callbacks.
+ * @param props - Configuration properties for the toast, omitting the automatically generated unique id.
+ * @returns Object containing the generated toast id string, a dismiss callback method, and an update callback method.
  */
 function toast({ ...props }: Omit<ToasterToast, "id">) {
   const id = genId();
@@ -169,10 +170,12 @@ function toast({ ...props }: Omit<ToasterToast, "id">) {
 }
 
 /**
- * Custom React hook to hook into toast notifications state.
- * Registers active listener state exactly once on component mount.
+ * Custom React hook to hook into global toast notifications state.
+ * Registers the component state listener callback exactly once on mount, 
+ * unregisters the callback on unmount, and exposes state/action callbacks.
+ * Registers a listener via React.useEffect.
  * 
- * @returns Active toasts list, main toast trigger, and a global dismiss function.
+ * @returns Object representing the current State plus the toast function and dismiss(toastId?: string) method.
  */
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState);

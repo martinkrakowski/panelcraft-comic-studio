@@ -1,21 +1,20 @@
 "use client";
 
-import React, { startTransition } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useWorkspace } from "../../providers/WorkspaceProvider";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge, Button, buttonVariants, Progress, Skeleton } from "@panelcraft/ui";
 import { Calendar, Film, Plus, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
 
+/**
+ * Main application dashboard landing page component.
+ * Renders the welcome banner, project summaries grid list, and empty creation placeholders.
+ * 
+ * @component
+ * @returns React.Element welcome card, creation button CTA, and grid cards.
+ */
 export function Dashboard() {
-  const router = useRouter();
   const { projects, loadingProjects, errorProjects, refetchProjects } = useWorkspace();
-
-  const handleCardClick = (id: string) => {
-    startTransition(() => {
-      router.push(`/projects/${id}`);
-    });
-  };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -152,60 +151,55 @@ export function Dashboard() {
             const hasReviewPending = project.status === "pending_review";
 
             return (
-              <Card
+              <Link
                 key={project.id}
-                onClick={() => handleCardClick(project.id)}
-                tabIndex={0}
-                role="button"
-                aria-label={`Open comic project: ${project.prompt}`}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleCardClick(project.id);
-                  }
-                }}
-                className={`cursor-pointer transition-all duration-300 relative group overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                  hasReviewPending
-                    ? "border-amber-500/40 shadow-amber-500/5 hover:border-amber-500/60"
-                    : "hover:scale-[1.01]"
-                }`}
+                href={`/projects/${project.id}`}
+                className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
-                {/* Visual Accent Glow for review actions */}
-                {hasReviewPending && (
-                  <div className="absolute top-0 right-0 h-1 w-full bg-amber-500 animate-pulse" />
-                )}
+                <Card
+                  className={`cursor-pointer transition-all duration-300 relative group overflow-hidden ${
+                    hasReviewPending
+                      ? "border-amber-500/40 shadow-amber-500/5 hover:border-amber-500/60"
+                      : "hover:scale-[1.01]"
+                  }`}
+                >
+                  {/* Visual Accent Glow for review actions */}
+                  {hasReviewPending && (
+                    <div className="absolute top-0 right-0 h-1 w-full bg-amber-500 animate-pulse" />
+                  )}
 
-                <CardHeader className="pb-4">
-                  <div className="flex justify-between items-start space-x-2">
-                    <Badge variant={getStatusVariant(project.status)}>
-                      {formatStatus(project.status)}
-                    </Badge>
-                    <div className="flex items-center text-xs text-slate-500 space-x-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDate(project.createdAt)}</span>
+                  <CardHeader className="pb-4">
+                    <div className="flex justify-between items-start space-x-2">
+                      <Badge variant={getStatusVariant(project.status)}>
+                        {formatStatus(project.status)}
+                      </Badge>
+                      <div className="flex items-center text-xs text-slate-500 space-x-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>{formatDate(project.createdAt)}</span>
+                      </div>
                     </div>
-                  </div>
-                  <CardTitle className="text-lg font-bold text-slate-100 line-clamp-2 mt-3 group-hover:text-indigo-400 transition-colors duration-200">
-                    {project.prompt}
-                  </CardTitle>
-                </CardHeader>
+                    <CardTitle className="text-lg font-bold text-slate-100 line-clamp-2 mt-3 group-hover:text-indigo-400 transition-colors duration-200">
+                      {project.prompt}
+                    </CardTitle>
+                  </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <div className="flex items-center space-x-1">
-                      <Film className="h-3.5 w-3.5" />
-                      <span>Length: {project.panelCount} Panels</span>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <div className="flex items-center space-x-1">
+                        <Film className="h-3.5 w-3.5" />
+                        <span>Length: {project.panelCount} Panels</span>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
+                  </CardContent>
 
-                <CardFooter className="flex items-center justify-between pt-4 border-t border-slate-800/40">
-                  <span className="text-xs text-indigo-400 font-semibold group-hover:underline flex items-center gap-1">
-                    {hasReviewPending ? "Review Panel" : "View Project"}
-                    <ArrowRight className="h-3 w-3 transform group-hover:translate-x-0.5 transition-transform duration-200" />
-                  </span>
-                </CardFooter>
-              </Card>
+                  <CardFooter className="flex items-center justify-between pt-4 border-t border-slate-800/40">
+                    <span className="text-xs text-indigo-400 font-semibold group-hover:underline flex items-center gap-1">
+                      {hasReviewPending ? "Review Panel" : "View Project"}
+                      <ArrowRight className="h-3 w-3 transform group-hover:translate-x-0.5 transition-transform duration-200" />
+                    </span>
+                  </CardFooter>
+                </Card>
+              </Link>
             );
           })}
         </div>

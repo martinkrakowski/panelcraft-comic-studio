@@ -48,14 +48,20 @@ export interface SubmitReviewInput {
  * Standard API response envelope wrapping all server response payloads.
  * Represents success status, typed data, and optional structured error details.
  */
-export interface ResponseEnvelope<T> {
-  success: boolean;
-  data: T;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
+export type ResponseEnvelope<T> =
+  | {
+      success: true;
+      data: T;
+      error?: never;
+    }
+  | {
+      success: false;
+      data?: never;
+      error: {
+        code: string;
+        message: string;
+      };
+    };
 
 export interface ProjectSummaryDTO {
   id: string;
@@ -75,7 +81,7 @@ export interface ProjectDetailResponse {
 
 export interface CreateProjectResponse {
   projectId: string;
-  status: string;
+  status: ProjectStatus;
 }
 
 export interface ReviewResponse {

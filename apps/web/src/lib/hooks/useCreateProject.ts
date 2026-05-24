@@ -3,10 +3,13 @@ import api from "../api";
 import { CreateProjectInput } from "@panelcraft/types";
 
 /**
- * Hook to execute the project creation workflow.
- * Manages loading state and errors, and exposes a trigger function.
+ * Custom React hook providing project-creation action state and a create operation for UI flows.
+ * Returns loading and error states, and exposing a trigger function `createProject`.
  * 
- * @returns Object with createProject trigger callback, loading status, and error states.
+ * @returns Object containing the action callbacks and status states:
+ * @returns.createProject - Async function accepting CreateProjectInput parameter that registers loading, clears error, and calls api.createProject, returning the API response or throwing an Error.
+ * @returns.loading - Boolean indicating whether the project creation is currently in progress.
+ * @returns.error - Error object if creation failed, or null.
  */
 export function useCreateProject() {
   const [loading, setLoading] = useState(false);

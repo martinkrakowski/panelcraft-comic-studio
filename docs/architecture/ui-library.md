@@ -81,3 +81,11 @@ export function ActionForm() {
   // COMPLIANT: Keeps elements purely presentation-driven
   <Button disabled={query.loading} />
   ```
+
+---
+
+## Build & Consumption
+
+The `@panelcraft/ui` workspace package is built for transpile-time consumption by the main web applications:
+1. **Transpilation**: The Next.js framework is configured to transpile the TypeScript source code directly via `transpilePackages` inside `apps/web/next.config.js`. Accordingly, `exports` mapping in `package.json` maps the default entry directly to `./src/index.ts`.
+2. **Type Declarations**: Running `yarn build` inside `packages/ui` triggers `tsc` with `emitDeclarationOnly: true`. This generates the `.d.ts` declaration maps under `./dist/index.d.ts` to satisfy compiler checking without emitting compiled JS bundles.

@@ -23,7 +23,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       <div
         ref={ref}
         role="progressbar"
-        aria-valuenow={clampedValue}
+        aria-valuenow={Math.round(clampedValue)}
         aria-valuemin={0}
         aria-valuemax={100}
         className={cn(

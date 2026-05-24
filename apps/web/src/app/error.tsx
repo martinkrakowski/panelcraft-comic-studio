@@ -5,8 +5,14 @@ import { Alert, AlertTitle, AlertDescription, Button } from "@panelcraft/ui";
 import { RefreshCcw } from "lucide-react";
 
 /**
- * Workspace page-level error fallback component.
- * Displays a user-safe message and handles retry actions.
+ * Workspace page-level error fallback component that acts as the routing boundary UI wrapper.
+ * Displays a user-safe alert messaging interface and enables state retry action callbacks.
+ * 
+ * @component
+ * @param props - Component properties.
+ * @param props.error - Error object instance capturing the execution exception state.
+ * @param props.reset - Callback function to trigger resetting the current page routing boundary.
+ * @returns React.Element presenting the error notification message and retry button.
  */
 export default function Error({
   error,

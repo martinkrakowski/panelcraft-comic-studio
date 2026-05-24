@@ -5,8 +5,14 @@ import { Button } from "@panelcraft/ui";
 import { AlertCircle, RefreshCcw } from "lucide-react";
 
 /**
- * Root-level global error fallback page for Next.js.
- * Displays a user-safe message and prevents raw error exposure in production.
+ * Root-level global error fallback page component acting as the application-level error boundary.
+ * Renders a user-safe fallback page in production to prevent leaking raw system exception messages.
+ * 
+ * @component
+ * @param props - Component properties.
+ * @param props.error - Error object containing the exception message and optional security digest tracking tag.
+ * @param props.reset - Callback function to trigger resetting the error boundary.
+ * @returns React.Element containing HTML structure for the critical error landing page.
  */
 export default function GlobalError({
   error,

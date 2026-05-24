@@ -22,6 +22,13 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
 };
 
+/**
+ * Step-by-step onboarding creation wizard component for a new comic project.
+ * Handles state validation schema and starts background generation on review trigger submission.
+ * 
+ * @component
+ * @returns React.Element overlay step indicator, story concept prompt input, and buttons grid.
+ */
 export function NewComicWizard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -159,27 +166,29 @@ export function NewComicWizard() {
 
           {/* Panel Count Select */}
           <motion.div variants={itemVariants} className="space-y-3">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
-              <Layers className="h-4 w-4 text-slate-400" />
-              <span>Number of Panels ({selectedPanelCount})</span>
-            </label>
-            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Number of panels">
-              {[1, 2, 4].map((count) => (
-                <button
-                  key={count}
-                  type="button"
-                  onClick={() => setValue("panelCount", count, { shouldValidate: true })}
-                  aria-pressed={selectedPanelCount === count}
-                  className={`h-10 rounded-lg border text-xs font-semibold transition-all duration-200 ${
-                    selectedPanelCount === count
-                      ? "bg-gradient-to-r from-violet-600 to-purple-600 border-purple-500 text-white"
-                      : "bg-slate-900/30 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300"
-                  }`}
-                >
-                  {count}
-                </button>
-              ))}
-            </div>
+            <fieldset className="space-y-3 pt-2">
+              <legend className="text-xs font-semibold text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+                <Layers className="h-4 w-4 text-slate-400" />
+                <span>Number of Panels ({selectedPanelCount})</span>
+              </legend>
+              <div className="grid grid-cols-3 gap-2" role="group" aria-label="Number of panels">
+                {[1, 2, 4].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setValue("panelCount", count, { shouldValidate: true })}
+                    aria-pressed={selectedPanelCount === count}
+                    className={`h-10 rounded-lg border text-xs font-semibold transition-all duration-200 ${
+                      selectedPanelCount === count
+                        ? "bg-gradient-to-r from-violet-600 to-purple-600 border-purple-500 text-white"
+                        : "bg-slate-900/30 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                    }`}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             {errors.panelCount && (
               <p className="text-xs text-red-400 font-medium mt-1">{errors.panelCount.message}</p>
             )}

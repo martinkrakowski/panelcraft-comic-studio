@@ -8,11 +8,19 @@ import { cn } from "../../lib/utils";
 import { useToast } from "../controllers/useToast";
 import { NoSemanticState } from "../../types";
 
+/**
+ * Context provider component that wraps the application and exposes Radix Toast context.
+ */
 const ToastProvider = ToastPrimitive.Provider;
 
 /**
  * The visible viewport container for the active toast notifications queue.
  * Positioned in the top/bottom corners of the screen.
+ * 
+ * @component
+ * @param props - Component props containing viewport HTML attributes.
+ * @param ref - Forwarded reference to the underlying Radix Viewport element.
+ * @returns React.Element viewport container for positioning active toasts.
  */
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Viewport>,
@@ -47,19 +55,17 @@ const toastVariants = cva(
   }
 );
 
-/**
- * Toast notifications visual component wrapper based on Radix UI Toast primitive.
- * Blocks semantic data/loading states to keep the notification interface presentation-only.
- * 
- * @example
- * <Toast variant="success">Comic generated!</Toast>
- */
 export interface ToastProps
   extends NoSemanticState<React.ComponentPropsWithoutRef<typeof ToastPrimitive.Root>>,
     VariantProps<typeof toastVariants> {}
 
 /**
  * Individual Toast notification card containing the message, action, and close controls.
+ * 
+ * @component
+ * @param props - Toast properties including variant and Radix Toast attributes.
+ * @param ref - Forwarded reference to the underlying Radix Toast Root element.
+ * @returns React.Element visual wrapper for a single toast card.
  */
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Root>,
@@ -77,6 +83,11 @@ Toast.displayName = ToastPrimitive.Root.displayName;
 
 /**
  * Action button inside a Toast notification, for interactive actions like Retry or Undo.
+ * 
+ * @component
+ * @param props - Action button properties.
+ * @param ref - Forwarded reference to the underlying Radix Toast Action element.
+ * @returns React.Element action button for the toast notification.
  */
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Action>,
@@ -95,6 +106,11 @@ ToastAction.displayName = ToastPrimitive.Action.displayName;
 
 /**
  * Close button control inside a Toast notification.
+ * 
+ * @component
+ * @param props - Close button properties.
+ * @param ref - Forwarded reference to the underlying Radix Toast Close element.
+ * @returns React.Element close control button with X icon.
  */
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Close>,
@@ -116,6 +132,11 @@ ToastClose.displayName = ToastPrimitive.Close.displayName;
 
 /**
  * Title element for the individual Toast notification.
+ * 
+ * @component
+ * @param props - Text content props.
+ * @param ref - Forwarded reference to the underlying Radix Toast Title element.
+ * @returns React.Element bold title element.
  */
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Title>,
@@ -131,6 +152,11 @@ ToastTitle.displayName = ToastPrimitive.Title.displayName;
 
 /**
  * Subtext description detail for the individual Toast notification message body.
+ * 
+ * @component
+ * @param props - Description text props.
+ * @param ref - Forwarded reference to the underlying Radix Toast Description element.
+ * @returns React.Element message body description container.
  */
 const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Description>,
@@ -148,6 +174,10 @@ export type ToastActionElement = React.ReactElement<typeof ToastAction>;
 
 /**
  * Application-wide Toaster component that subscribes to the useToast state and renders the list of active toasts.
+ * Consumes useToast hook and handles rendering mapped toast notifications.
+ * 
+ * @component
+ * @returns React.Element rendering all active toast alerts.
  */
 function Toaster() {
   const { toasts } = useToast();

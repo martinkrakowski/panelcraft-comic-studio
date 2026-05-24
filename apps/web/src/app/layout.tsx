@@ -9,6 +9,15 @@ export const metadata: Metadata = {
   description: "AI-powered comic book studio built with LangGraph.js and Adobe Firefly workflows",
 };
 
+/**
+ * Root application HTML/body layout shell component.
+ * Wraps route content with workspace providers, navigation header chrome, and global toast notifications.
+ * 
+ * @component
+ * @param props - Component properties.
+ * @param props.children - Route segment React nodes to render inside layout body.
+ * @returns React.Element root HTML structure.
+ */
 export default function RootLayout({
   children,
 }: {

@@ -13,6 +13,10 @@ interface WorkspaceShellProps {
 /**
  * Main application workspace shell wrapper that structures the layout grid.
  * Houses global navigation header, top bar metadata badge, and project footer.
+ * 
+ * @component
+ * @param props - Component props containing the children React elements.
+ * @returns A JSX.Element wrapping the application header, main layout, and footer.
  */
 export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const pathname = usePathname();
