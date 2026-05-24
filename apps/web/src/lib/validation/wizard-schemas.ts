@@ -52,11 +52,49 @@ export const step3Schema = z.object({
 });
 
 // Step 4: Review (no new fields, validates all previous steps)
-export const wizardFormSchema = step1Schema
-  .merge(step2Schema)
-  .merge(step3Schema);
+// Make fields optional at form level - validation happens per-step
+export const wizardFormSchema = z.object({
+  prompt: z
+    .string()
+    .trim()
+    .min(10, 'Prompt must be at least 10 characters')
+    .max(1000, 'Prompt cannot exceed 1000 characters'),
+  panelCount: z
+    .number()
+    .int()
+    .min(1, 'Must have at least 1 panel')
+    .max(4, 'Cannot exceed 4 panels (demo limit)'),
+  genres: z
+    .array(z.string())
+    .min(1, 'Select at least one genre')
+    .max(3, 'Max 3 genres'),
+  tones: z
+    .array(z.string())
+    .min(1, 'Select at least one tone')
+    .max(3, 'Max 3 tones'),
+  characters: z
+    .array(characterSchema)
+    .min(1, 'Add at least one character')
+    .max(10, 'Max 10 characters'),
+  globalStylePrompt: z
+    .string()
+    .min(10, 'Style prompt required')
+    .max(500, 'Max 500 characters'),
+  moodBoardPreset: z.string().min(1, 'Select a style preset'),
+  artDirectionNotes: z.string().max(500, 'Max 500 characters').optional(),
+});
+
+// Prompt-only schema for analyze feature
+export const promptOnlySchema = z.object({
+  prompt: z
+    .string()
+    .trim()
+    .min(10, 'Prompt must be at least 10 characters')
+    .max(1000, 'Prompt cannot exceed 1000 characters'),
+});
 
 export type Step1Values = z.infer<typeof step1Schema>;
 export type Step2Values = z.infer<typeof step2Schema>;
 export type Step3Values = z.infer<typeof step3Schema>;
 export type WizardFormValues = z.infer<typeof wizardFormSchema>;
+export type PromptOnly = z.infer<typeof promptOnlySchema>;

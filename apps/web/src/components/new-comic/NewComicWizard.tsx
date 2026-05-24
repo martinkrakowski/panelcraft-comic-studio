@@ -30,6 +30,7 @@ import {
 } from '../../lib/indexedDB';
 import {
   wizardFormSchema,
+  promptOnlySchema,
   type WizardFormValues,
 } from '../../lib/validation/wizard-schemas';
 import {
@@ -165,8 +166,20 @@ export function NewComicWizard() {
 
   // Analyze prompt (calls API)
   const handleAnalyzePrompt = async () => {
-    const isValid = await trigger('prompt');
-    if (!isValid) return;
+    try {
+      // Validate prompt independently without triggering full form validation
+      promptOnlySchema.parse({ prompt });
+    } catch (err) {
+      if (err instanceof Error) {
+        toast({
+          variant: 'destructive',
+          title: 'Validation error',
+          description: err.message,
+        });
+      }
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       // TODO: call POST /api/wizard/analyze-prompt
@@ -176,6 +189,7 @@ export function NewComicWizard() {
       });
       setValue('genres', ['Noir', 'Mystery']);
       setValue('tones', ['Dark', 'Suspenseful']);
+      await saveToIndexedDB();
     } catch (err) {
       toast({
         variant: 'destructive',
