@@ -2,14 +2,47 @@
 import { BaseCheckpointSaver } from '@langchain/langgraph';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+/**
+ * `SupabaseCheckpointer` is a persistent checkpoint saver for LangGraph.js workflows
+ * that implements the `BaseCheckpointSaver` interface.
+ *
+ * It stores LangGraph checkpoint objects and execution metadata in the `langgraph_checkpoints` Supabase table.
+ * This enables suspending, resuming, and rolling back stateful comic generation agent steps
+ * across API processes.
+ *
+ * Database Schema Expectations:
+ * The table `langgraph_checkpoints` must contain:
+ * - `thread_id` (text, primary key part)
+ * - `checkpoint_id` (text, primary key part)
+ * - `checkpoint` (jsonb)
+ * - `metadata` (jsonb)
+ * - `parent_id` (text)
+ * - `created_at` (timestamptz)
+ */
 export class SupabaseCheckpointer extends BaseCheckpointSaver {
   private supabase: SupabaseClient;
 
+  /**
+   * Initializes a new instance of the `SupabaseCheckpointer` class.
+   *
+   * @param supabase - The authenticated Supabase Client instance used to query the db.
+   */
   constructor(supabase: SupabaseClient) {
     super();
     this.supabase = supabase;
   }
 
+  /**
+   * Persists a workflow checkpoint and its associated metadata.
+   * Implements exponential backoff retry logic to handle transient DB issues.
+   *
+   * @param config - The LangGraph configuration object. Must contain `configurable.thread_id`.
+   * @param checkpoint - The state checkpoint object to store. Must contain `id` (and optionally `parent_id`).
+   * @param metadata - Execution metadata detailing the node execution and active runner.
+   * @param _newVersions - Version details (unused/ignored by this checkpointer).
+   * @returns A promise that resolves to the passed config object upon successful persistence.
+   * @throws {Error} If `thread_id` or `checkpoint.id` is missing, or if database upserts fail after 3 retry attempts.
+   */
   async put(
     config: any,
     checkpoint: any,
@@ -46,6 +79,13 @@ export class SupabaseCheckpointer extends BaseCheckpointSaver {
     return config;
   }
 
+  /**
+   * Retrieves the latest checkpoint tuple for the configured thread.
+   *
+   * @param config - The LangGraph configuration object. Must contain `configurable.thread_id`.
+   * @returns A promise resolving to the CheckpointTuple if found, or undefined if no checkpoint is stored yet.
+   * @throws {Error} If `thread_id` is missing or if the database query fails.
+   */
   async getTuple(config: any): Promise<any> {
     const threadId = config?.configurable?.thread_id;
     if (!threadId) throw new Error('thread_id required in config');
@@ -85,6 +125,14 @@ export class SupabaseCheckpointer extends BaseCheckpointSaver {
       : undefined;
   }
 
+  /**
+   * Lists checkpoints for a given thread, matching filters like `before` or `limit`.
+   *
+   * @param config - The LangGraph configuration object. Must contain `configurable.thread_id`.
+   * @param options - Listing options, such as cursor/checkpoint boundaries and row limits.
+   * @returns An async generator yielding checkpoints.
+   * @throws {Error} If `thread_id` is missing or if checkpoint queries fail.
+   */
   async *list(config: any, options?: any): AsyncGenerator<any> {
     const threadId = config?.configurable?.thread_id;
     if (!threadId) throw new Error('thread_id required in config');

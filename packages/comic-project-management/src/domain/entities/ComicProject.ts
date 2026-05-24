@@ -76,14 +76,19 @@ export class ComicProject {
   ) {
     this.prompt = props.prompt;
     this.panelCount = props.panelCount;
-    this.panels = props.panels || [];
+    this.panels = props.panels ? [...props.panels] : [];
     this.characterBible = props.characterBible || null;
-    this.genres = props.genres || [];
-    this.tones = props.tones || [];
-    this.styleReferences = props.styleReferences || null;
+    this.genres = props.genres ? [...props.genres] : [];
+    this.tones = props.tones ? [...props.tones] : [];
+    this.styleReferences = props.styleReferences
+      ? {
+          ...props.styleReferences,
+          moodBoardImages: [...props.styleReferences.moodBoardImages],
+        }
+      : null;
     this.coverImageUrl = props.coverImageUrl || null;
     this.selectedLayout = props.selectedLayout || null;
-    this.layoutOptions = props.layoutOptions || null;
+    this.layoutOptions = props.layoutOptions ? [...props.layoutOptions] : null;
     this.status = props.status;
     this.createdAt = props.createdAt;
     this.lastReviewSubmittedAt = props.lastReviewSubmittedAt || null;
@@ -110,11 +115,11 @@ export class ComicProject {
   }
 
   getPanels(): Panel[] {
-    return this.panels;
+    return [...this.panels];
   }
 
   setPanels(panels: Panel[]): void {
-    this.panels = panels;
+    this.panels = [...panels];
   }
 
   getCharacterBible(): CharacterBible | null {
@@ -126,19 +131,19 @@ export class ComicProject {
   }
 
   getGenres(): string[] {
-    return this.genres;
+    return [...this.genres];
   }
 
   setGenres(genres: string[]): void {
-    this.genres = genres;
+    this.genres = [...genres];
   }
 
   getTones(): string[] {
-    return this.tones;
+    return [...this.tones];
   }
 
   setTones(tones: string[]): void {
-    this.tones = tones;
+    this.tones = [...tones];
   }
 
   getStyleReferences(): {
@@ -147,7 +152,12 @@ export class ComicProject {
     moodBoardImages: string[];
     artDirectionNotes?: string;
   } | null {
-    return this.styleReferences;
+    return this.styleReferences
+      ? {
+          ...this.styleReferences,
+          moodBoardImages: [...this.styleReferences.moodBoardImages],
+        }
+      : null;
   }
 
   setStyleReferences(
@@ -158,7 +168,12 @@ export class ComicProject {
       artDirectionNotes?: string;
     } | null
   ): void {
-    this.styleReferences = refs;
+    this.styleReferences = refs
+      ? {
+          ...refs,
+          moodBoardImages: [...refs.moodBoardImages],
+        }
+      : null;
   }
 
   getCoverImageUrl(): string | null {
@@ -178,11 +193,11 @@ export class ComicProject {
   }
 
   getLayoutOptions(): string[] | null {
-    return this.layoutOptions;
+    return this.layoutOptions ? [...this.layoutOptions] : null;
   }
 
   setLayoutOptions(options: string[] | null): void {
-    this.layoutOptions = options;
+    this.layoutOptions = options ? [...options] : null;
   }
 
   /** Returns the current workflow status (e.g., 'created', 'pending_review', 'completed'). */
@@ -224,12 +239,17 @@ export class ComicProject {
       characterBible: this.characterBible
         ? this.characterBible.getValue()
         : null,
-      genres: this.genres.length > 0 ? this.genres : undefined,
-      tones: this.tones.length > 0 ? this.tones : undefined,
-      styleReferences: this.styleReferences,
+      genres: this.genres.length > 0 ? [...this.genres] : undefined,
+      tones: this.tones.length > 0 ? [...this.tones] : undefined,
+      styleReferences: this.styleReferences
+        ? {
+            ...this.styleReferences,
+            moodBoardImages: [...this.styleReferences.moodBoardImages],
+          }
+        : null,
       coverImageUrl: this.coverImageUrl,
       selectedLayout: this.selectedLayout,
-      layoutOptions: this.layoutOptions,
+      layoutOptions: this.layoutOptions ? [...this.layoutOptions] : null,
       status: this.status,
       createdAt: this.createdAt,
       lastReviewSubmittedAt: this.lastReviewSubmittedAt,

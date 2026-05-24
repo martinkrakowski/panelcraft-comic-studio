@@ -30,6 +30,25 @@ export class ComicGenerationUseCase implements RestControllerPort {
     private readonly logger: LoggerPort
   ) {}
 
+  /**
+   * Creates a new comic book project, initializes its entities, value objects,
+   * and queues the initial generation job ('generate-comic') to execute.
+   *
+   * @param options - Config options for the new comic project.
+   * @param options.prompt - The initial text prompt or title.
+   * @param options.panelCount - The requested number of panels.
+   * @param options.genres - Optional array of narrative genres.
+   * @param options.tones - Optional array of emotional tones.
+   * @param options.characterBible - Optional serialized Character Bible containing predefined characters.
+   * @param options.styleReferences - Optional details for visual guidelines.
+   * @param options.styleReferences.globalStylePrompt - Desired artistic style prompt.
+   * @param options.styleReferences.moodBoardPreset - Standardized pre-selected mood board layout.
+   * @param options.styleReferences.moodBoardImages - Uploaded mood board image storage paths.
+   * @param options.styleReferences.artDirectionNotes - Optional notes detailing style nuances.
+   * @param options.referenceImagePaths - Optional character visual reference storage paths aligned by character index.
+   * @returns A promise resolving to the generated unique project ID.
+   * @throws {ValidationError} If the prompt or panel count fails domain validation.
+   */
   async createProject(options: {
     prompt: string;
     panelCount: number;
@@ -237,6 +256,14 @@ export class ComicGenerationUseCase implements RestControllerPort {
     );
   }
 
+  /**
+   * Sets the selected layout for the project state and updates the status to 'pending_review'.
+   *
+   * @param projectId - The unique project ID.
+   * @param selectedLayout - The template name or layout configuration chosen by the user.
+   * @returns A promise that resolves when the update has been saved to the database.
+   * @throws {NotFoundError} If the project does not exist.
+   */
   async selectLayout(projectId: string, selectedLayout: string): Promise<void> {
     const project = await this.projectRepo.load(projectId);
     if (!project) {
@@ -248,6 +275,13 @@ export class ComicGenerationUseCase implements RestControllerPort {
     await this.projectRepo.save(project);
   }
 
+  /**
+   * Queues a background job ('resume-comic') to resume generation execution using the chosen layout.
+   *
+   * @param projectId - The unique project ID.
+   * @param selectedLayout - The layout option chosen during user interaction.
+   * @returns A promise resolving when the job is successfully queued.
+   */
   async enqueueResumeComic(
     projectId: string,
     selectedLayout: string
@@ -266,6 +300,17 @@ export class ComicGenerationUseCase implements RestControllerPort {
     );
   }
 
+  /**
+   * Updates reference and mood board image storage paths inside the project entity.
+   * Modifies character reference paths (mapping them to characters by index) and updates mood board images.
+   *
+   * @param projectId - The unique project ID.
+   * @param paths - Object containing new file path configurations.
+   * @param paths.referenceImagePaths - Optional list of character reference image paths in storage.
+   * @param paths.moodBoardImagePaths - Optional list of style/mood board image paths in storage.
+   * @returns A promise that resolves when the paths are updated and saved to the database.
+   * @throws {NotFoundError} If the project does not exist.
+   */
   async updateProjectPaths(
     projectId: string,
     paths: { referenceImagePaths?: string[]; moodBoardImagePaths?: string[] }

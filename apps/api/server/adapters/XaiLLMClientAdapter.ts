@@ -142,6 +142,19 @@ export class XaiLLMClientAdapter implements LLMClientPort {
     throw new ExternalServiceError('LLM call completed without response');
   }
 
+  /**
+   * Analyzes the comic story prompt to suggest initial genres, tones, and character count.
+   * Parses the JSON output from the LLM, defaulting fields if they are missing or malformed.
+   *
+   * @param prompt - The input comic story prompt or idea to analyze.
+   * @returns A promise that resolves to the prompt analysis result:
+   *  - `feedback`: Friendly feedback on the prompt (defaults to 'Interesting story concept!').
+   *  - `estimatedCharactersCount`: Predicted character count (defaults to 3).
+   *  - `suggestedGenres`: Array of suggested genres (defaults to empty array).
+   *  - `suggestedTones`: Array of suggested tones (defaults to empty array).
+   * @throws {ExternalServiceError} If the API call fails or times out.
+   * @throws {LLMResponseParsingError} If the response is not valid JSON.
+   */
   async analyzePrompt(prompt: string): Promise<{
     feedback: string;
     estimatedCharactersCount: number;
@@ -175,6 +188,18 @@ Return ONLY valid JSON in this format: {
     };
   }
 
+  /**
+   * Extracts characters from the story prompt with their roles, visual descriptions, and consistency notes.
+   *
+   * @param prompt - The input comic story prompt containing character actions/descriptions.
+   * @param options - Optional context parameters.
+   * @param options.genres - Array of genres to guide character styling and role assumptions.
+   * @param options.tones - Array of tones to influence character personality and descriptions.
+   * @returns A promise that resolves to an object containing:
+   *  - `characters`: Array of extracted character objects, each with a name, role, visual details, and consistency guidelines.
+   * @throws {ExternalServiceError} If the API call fails or times out.
+   * @throws {LLMResponseParsingError} If the response is not valid JSON.
+   */
   async extractCharacters(
     prompt: string,
     options?: { genres?: string[]; tones?: string[] }
