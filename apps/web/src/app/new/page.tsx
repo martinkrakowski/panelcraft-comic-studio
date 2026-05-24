@@ -1,5 +1,5 @@
-import { NewComicWizard } from "../../components/new-comic/NewComicWizard";
+import { OnboardingScreen } from "../../components/onboarding/OnboardingScreen";
 
 export default function Page() {
-  return <NewComicWizard />;
+  return <OnboardingScreen />;
 }

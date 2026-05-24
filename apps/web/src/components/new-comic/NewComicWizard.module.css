@@ -1,0 +1,56 @@
+/* Layout */
+.container {
+  width: 100%;
+  max-width: 90%;
+  margin: 0 auto;
+  font-family: var(--font-outfit, ui-sans-serif), system-ui, sans-serif;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 600px;
+    padding: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 700px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 800px;
+  }
+}
+
+/* Step indicator */
+.dotActive {
+  width: 24px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #818cf8, #c084fc);
+}
+
+.dotInactive {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgb(51 65 85);
+}
+
+/* Headings */
+.heroHeading {
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.heroSubheading {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgb(148 163 184);
+  margin-top: 5px;
+}
