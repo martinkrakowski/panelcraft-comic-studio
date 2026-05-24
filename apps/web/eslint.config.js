@@ -20,7 +20,6 @@ export default [
   },
   {
     files: [
-      'src/components/new-comic/NewComicWizard.tsx',
       'src/lib/hooks/useMountEffect.ts',
       'src/lib/hooks/useUnmountEffect.ts',
       'src/lib/hooks/useEffectOnce.ts',

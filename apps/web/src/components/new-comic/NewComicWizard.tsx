@@ -13,6 +13,11 @@ import {
   CollapsibleSection,
 } from '@panelcraft/ui';
 import { useCreateProject } from '../../lib/hooks/useCreateProject';
+import {
+  useObjectUrls,
+  usePolling,
+  useWizardPersistence,
+} from '../../lib/hooks';
 import { compressImageToWebP } from '../../lib/compressImage';
 import {
   StoryPromptStep,
@@ -24,10 +29,8 @@ import {
 import api from '../../lib/api';
 import {
   getWizardState,
-  setWizardState,
   clearWizardState,
   IndexedDBQuotaExceededError,
-  type WizardState,
 } from '../../lib/indexedDB';
 import {
   wizardFormSchema,
@@ -66,7 +69,6 @@ export function NewComicWizard() {
     Record<string, Blob>
   >({});
   const [moodBoardImageBlobs, setMoodBoardImageBlobs] = useState<Blob[]>([]);
-  const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Initialize form with IndexedDB state or defaults
   const {
@@ -88,6 +90,9 @@ export function NewComicWizard() {
         setMoodBoardImageBlobs(saved.moodBoardImageBlobs || []);
         setPreferredLayoutId(saved.preferredLayoutId || null);
         setProjectId(saved.projectId || null);
+        if (saved.step === 4 && saved.projectId) {
+          setIsPolling(true);
+        }
         return saved.formValues as WizardFormValues;
       }
       return getDefaultValues();
@@ -106,33 +111,15 @@ export function NewComicWizard() {
   const characters = watch('characters');
   const moodBoardPreset = watch('moodBoardPreset');
 
-  // Keep mutable refs of state that lives in setState updaters so saveToIndexedDB
-  // sees fresh values when invoked from an updater callback (which can run
-  // before the corresponding re-render has happened).
-  const referenceImageBlobsRef = React.useRef(referenceImageBlobs);
-  const moodBoardImageBlobsRef = React.useRef(moodBoardImageBlobs);
-  const preferredLayoutIdRef = React.useRef(preferredLayoutId);
-  const projectIdRef = React.useRef(projectId);
-  const activeStepRef = React.useRef(activeStep);
-  React.useEffect(() => {
-    referenceImageBlobsRef.current = referenceImageBlobs;
-  }, [referenceImageBlobs]);
-  React.useEffect(() => {
-    moodBoardImageBlobsRef.current = moodBoardImageBlobs;
-  }, [moodBoardImageBlobs]);
-  React.useEffect(() => {
-    preferredLayoutIdRef.current = preferredLayoutId;
-  }, [preferredLayoutId]);
-  React.useEffect(() => {
-    projectIdRef.current = projectId;
-  }, [projectId]);
-  React.useEffect(() => {
-    activeStepRef.current = activeStep;
-  }, [activeStep]);
+  // syncd snapshot IndexedDB persistence hook
+  const { save: saveStateToDB } = useWizardPersistence({
+    activeStep,
+    referenceImageBlobs,
+    moodBoardImageBlobs,
+    preferredLayoutId,
+    projectId,
+  });
 
-  // Save to IndexedDB on form value changes. Accepts optional overrides so
-  // callers (e.g. blob uploads) can pass freshly-computed values without
-  // waiting for state to flush and avoid stale-closure persists.
   const saveToIndexedDB = useCallback(
     async (overrides?: {
       referenceImageBlobs?: Record<string, Blob>;
@@ -142,41 +129,8 @@ export function NewComicWizard() {
       activeStep?: number;
     }) => {
       if (typeof window === 'undefined') return;
-      const formData = watch();
-      const refBlobs =
-        overrides?.referenceImageBlobs ?? referenceImageBlobsRef.current;
-      const moodBlobs =
-        overrides?.moodBoardImageBlobs ?? moodBoardImageBlobsRef.current;
-      const layoutId =
-        overrides?.preferredLayoutId !== undefined
-          ? overrides.preferredLayoutId
-          : preferredLayoutIdRef.current;
-      const projId =
-        overrides?.projectId !== undefined
-          ? overrides.projectId
-          : projectIdRef.current;
-      const step = overrides?.activeStep ?? activeStepRef.current;
-
-      const state: WizardState = {
-        wizardStateVersion: 1,
-        step,
-        formValues: {
-          prompt: formData.prompt,
-          panelCount: formData.panelCount,
-          genres: formData.genres,
-          tones: formData.tones,
-          characters: formData.characters,
-          globalStylePrompt: formData.globalStylePrompt,
-          moodBoardPreset: formData.moodBoardPreset,
-          artDirectionNotes: formData.artDirectionNotes,
-        },
-        referenceImageBlobs: refBlobs,
-        moodBoardImageBlobs: moodBlobs,
-        preferredLayoutId: layoutId || undefined,
-        projectId: projId || undefined,
-      };
       try {
-        await setWizardState(state);
+        await saveStateToDB(watch(), overrides);
       } catch (err) {
         if (err instanceof IndexedDBQuotaExceededError) {
           toast({
@@ -189,7 +143,7 @@ export function NewComicWizard() {
         }
       }
     },
-    [watch, toast]
+    [saveStateToDB, watch, toast]
   );
 
   // Handle next step with validation
@@ -273,7 +227,7 @@ export function NewComicWizard() {
       const compressed = await compressImageToWebP(file);
       const key = `char-${index}-${Date.now()}`;
       const nextBlobs = {
-        ...referenceImageBlobsRef.current,
+        ...referenceImageBlobs,
         [key]: compressed,
       };
       setReferenceImageBlobs(nextBlobs);
@@ -294,7 +248,7 @@ export function NewComicWizard() {
       const compressed = await Promise.all(
         Array.from(files).map(compressImageToWebP)
       );
-      const nextBlobs = [...moodBoardImageBlobsRef.current, ...compressed];
+      const nextBlobs = [...moodBoardImageBlobs, ...compressed];
       setMoodBoardImageBlobs(nextBlobs);
       await saveToIndexedDB({ moodBoardImageBlobs: nextBlobs });
     } catch (err) {
@@ -350,7 +304,7 @@ export function NewComicWizard() {
       setProjectStatus(res.status);
       setActiveStep(4); // Move to layout chooser step
       await saveToIndexedDB({ projectId: res.projectId, activeStep: 4 });
-      startPolling(res.projectId);
+      setIsPolling(true);
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -361,17 +315,13 @@ export function NewComicWizard() {
     }
   };
 
-  // Poll project status for layout selection
-  const startPolling = (id: string) => {
-    // Clear any existing polling interval to prevent multiple simultaneous pollers
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
-    setIsPolling(true);
-    const interval = setInterval(async () => {
+  // Declarative project status poller
+  usePolling(
+    async () => {
+      if (!projectId) return;
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/projects/${id}`
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/projects/${projectId}`
         );
         const data = await res.json();
         if (data.success) {
@@ -379,44 +329,23 @@ export function NewComicWizard() {
           if (data.data.project.status === 'pending_layout') {
             setLayoutOptions(data.data.project.layoutOptions || []);
             setCoverUrl(data.data.project.coverImageUrl || null);
-            clearInterval(interval);
             setIsPolling(false);
           } else if (
             ['completed', 'pending_review'].includes(data.data.project.status)
           ) {
-            clearInterval(interval);
             setIsPolling(false);
-            router.push(`/projects/${id}`);
+            router.push(`/projects/${projectId}`);
           }
         }
       } catch {
         // Ignore poll errors
       }
-    }, 2000);
-    pollingIntervalRef.current = interval;
-  };
+    },
+    { enabled: isPolling && !!projectId, intervalMs: 2000 }
+  );
 
-  // Cleanup polling on unmount
-  React.useEffect(() => {
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Memoize mood board object URLs with cleanup
-  const moodBoardObjectUrls = React.useMemo(() => {
-    const urls = moodBoardImageBlobs.map((blob) => URL.createObjectURL(blob));
-    return urls;
-  }, [moodBoardImageBlobs]);
-
-  // Cleanup object URLs on unmount or when blobs change
-  React.useEffect(() => {
-    return () => {
-      moodBoardObjectUrls.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [moodBoardObjectUrls]);
+  // Adopt Object URLs lifecycle hook
+  const moodBoardObjectUrls = useObjectUrls(moodBoardImageBlobs);
 
   // Handle layout selection
   const handleLayoutSelect = async (layout: string) => {
