@@ -19,6 +19,7 @@ export interface WizardState {
   };
   referenceImageBlobs: Record<string, Blob>; // key: character index, value: compressed WebP blob
   moodBoardImageBlobs: Blob[];
+  preferredLayoutId?: string;
   projectId?: string;
 }
 

@@ -89,6 +89,8 @@ export function NewComicWizard() {
         setActiveStep(saved.step);
         setReferenceImageBlobs(saved.referenceImageBlobs || {});
         setMoodBoardImageBlobs(saved.moodBoardImageBlobs || []);
+        setPreferredLayoutId(saved.preferredLayoutId || null);
+        setProjectId(saved.projectId || null);
         return saved.formValues as WizardFormValues;
       }
       return getDefaultValues();
@@ -126,10 +128,18 @@ export function NewComicWizard() {
       },
       referenceImageBlobs,
       moodBoardImageBlobs,
+      preferredLayoutId: preferredLayoutId || undefined,
       projectId: projectId || undefined,
     };
     await setWizardState(state);
-  }, [activeStep, watch, projectId, referenceImageBlobs, moodBoardImageBlobs]);
+  }, [
+    activeStep,
+    watch,
+    projectId,
+    referenceImageBlobs,
+    moodBoardImageBlobs,
+    preferredLayoutId,
+  ]);
 
   // Handle next step with validation
   const handleNextStep = async () => {
@@ -324,6 +334,19 @@ export function NewComicWizard() {
       }
     };
   }, []);
+
+  // Memoize mood board object URLs with cleanup
+  const moodBoardObjectUrls = React.useMemo(() => {
+    const urls = moodBoardImageBlobs.map((blob) => URL.createObjectURL(blob));
+    return urls;
+  }, [moodBoardImageBlobs]);
+
+  // Cleanup object URLs on unmount or when blobs change
+  React.useEffect(() => {
+    return () => {
+      moodBoardObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [moodBoardObjectUrls]);
 
   // Handle layout selection
   const handleLayoutSelect = async (layout: string) => {
@@ -826,15 +849,15 @@ export function NewComicWizard() {
                         }
                         className="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-violet-500 file:text-white hover:file:bg-violet-600"
                       />
-                      {moodBoardImageBlobs.length > 0 && (
+                      {moodBoardObjectUrls.length > 0 && (
                         <div className="flex flex-wrap gap-2">
-                          {moodBoardImageBlobs.map((blob, i) => (
+                          {moodBoardObjectUrls.map((url, i) => (
                             <div
                               key={i}
                               className="w-16 h-16 rounded bg-slate-800 overflow-hidden"
                             >
                               <img
-                                src={URL.createObjectURL(blob)}
+                                src={url}
                                 alt={`Mood ${i}`}
                                 className="w-full h-full object-cover"
                               />
