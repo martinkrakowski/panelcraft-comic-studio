@@ -4,6 +4,7 @@ import { parseBody } from '../../utils/validation.js';
 import { AnalyzePromptSchema } from '../../utils/schemas.js';
 import { getLLMClient } from '../../utils/dependencies.js';
 import { checkRateLimit } from '../../utils/rate-limiter.js';
+import { getClientIp } from '../../utils/client-ip.js';
 
 /**
  * POST /api/wizard/analyze-prompt
@@ -12,14 +13,9 @@ import { checkRateLimit } from '../../utils/rate-limiter.js';
  * @returns { feedback: string, estimatedCharactersCount: number, suggestedGenres: string[], suggestedTones: string[] }
  */
 export default defineEventHandler(async (event) => {
-  // Rate limiting: 10 requests per minute per IP
-  const headerValue = event.node.req.headers['x-forwarded-for'];
-  const clientIp =
-    (Array.isArray(headerValue) ? headerValue[0] : headerValue)
-      ?.split(',')[0]
-      ?.trim() ||
-    event.node.req.socket.remoteAddress ||
-    'unknown';
+  // Rate limiting: 10 requests per minute per client (uses socket address by
+  // default, x-forwarded-for only when TRUST_PROXY is enabled)
+  const clientIp = getClientIp(event);
   const { allowed, retryAfter } = checkRateLimit(clientIp);
 
   if (!allowed) {
