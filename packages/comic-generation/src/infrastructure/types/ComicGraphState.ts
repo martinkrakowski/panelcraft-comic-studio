@@ -1,6 +1,6 @@
 import { Annotation } from '@langchain/langgraph';
-import type { ComicProjectJSON } from './ComicProjectJSON.js';
-import type { HITLFeedbackData } from '../value-objects/HITLFeedback.vo.js';
+import type { ComicProjectJSON } from '../../domain/types/ComicProjectJSON.js';
+import type { HITLFeedbackData } from '../../domain/value-objects/HITLFeedback.vo.js';
 
 /**
  * LangGraph state definition for the comic generation workflow.

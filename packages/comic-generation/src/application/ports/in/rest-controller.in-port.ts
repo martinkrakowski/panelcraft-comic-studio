@@ -30,8 +30,9 @@ export interface RestControllerPort {
 
   /**
    * Retrieves the current project status and panel list.
+   * Throws NotFoundError if project does not exist.
    */
-  getProject(id: string): Promise<ComicProject | null>;
+  getProject(id: string): Promise<ComicProject>;
 
   /**
    * Lists all projects.

@@ -113,7 +113,7 @@ export class ComicGenerationUseCase implements RestControllerPort {
     return projectId;
   }
 
-  async getProject(id: string): Promise<ComicProject | null> {
+  async getProject(id: string): Promise<ComicProject> {
     const project = await this.projectRepo.load(id);
     if (!project) {
       throw new NotFoundError(`Project with id ${id} not found`, id);

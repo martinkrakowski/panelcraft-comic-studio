@@ -43,15 +43,12 @@ export function handleServerError(error: unknown, event: H3Event) {
   if (originalError instanceof NotFoundError) {
     code = 'NOT_FOUND';
   } else if (originalError instanceof DomainError) {
-    const errorCode = (originalError as Record<string, unknown>).code;
-    if (typeof errorCode === 'string') {
-      code = errorCode;
-    }
+    code = originalError.code;
   }
 
   // Determine HTTP status code
   let status: number;
-  if (h3err.statusCode) {
+  if (typeof h3err.statusCode === 'number') {
     status = h3err.statusCode;
   } else if (originalError instanceof Error) {
     status = errorToHttpStatus(originalError);
