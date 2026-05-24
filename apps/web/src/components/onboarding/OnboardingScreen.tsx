@@ -139,6 +139,7 @@ export function OnboardingScreen({
             return (
               <motion.button
                 key={tile.id}
+                type="button"
                 variants={itemVariants}
                 custom={i}
                 onClick={() => handleTileClick(tile.id)}
