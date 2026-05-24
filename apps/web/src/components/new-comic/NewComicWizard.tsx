@@ -16,7 +16,6 @@ import {
   ImagePlus,
   ChevronRight,
   Check,
-  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@panelcraft/ui';
 import { Textarea } from '@panelcraft/ui';
@@ -28,17 +27,8 @@ import {
   setWizardState,
   clearWizardState,
   type WizardState,
-  type CharacterFormValue,
 } from '../../lib/indexedDB';
-import {
-  step1Schema,
-  step2Schema,
-  step3Schema,
-  wizardFormSchema,
-  type Step1Values,
-  type Step2Values,
-  type Step3Values,
-} from '../../lib/validation/wizard-schemas';
+import { wizardFormSchema } from '../../lib/validation/wizard-schemas';
 import styles from './NewComicWizard.module.css';
 
 const GENRE_OPTIONS = [
@@ -92,6 +82,11 @@ export function NewComicWizard() {
   const [projectStatus, setProjectStatus] = useState<string | null>(null);
   const [layoutOptions, setLayoutOptions] = useState<string[]>([]);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [referenceImageBlobs, setReferenceImageBlobs] = useState<
+    Record<string, Blob>
+  >({});
+  const [moodBoardImageBlobs, setMoodBoardImageBlobs] = useState<Blob[]>([]);
+  const [moodBoardFiles, setMoodBoardFiles] = useState<File[]>([]);
 
   // Initialize form with IndexedDB state or defaults
   const {

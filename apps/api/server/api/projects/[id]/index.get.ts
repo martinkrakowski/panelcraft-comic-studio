@@ -14,6 +14,7 @@ interface PanelJSON {
 /**
  * GET /api/projects/:id
  * Fetch a single comic project with full details and panel information.
+ * Now includes wizard-specific fields (genres, tones, styleReferences, coverImageUrl, layoutOptions).
  * @param event.params.id - Project UUID
  * @returns 200 with project details including panels array, or 404 if not found
  * @throws 400 if id is not a valid UUID
@@ -31,13 +32,22 @@ export default defineEventHandler(async (event) => {
       panelCount: j.panelCount,
       status: j.status,
       createdAt: j.createdAt,
-      panels: j.panels.map((p: PanelJSON, idx: number) => ({
-        id: p.id,
-        index: idx,
-        status: p.status,
-        prompt: p.prompt,
-        imageUrl: p.generatedImageUrl,
-      })),
+      // Wizard-specific fields
+      genres: j.genres,
+      tones: j.tones,
+      styleReferences: j.styleReferences,
+      coverImageUrl: j.coverImageUrl,
+      selectedLayout: j.selectedLayout,
+      layoutOptions: j.layoutOptions,
+      // Panels
+      panels:
+        j.panels?.map((p: PanelJSON, idx: number) => ({
+          id: p.id,
+          index: idx,
+          status: p.status,
+          prompt: p.prompt,
+          imageUrl: p.generatedImageUrl,
+        })) || [],
     },
   });
 });

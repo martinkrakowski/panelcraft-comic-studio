@@ -27,10 +27,10 @@ export default defineEventHandler(async (event) => {
       return fail('Project not found');
     }
 
-    // 2. List all files in comics/{projectId}/ folder
+    // 2. List all files in comics/${projectId}/ folder
     const { data: files, error: listError } = await supabase.storage
       .from('comics')
-      .list(`$projectId}/`, { limit: 100 }); // List top-level folder contents
+      .list(`${projectId}/`, { limit: 100 }); // List top-level folder contents
 
     if (listError) {
       console.warn(
@@ -47,16 +47,16 @@ export default defineEventHandler(async (event) => {
           if (!file.metadata?.size) {
             const { data: subFiles } = await supabase.storage
               .from('comics')
-              .list(`$projectId}/${file.name}`, { limit: 100 });
+              .list(`${projectId}/${file.name}`, { limit: 100 });
             if (subFiles) {
               subFiles.forEach((subFile) => {
                 if (subFile.name) {
-                  filePaths.push(`$projectId}/${file.name}/${subFile.name}`);
+                  filePaths.push(`${projectId}/${file.name}/${subFile.name}`);
                 }
               });
             }
           } else {
-            filePaths.push(`$projectId}/${file.name}`);
+            filePaths.push(`${projectId}/${file.name}`);
           }
         }
       }
