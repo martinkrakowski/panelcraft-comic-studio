@@ -5,13 +5,16 @@
 
 export const GENRE_OPTIONS = [
   'Action',
-  'Noir',
+  'Adventure',
   'Fantasy',
-  'Comedy',
-  'Cozy',
-  'Cyberpunk',
+  'Sci-Fi',
+  'Noir',
   'Mystery',
-  'Romance',
+  'Horror',
+  'Comedy',
+  'Drama',
+  'Cyberpunk',
+  'Superhero',
 ] as const;
 
 export type GenreType = (typeof GENRE_OPTIONS)[number];
@@ -24,7 +27,7 @@ export const TONE_OPTIONS = [
   'Gritty',
   'Whimsical',
   'Epic',
-  'Intimate',
+  'Cinematic',
 ] as const;
 
 export type ToneType = (typeof TONE_OPTIONS)[number];
