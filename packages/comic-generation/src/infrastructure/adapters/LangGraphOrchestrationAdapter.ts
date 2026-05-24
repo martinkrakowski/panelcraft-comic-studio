@@ -9,6 +9,7 @@ import {
   LLMResponseParsingError,
   LLMResponseValidationError,
   ExternalServiceError,
+  LoggerPort,
 } from '@panelcraft/shared';
 import { ComicProject } from '@panelcraft/comic-project-management';
 import {
@@ -43,17 +44,19 @@ export class LangGraphOrchestrationAdapter {
   private readonly imageGenPort: ImageGenerationPort;
   private readonly llmClient: LLMClientPort;
   private readonly projectRepo: RelationalDbPort;
+  private readonly logger: LoggerPort;
   private readonly graph;
-  private readonly debug = process.env['PANELCRAFT_DEBUG'] === 'true';
 
   constructor(
     imageGenPort: ImageGenerationPort,
     llmClient: LLMClientPort,
-    projectRepo: RelationalDbPort
+    projectRepo: RelationalDbPort,
+    logger: LoggerPort
   ) {
     this.imageGenPort = imageGenPort;
     this.llmClient = llmClient;
     this.projectRepo = projectRepo;
+    this.logger = logger;
     this.graph = this.buildGraph();
   }
 
@@ -91,7 +94,7 @@ export class LangGraphOrchestrationAdapter {
   private async structureStory(state: ComicGraphStateType) {
     const { prompt, panelCount } = state.project;
 
-    console.log(`Structuring story into ${panelCount} panels...`);
+    this.logger.info(`Structuring story into ${panelCount} panels...`);
 
     const systemPrompt = `You are an expert comic book writer and storyboarder. Your task is to
 take a story concept and break it into visually compelling panel descriptions that an AI can use to generate artwork.`;
@@ -163,7 +166,7 @@ Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown
       })
       .join('\n');
 
-    console.log('Extracting and characterizing story characters...');
+    this.logger.info('Extracting and characterizing story characters...');
 
     const systemPrompt = `You are a character designer and visual continuity expert for comic books.
 Your task is to extract all significant characters from a story, describe them visually, and provide
@@ -216,12 +219,7 @@ Return ONLY valid JSON with no markdown or additional text:
     // Delegate validation to application service
     CharacterBibleValidationService.validate(characterData);
 
-    if (this.debug) {
-      console.log(
-        '[buildCharacterBible Output]',
-        JSON.stringify(characterData, null, 2)
-      );
-    }
+    this.logger.debug('[buildCharacterBible Output]', { characterData });
 
     return {
       ...state,
@@ -300,7 +298,7 @@ Return ONLY valid JSON with no markdown or additional text:
   }
 
   private async finalizeComic(state: ComicGraphStateType) {
-    console.log('Finalizing comic project...');
+    this.logger.info('Finalizing comic project...');
     const project = ComicProject.fromJSON(state.project);
     await this.projectRepo.save(project);
     return state;

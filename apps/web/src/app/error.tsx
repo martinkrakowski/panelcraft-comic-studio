@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { Alert, AlertTitle, AlertDescription, Button } from '@panelcraft/ui';
 import { RefreshCcw } from 'lucide-react';
+import { defaultLogger } from '@panelcraft/shared';
 
 /**
  * Workspace page-level error fallback component that acts as the routing boundary UI wrapper.
@@ -23,7 +24,7 @@ export default function Error({
 }) {
   const logged = useRef(false);
   if (!logged.current) {
-    console.error('Workspace render crash captured:', error);
+    defaultLogger.error('Workspace render crash captured:', error);
     logged.current = true;
   }
 

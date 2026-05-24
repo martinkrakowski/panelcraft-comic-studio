@@ -3,6 +3,7 @@ import {
   errorToHttpStatus,
   DomainError,
   NotFoundError,
+  defaultLogger,
 } from '@panelcraft/shared';
 
 /**
@@ -76,7 +77,7 @@ export function handleServerError(error: unknown, event: H3Event) {
     'Internal server error';
   const clientMessage = status >= 500 ? 'Internal server error' : logMessage;
 
-  console.error(`[${status}] ${logMessage}`);
+  defaultLogger.error(`[${status}] ${logMessage}`);
   setResponseStatus(event, status);
 
   return send(

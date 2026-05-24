@@ -28,7 +28,17 @@ export default [
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-trailing-spaces': 'error',
       'eol-last': ['error', 'always'],
-      'react-hooks/exhaustive-deps': 'warn'
+      'react-hooks/exhaustive-deps': 'warn',
+      'no-console': ['error', { allow: ['warn', 'error'] }]
+    }
+  },
+  {
+    files: [
+      '**/infrastructure/adapters/*-logger.adapter.ts',
+      '**/infrastructure/adapters/*-logger.adapter.ts'
+    ],
+    rules: {
+      'no-console': 'off'
     }
   }
 ];

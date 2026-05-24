@@ -1,9 +1,11 @@
 import {
   LLMResponseParsingError,
   LLMResponseValidationError,
-  ExternalServiceError
-} from "@panelcraft/shared";
-import type { LLMClientPort } from "@panelcraft/comic-generation";
+  ExternalServiceError,
+  LoggerPort,
+  createLogger,
+} from '@panelcraft/shared';
+import type { LLMClientPort } from '@panelcraft/comic-generation';
 
 /**
  * xAI LLMClientPort implementation wrapping the Grok API.
@@ -11,10 +13,11 @@ import type { LLMClientPort } from "@panelcraft/comic-generation";
  */
 export class XaiLLMClientAdapter implements LLMClientPort {
   private readonly apiKey: string;
-  private readonly debug = process.env['PANELCRAFT_DEBUG'] === 'true';
+  private readonly logger: LoggerPort;
 
-  constructor() {
+  constructor(logger?: LoggerPort) {
     this.apiKey = process.env['XAI_API_KEY'] || '';
+    this.logger = logger || createLogger('LLM');
   }
 
   /**
@@ -29,7 +32,9 @@ export class XaiLLMClientAdapter implements LLMClientPort {
     maxRetries: number = 2
   ): Promise<Record<string, unknown>> {
     if (!this.apiKey) {
-      throw new Error('XAI_API_KEY environment variable is not set. Please set it in your .env file.');
+      throw new Error(
+        'XAI_API_KEY environment variable is not set. Please set it in your .env file.'
+      );
     }
     const retries = Math.max(0, Math.floor(maxRetries));
 
@@ -41,7 +46,7 @@ export class XaiLLMClientAdapter implements LLMClientPort {
         const response = await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -68,9 +73,9 @@ export class XaiLLMClientAdapter implements LLMClientPort {
 
           if (isRetryable && attempt < retries) {
             const backoffMs = 1000 * Math.pow(2, attempt);
-            console.warn(
+            this.logger.warn(
               `[Attempt ${attempt + 1}/${retries + 1}] xAI returned ${response.status}, ` +
-              `retrying in ${backoffMs}ms...`
+                `retrying in ${backoffMs}ms...`
             );
             await new Promise((r) => setTimeout(r, backoffMs));
             continue;
@@ -88,16 +93,14 @@ export class XaiLLMClientAdapter implements LLMClientPort {
           throw new LLMResponseParsingError('xAI returned empty response');
         }
 
-        if (this.debug) {
-          console.log(`[LLM Response] ${content.substring(0, 300)}...`);
-        }
+        this.logger.debug(`[LLM Response] ${content.substring(0, 300)}...`);
 
         try {
           return JSON.parse(content) as Record<string, unknown>;
         } catch (parseError) {
-          if (this.debug) {
-            console.warn(`[LLM Parse Error] Invalid JSON: ${content.substring(0, 200)}`);
-          }
+          this.logger.warn(
+            `[LLM Parse Error] Invalid JSON: ${content.substring(0, 200)}`
+          );
           throw new LLMResponseParsingError(
             `LLM returned invalid JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
             content.substring(0, 200)
@@ -114,9 +117,9 @@ export class XaiLLMClientAdapter implements LLMClientPort {
 
         if (attempt < retries) {
           const backoffMs = 1000 * Math.pow(2, attempt);
-          console.warn(
+          this.logger.warn(
             `[Attempt ${attempt + 1}/${retries + 1}] LLM call failed: ${(error as Error).message}, ` +
-            `retrying in ${backoffMs}ms...`
+              `retrying in ${backoffMs}ms...`
           );
           await new Promise((r) => setTimeout(r, backoffMs));
         } else {
