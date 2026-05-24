@@ -86,6 +86,15 @@ export async function uploadToStorage(
     .createSignedUrl(path, 3600); // 1 hour expiry
 
   if (signedUrlError || !signedUrlData) {
+    // Compensation: clean up the orphaned uploaded object before rethrowing
+    try {
+      await supabase.storage.from(bucket).remove([path]);
+    } catch (cleanupErr) {
+      console.error(
+        `[uploadToStorage] Failed to clean up orphaned object at ${path}:`,
+        cleanupErr
+      );
+    }
     throw new Error(
       `Failed to generate signed URL for ${path}: ${signedUrlError?.message}`
     );
