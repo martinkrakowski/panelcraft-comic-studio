@@ -3,6 +3,7 @@ import { Queue } from 'bullmq';
 import {
   ComicGenerationUseCase,
   LangGraphOrchestrationAdapter,
+  ImageGenerationAdapter,
 } from '@panelcraft/comic-generation';
 import type {
   ImageGenerationPort,
@@ -37,6 +38,10 @@ export default defineNitroPlugin(async (nitroApp) => {
   const jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue);
   const llmClient = new XaiLLMClientAdapter();
 
+  // Image generation: in mock mode return placeholder buffers/URLs without
+  // hitting any external API. In production mode wire the real xAI-backed
+  // adapter — previously this branch threw unconditionally, which made
+  // every generation request fail with a 5xx in non-mock environments.
   const imageGenPort: ImageGenerationPort =
     process.env.USE_MOCK_IMAGE === 'true'
       ? {
@@ -47,19 +52,7 @@ export default defineNitroPlugin(async (nitroApp) => {
           generateCover: async () => Buffer.from(''),
           generatePreview: async () => Buffer.from(''),
         }
-      : {
-          generatePanel: async (_command: GeneratePanelCommand) => {
-            throw new Error(
-              'Real image generation adapter not yet implemented. Set USE_MOCK_IMAGE=true for development.'
-            );
-          },
-          generateCover: async () => {
-            throw new Error('Real image generation not implemented');
-          },
-          generatePreview: async () => {
-            throw new Error('Real image generation not implemented');
-          },
-        };
+      : new ImageGenerationAdapter();
 
   const langGraphAdapter = new LangGraphOrchestrationAdapter(
     imageGenPort,

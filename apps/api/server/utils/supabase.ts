@@ -1,23 +1,68 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+if (!SUPABASE_URL) {
+  throw new Error('Missing SUPABASE_URL environment variable');
+}
+if (!SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error(
-    'Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables'
+    'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+      'The backend requires the service-role key to perform privileged storage ' +
+      'operations (uploads, deletions, signed URL generation). Do not ship the ' +
+      'anon key in its place.'
   );
 }
 
-let client: SupabaseClient | null = null;
+let serviceClient: SupabaseClient | null = null;
+let anonClient: SupabaseClient | null = null;
 
+/**
+ * Returns the singleton Supabase client backed by the service-role key.
+ *
+ * Use this for all backend storage and database operations — it bypasses
+ * row-level security and can upload, delete, and sign URLs on behalf of
+ * any user. Must never be exposed to the browser.
+ */
 export function getSupabaseClient(): SupabaseClient {
-  if (!client) {
-    client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!serviceClient) {
+    serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
-  return client;
+  return serviceClient;
 }
 
+/**
+ * Returns a Supabase client backed by the anon key.
+ *
+ * Reserved for operations that should respect row-level security (e.g.
+ * acting on behalf of an authenticated end user). Falls back to throwing
+ * if the anon key is not configured.
+ */
+export function getSupabaseAnonClient(): SupabaseClient {
+  if (!SUPABASE_ANON_KEY) {
+    throw new Error(
+      'Missing SUPABASE_ANON_KEY environment variable; required for anon client'
+    );
+  }
+  if (!anonClient) {
+    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return anonClient;
+}
+
+/**
+ * Upload a buffer to a Supabase Storage bucket and return a 1-hour signed URL.
+ *
+ * Uses the service-role client so the upload succeeds regardless of RLS
+ * policy on the storage bucket. The `upsert: false` flag prevents
+ * accidentally overwriting an existing object at the same path.
+ *
+ * @throws when the upload or signed-URL request fails
+ */
 export async function uploadToStorage(
   bucket: string,
   path: string,
@@ -50,6 +95,11 @@ export async function uploadToStorage(
   return { path, signedUrl: signedUrlData.signedUrl };
 }
 
+/**
+ * Generate a 1-hour signed URL for an existing object in a Supabase Storage bucket.
+ *
+ * @throws when the signed-URL request fails
+ */
 export async function getSignedUrl(
   bucket: string,
   path: string
