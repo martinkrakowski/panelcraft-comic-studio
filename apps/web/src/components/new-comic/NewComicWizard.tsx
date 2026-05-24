@@ -1,20 +1,31 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
 import { createProjectSchema, type CreateProjectFormValues } from "../../lib/validation/form-schemas";
 import { useCreateProject } from "../../lib/hooks/useCreateProject";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, Input, Textarea, useToast } from "@panelcraft/ui";
-import { Sparkles, ArrowLeft, Loader2, BookOpen, Layers } from "lucide-react";
+import { Textarea, useToast } from "@panelcraft/ui";
+import { Sparkles, ArrowLeft, Loader2, Layers } from "lucide-react";
 import Link from "next/link";
+import styles from "./NewComicWizard.module.css";
+
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
+};
 
 export function NewComicWizard() {
   const router = useRouter();
   const { toast } = useToast();
   const { createProject, loading: isSubmitting } = useCreateProject();
-  const [, startTransition] = useTransition();
 
   const {
     register,
@@ -45,7 +56,6 @@ export function NewComicWizard() {
         description: "Story outline generation started in the background.",
       });
 
-      // Navigate to the editor page
       startTransition(() => {
         router.push(`/projects/${res.projectId}`);
       });
@@ -65,113 +75,141 @@ export function NewComicWizard() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
+      {/* Ambient orbs */}
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+
       {/* Back button */}
-      <Link href="/" className="inline-flex items-center text-sm text-slate-400 hover:text-white transition-colors duration-200 group">
-        <ArrowLeft className="h-4 w-4 mr-2 transform group-hover:-translate-x-0.5 transition-transform duration-200" />
-        Back to Dashboard
-      </Link>
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05, duration: 0.5 }}
+        className="w-full max-w-lg mb-8 px-4 relative z-10"
+      >
+        <Link href="/new" className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors duration-200 group">
+          <ArrowLeft className="h-4 w-4 mr-2 transform group-hover:-translate-x-0.5 transition-transform duration-200" />
+          Back
+        </Link>
+      </motion.div>
 
-      <Card className="border-slate-800 bg-slate-900/30 backdrop-blur-md">
-        <CardHeader className="border-b border-slate-800/40 pb-6">
-          <div className="flex items-center space-x-2 text-indigo-400 mb-1">
-            <BookOpen className="h-5 w-5" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Creation Wizard</span>
-          </div>
-          <CardTitle className="text-2xl font-bold text-white">
-            Create a New Comic
-          </CardTitle>
-          <CardDescription>
-            Input your story concept. PanelCraft will outline the story, structure character models, and generate panel images sequentially.
-          </CardDescription>
-        </CardHeader>
+      <motion.div
+        className={`${styles.container} relative z-10`}
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Step indicator */}
+        <motion.div variants={itemVariants} className="flex items-center justify-center gap-2 mb-6">
+          <div className={styles.dotInactive} />
+          <div className={styles.dotActive} />
+          <div className={styles.dotInactive} />
+          <span className="ml-2 text-[10px] text-slate-500 uppercase tracking-widest">
+            Step 2 of 3
+          </span>
+        </motion.div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6 pt-6">
-            
-            {/* Story Prompt */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-200 flex items-center justify-between">
-                <span>Story Concept / Prompt</span>
-                <span className="text-xs text-slate-500 font-normal">Min 10, Max 1000 characters</span>
-              </label>
-              <Textarea
-                placeholder="Describe your comic storyline here. Mention characters, mood, setting, and key actions..."
-                className={`h-32 resize-none ${errors.prompt ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                {...register("prompt")}
-              />
-              {errors.prompt && (
-                <p className="text-xs text-red-400 font-medium mt-1">{errors.prompt.message}</p>
-              )}
-            </div>
+        {/* Title */}
+        <motion.div variants={itemVariants} className="mb-6">
+          <h1 className={styles.heroHeading}>Brainstorm your story.</h1>
+          <p className={styles.heroSubheading}>
+            Describe your comic concept and choose how many panels you'd like.
+          </p>
+        </motion.div>
 
-            {/* Prompt Helper Buttons */}
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-400">Need inspiration? Try one of these:</span>
-              <div className="grid grid-cols-1 gap-2">
-                {samplePrompts.map((sample, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setValue("prompt", sample, { shouldValidate: true })}
-                    className="text-left text-xs text-slate-300 bg-slate-950/40 hover:bg-slate-900 border border-slate-800/60 rounded-md p-2.5 hover:border-slate-700 transition-all duration-200"
-                  >
-                    "{sample}"
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Panel Count Select */}
-            <div className="space-y-3 pt-2">
-              <label className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
-                <Layers className="h-4 w-4 text-indigo-400" />
-                <span>Number of Panels ({selectedPanelCount})</span>
-              </label>
-              <div className="grid grid-cols-5 gap-2">
-                {[3, 4, 5, 6, 8].map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    onClick={() => setValue("panelCount", count, { shouldValidate: true })}
-                    className={`h-11 rounded-lg border text-sm font-semibold transition-all duration-200 ${
-                      selectedPanelCount === count
-                        ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/10"
-                        : "bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200"
-                    }`}
-                  >
-                    {count}
-                  </button>
-                ))}
-              </div>
-              {errors.panelCount && (
-                <p className="text-xs text-red-400 font-medium mt-1">{errors.panelCount.message}</p>
-              )}
-            </div>
-
-          </CardContent>
-
-          <CardFooter className="border-t border-slate-800/40 pt-6 justify-end">
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-400 text-white font-semibold flex items-center gap-2"
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
+          {/* Story Prompt */}
+          <motion.div variants={itemVariants} className="space-y-2">
+            <label
+              htmlFor="story-prompt"
+              className="text-xs font-semibold text-slate-300 uppercase tracking-widest flex items-center justify-between"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                  Generating Story Outline...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4.5 w-4.5" />
-                  Begin Generation
-                </>
-              )}
-            </Button>
-          </CardFooter>
+              <span>Story Concept</span>
+              <span className="text-[10px] text-slate-500 font-normal lowercase">10–1000 characters</span>
+            </label>
+            <Textarea
+              id="story-prompt"
+              placeholder="Describe your comic storyline here. Mention characters, mood, setting, and key actions..."
+              className={`h-32 resize-none bg-slate-900/30 border-slate-700 text-white placeholder:text-slate-500 ${
+                errors.prompt ? "border-red-500 focus-visible:ring-red-500" : ""
+              }`}
+              {...register("prompt")}
+            />
+            {errors.prompt && (
+              <p className="text-xs text-red-400 font-medium mt-1">{errors.prompt.message}</p>
+            )}
+          </motion.div>
+
+          {/* Prompt Helper Buttons */}
+          <motion.div variants={itemVariants} className="space-y-2">
+            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Need inspiration?</span>
+            <div className="space-y-2">
+              {samplePrompts.map((sample, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setValue("prompt", sample, { shouldValidate: true })}
+                  className="w-full text-left text-xs text-slate-300 bg-slate-900/30 hover:bg-slate-900/50 border border-slate-700 hover:border-slate-600 rounded-lg p-3 transition-all duration-200"
+                >
+                  "{sample}"
+                </button>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Panel Count Select */}
+          <motion.div variants={itemVariants} className="space-y-3">
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+              <Layers className="h-4 w-4 text-slate-400" />
+              <span>Number of Panels ({selectedPanelCount})</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Number of panels">
+              {[1, 2, 4].map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => setValue("panelCount", count, { shouldValidate: true })}
+                  aria-pressed={selectedPanelCount === count}
+                  className={`h-10 rounded-lg border text-xs font-semibold transition-all duration-200 ${
+                    selectedPanelCount === count
+                      ? "bg-gradient-to-r from-violet-600 to-purple-600 border-purple-500 text-white"
+                      : "bg-slate-900/30 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                  }`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+            {errors.panelCount && (
+              <p className="text-xs text-red-400 font-medium mt-1">{errors.panelCount.message}</p>
+            )}
+          </motion.div>
+
+          {/* Submit button */}
+          <motion.button
+            variants={itemVariants}
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full h-12 rounded-lg font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all duration-200 ${
+              isSubmitting
+                ? "bg-slate-800 text-slate-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 hover:from-violet-500 hover:via-purple-500 hover:to-pink-500"
+            }`}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Begin Generation
+              </>
+            )}
+          </motion.button>
         </form>
-      </Card>
+      </motion.div>
     </div>
   );
 }
