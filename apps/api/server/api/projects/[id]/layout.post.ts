@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
     // persisted state does not drift from the job queue. Rollback only when
     // we successfully captured the prior layout (non-null).
     let rolledBack = false;
-    if (layoutCommitted && previousLayout) {
+    if (layoutCommitted && previousLayout !== null) {
       try {
         await useCase.selectLayout(id, previousLayout);
         rolledBack = true;

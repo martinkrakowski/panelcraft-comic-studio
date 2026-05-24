@@ -52,51 +52,70 @@ export default defineEventHandler(async (event) => {
       return fail('NOT_FOUND', 'Project not found');
     }
 
-    // 2. Recursively delete storage objects under comics/${projectId}/
-    const { data: files, error: listError } = await supabase.storage
-      .from('comics')
-      .list(`${projectId}/`, { limit: 100 });
+    // 2. Recursively delete all storage objects under comics/${projectId}/
+    // Collect all file paths using depth-first traversal with pagination.
+    // Folders are detected by checking metadata.size === undefined (files always
+    // have a size property, even if it's 0).
+    const filePaths: string[] = [];
+    const prefixStack: string[] = [`${projectId}`]; // depth-first work queue
+    const pageSize = 100;
 
-    if (listError) {
-      cleanupErrors.push({ step: 'storage_list', message: listError.message });
-    } else if (files && files.length > 0) {
-      const filePaths: string[] = [];
+    while (prefixStack.length > 0) {
+      const prefix = prefixStack.pop()!;
+      let offset = 0;
+      let hasMore = true;
 
-      for (const file of files) {
-        if (!file.name) continue;
-        // If it's a folder (no metadata.size), list its contents
-        if (!file.metadata?.size) {
-          const { data: subFiles, error: subListError } = await supabase.storage
-            .from('comics')
-            .list(`${projectId}/${file.name}`, { limit: 100 });
-          if (subListError) {
-            cleanupErrors.push({
-              step: `storage_list:${file.name}`,
-              message: subListError.message,
-            });
-            continue;
-          }
-          subFiles?.forEach((subFile) => {
-            if (subFile.name) {
-              filePaths.push(`${projectId}/${file.name}/${subFile.name}`);
-            }
+      while (hasMore) {
+        const { data: entries, error: listError } = await supabase.storage
+          .from('comics')
+          .list(prefix, { limit: pageSize, offset });
+
+        if (listError) {
+          cleanupErrors.push({
+            step: `storage_list:${prefix}`,
+            message: listError.message,
           });
+          break; // move to next prefix on list error
+        }
+
+        if (!entries || entries.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        for (const entry of entries) {
+          if (!entry.name) continue;
+          const fullPath = `${prefix}/${entry.name}`;
+          // Files have metadata.size (even zero-byte files); folders do not
+          const isFile = typeof entry.metadata?.size === 'number';
+          if (isFile) {
+            filePaths.push(fullPath);
+          } else {
+            // Folder: add to work queue for recursive traversal
+            prefixStack.push(fullPath);
+          }
+        }
+
+        // Paginate if this batch was full
+        if (entries.length < pageSize) {
+          hasMore = false;
         } else {
-          filePaths.push(`${projectId}/${file.name}`);
+          offset += pageSize;
         }
       }
+    }
 
-      if (filePaths.length > 0) {
-        const { error: deleteStorageError } = await supabase.storage
-          .from('comics')
-          .remove(filePaths);
+    // Delete all collected file paths
+    if (filePaths.length > 0) {
+      const { error: deleteStorageError } = await supabase.storage
+        .from('comics')
+        .remove(filePaths);
 
-        if (deleteStorageError) {
-          cleanupErrors.push({
-            step: 'storage_delete',
-            message: deleteStorageError.message,
-          });
-        }
+      if (deleteStorageError) {
+        cleanupErrors.push({
+          step: 'storage_delete',
+          message: deleteStorageError.message,
+        });
       }
     }
 

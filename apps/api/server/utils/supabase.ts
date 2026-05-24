@@ -17,7 +17,6 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 let serviceClient: SupabaseClient | null = null;
-let anonClient: SupabaseClient | null = null;
 
 /**
  * Returns the singleton Supabase client backed by the service-role key.
@@ -36,11 +35,12 @@ export function getSupabaseClient(): SupabaseClient {
 }
 
 /**
- * Returns a Supabase client backed by the anon key.
+ * Returns a fresh (unauthenticated) Supabase client backed by the anon key.
  *
- * Reserved for operations that should respect row-level security (e.g.
- * acting on behalf of an authenticated end user). Falls back to throwing
- * if the anon key is not configured.
+ * Creates a new client instance on each call with session persistence disabled.
+ * Use when you need row-level security semantics or plan to attach an end-user
+ * JWT to a specific request. Falls back to throwing if the anon key is not
+ * configured.
  */
 export function getSupabaseAnonClient(): SupabaseClient {
   if (!SUPABASE_ANON_KEY) {
@@ -48,10 +48,9 @@ export function getSupabaseAnonClient(): SupabaseClient {
       'Missing SUPABASE_ANON_KEY environment variable; required for anon client'
     );
   }
-  if (!anonClient) {
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-  return anonClient;
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 /**
