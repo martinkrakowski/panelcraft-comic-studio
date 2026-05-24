@@ -8,7 +8,14 @@ interface LayoutPreviewProps {
   className?: string;
 }
 
-export function LayoutPreview({ layout, className = '' }: LayoutPreviewProps) {
+/**
+ * Renders a visual preview of a panel layout.
+ * Shows grid positions and panel numbering with calculations memoized.
+ */
+const LayoutPreview = React.memo(function LayoutPreview({
+  layout,
+  className = '',
+}: LayoutPreviewProps) {
   const cols = Math.max(...layout.panels.map((p) => p.x + p.width));
   const rows = Math.max(...layout.panels.map((p) => p.y + p.height));
 
@@ -32,4 +39,6 @@ export function LayoutPreview({ layout, className = '' }: LayoutPreviewProps) {
       ))}
     </div>
   );
-}
+});
+
+export { LayoutPreview };
