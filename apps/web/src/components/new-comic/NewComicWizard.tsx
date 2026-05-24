@@ -569,7 +569,7 @@ export function NewComicWizard() {
         <div className="flex-1 overflow-y-auto">
           {/* Hero Image */}
           {activeStep === 0 && (
-            <div className="px-4 pb-8">
+            <div className="px-4 pb-8 flex justify-center">
               <img
                 src="/tell-your-story.jpg"
                 alt="Tell your story"
