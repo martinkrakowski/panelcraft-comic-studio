@@ -392,6 +392,17 @@ export function NewComicWizard() {
         ))}
       </div>
 
+      {/* Hero Image */}
+      {activeStep === 0 && (
+        <div className="w-full max-w-2xl px-4 mb-8">
+          <img
+            src="/tell-your-story.jpg"
+            alt="Tell your story"
+            className="w-full rounded-lg"
+          />
+        </div>
+      )}
+
       {/* Form Content */}
       <div
         className={`${styles.container} relative z-10 w-full max-w-2xl px-4 pt-10`}
