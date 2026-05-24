@@ -1,7 +1,4 @@
-import {
-  RestControllerPort,
-  ProjectData,
-} from '../ports/in/rest-controller.in-port.js';
+import { RestControllerPort } from '../ports/in/rest-controller.in-port.js';
 import type { RelationalDbPort } from '../ports/out/relational-db.out-port.js';
 import type { JobQueuePort } from '../ports/out/job-queue.out-port.js';
 import { ComicProject, Panel } from '@panelcraft/comic-project-management';
@@ -116,91 +113,16 @@ export class ComicGenerationUseCase implements RestControllerPort {
     return projectId;
   }
 
-  async getProject(id: string): Promise<ProjectData | null> {
+  async getProject(id: string): Promise<ComicProject | null> {
     const project = await this.projectRepo.load(id);
     if (!project) {
       throw new NotFoundError(`Project with id ${id} not found`, id);
     }
-    const json = project.toJSON();
-    const validStatus = [
-      'created',
-      'processing',
-      'pending_review',
-      'completed',
-      'failed',
-    ].includes(json.status)
-      ? (json.status as
-          | 'created'
-          | 'processing'
-          | 'pending_review'
-          | 'completed'
-          | 'failed')
-      : 'created';
-
-    return {
-      id: json.id,
-      prompt: json.prompt,
-      panelCount: json.panelCount,
-      status: validStatus,
-      createdAt: json.createdAt,
-      panels: json.panels?.map((p: unknown) => {
-        const panel = p as {
-          id: string;
-          status: string;
-          generatedImageUrl?: string | null;
-        };
-        return {
-          id: panel.id,
-          index: 0,
-          status: panel.status,
-          imageUrl: panel.generatedImageUrl || null,
-        };
-      }),
-      characterBible: json.characterBible,
-    };
+    return project;
   }
 
-  async listProjects(): Promise<ProjectData[]> {
-    const projects = await this.projectRepo.listAll();
-    return projects.map((project) => {
-      const json = project.toJSON();
-      const validStatus = [
-        'created',
-        'processing',
-        'pending_review',
-        'completed',
-        'failed',
-      ].includes(json.status)
-        ? (json.status as
-            | 'created'
-            | 'processing'
-            | 'pending_review'
-            | 'completed'
-            | 'failed')
-        : 'created';
-
-      return {
-        id: json.id,
-        prompt: json.prompt,
-        panelCount: json.panelCount,
-        status: validStatus,
-        createdAt: json.createdAt,
-        panels: json.panels?.map((p: unknown) => {
-          const panel = p as {
-            id: string;
-            status: string;
-            generatedImageUrl?: string | null;
-          };
-          return {
-            id: panel.id,
-            index: 0,
-            status: panel.status,
-            imageUrl: panel.generatedImageUrl || null,
-          };
-        }),
-        characterBible: json.characterBible,
-      };
-    });
+  async listProjects(): Promise<ComicProject[]> {
+    return this.projectRepo.listAll();
   }
 
   async submitReview(

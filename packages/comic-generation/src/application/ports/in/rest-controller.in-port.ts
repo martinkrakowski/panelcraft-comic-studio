@@ -1,3 +1,5 @@
+import type { ComicProject } from '@panelcraft/comic-project-management';
+
 /**
  * Project data structure returned by REST endpoints.
  */
@@ -29,12 +31,12 @@ export interface RestControllerPort {
   /**
    * Retrieves the current project status and panel list.
    */
-  getProject(id: string): Promise<ProjectData | null>;
+  getProject(id: string): Promise<ComicProject | null>;
 
   /**
    * Lists all projects.
    */
-  listProjects(): Promise<ProjectData[]>;
+  listProjects(): Promise<ComicProject[]>;
 
   /**
    * Resumes the generation thread with HITL approval/rejection feedback.

@@ -284,8 +284,18 @@ Return ONLY valid JSON with no markdown or additional text:
     }
 
     const panelObj = panel as { prompt?: string };
+    const prompt = panelObj.prompt?.trim();
+
+    // Validate prompt is not empty before expensive image generation
+    if (!prompt) {
+      throw new Error(
+        `[generatePanel] Panel ${panelIndex} has empty prompt. ` +
+          'Cannot generate image without a valid prompt description.'
+      );
+    }
+
     const imageUrl = await this.imageGenPort.generatePanel({
-      prompt: panelObj.prompt || '',
+      prompt,
       panelNumber: panelIndex + 1,
     });
 
