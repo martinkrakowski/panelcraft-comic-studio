@@ -84,7 +84,7 @@ export async function generateCover(
       `Cover generation failed: ${error instanceof Error ? error.message : String(error)}`
     );
     const proj = ComicProject.fromJSON(state.project);
-    proj.setStatus('error');
+    proj.setStatus('failed');
     await deps.projectRepo.save(proj);
     throw error;
   }
