@@ -31,6 +31,7 @@ import { WizardStepContent } from './WizardStepContent';
 import { useWizardStepNavigation } from './hooks/useWizardStepNavigation';
 import { useImageUploads } from './hooks/useImageUploads';
 import { useProjectCreation } from './hooks/useProjectCreation';
+import { useWizardForm } from './hooks/useWizardForm';
 import styles from './NewComicWizard.module.css';
 
 export function NewComicWizard() {
@@ -47,86 +48,27 @@ export function NewComicWizard() {
   );
 
   const {
-    register,
-    handleSubmit,
-    control,
-    watch,
-    setValue,
-    trigger,
-    formState: { errors },
-  } = useForm<WizardFormValues>({
-    resolver: zodResolver(wizardFormSchema),
-    defaultValues: async () => {
-      if (typeof window === 'undefined') return getDefaultWizardValues();
-      const saved = await getWizardState();
-      if (saved?.wizardStateVersion === 1) {
-        // Post-submission state (layout chooser) lives on the project page;
-        // dropping users straight back into step 4 when they click "Brainstorm
-        // Idea" is jarring. Treat reaching step 4 as the end of the wizard's
-        // responsibility and start the next visit fresh.
-        if (saved.step >= 4) {
-          // Fire-and-forget: don't gate the first render on IndexedDB.
-          // A failure here is non-fatal (we already return defaults below).
-          clearWizardState().catch((err) =>
-            console.warn('Failed to clear stale wizard state', err)
-          );
-          return getDefaultWizardValues();
-        }
-        setActiveStep(saved.step);
-        setReferenceImageBlobs(saved.referenceImageBlobs || {});
-        setMoodBoardImageBlobs(saved.moodBoardImageBlobs || []);
-        setPreferredLayoutId(saved.preferredLayoutId || null);
-        setProjectId(saved.projectId || null);
-        return saved.formValues as WizardFormValues;
-      }
-      return getDefaultWizardValues();
-    },
-  });
-
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'characters',
-  });
-  const prompt = watch('prompt');
-  const panelCount = watch('panelCount');
-  const genres = watch('genres');
-  const tones = watch('tones');
-  const characters = watch('characters');
-  const moodBoardPreset = watch('moodBoardPreset');
-
-  const { save: saveStateToDB } = useWizardPersistence({
+    form,
+    fields,
+    append,
+    remove,
+    saveToIndexedDB,
+    prompt,
+    panelCount,
+    genres,
+    tones,
+    characters,
+    moodBoardPreset,
+  } = useWizardForm({
     activeStep,
-    referenceImageBlobs,
-    moodBoardImageBlobs,
-    preferredLayoutId,
-    projectId,
+    setActiveStep,
+    setReferenceImageBlobs,
+    setMoodBoardImageBlobs,
+    setPreferredLayoutId,
+    setProjectId,
   });
 
-  const saveToIndexedDB = useCallback(
-    async (overrides?: {
-      referenceImageBlobs?: Record<string, Blob>;
-      moodBoardImageBlobs?: Blob[];
-      preferredLayoutId?: string | null;
-      projectId?: string | null;
-      activeStep?: number;
-    }) => {
-      if (typeof window === 'undefined') return;
-      try {
-        await saveStateToDB(watch(), overrides);
-      } catch (err) {
-        if (err instanceof IndexedDBQuotaExceededError) {
-          toast({
-            variant: 'destructive',
-            title: 'Storage full',
-            description: err.message,
-          });
-        } else {
-          console.warn('Failed to persist wizard state', err);
-        }
-      }
-    },
-    [saveStateToDB, watch, toast]
-  );
+  const { register, handleSubmit, watch, setValue, trigger, formState: { errors } } = form;
 
   const { handleNextStep, handleBackStep, handleAnalyzePrompt, isAnalyzing } =
     useWizardStepNavigation({
@@ -209,13 +151,7 @@ export function NewComicWizard() {
     >
       <WizardStepContent
         activeStep={activeStep}
-        form={{
-          register,
-          handleSubmit,
-          watch,
-          setValue,
-          formState: { errors },
-        } as any}   // temporary until full UseFormReturn is passed
+        form={form}
         fields={fields}
         append={append}
         remove={remove}

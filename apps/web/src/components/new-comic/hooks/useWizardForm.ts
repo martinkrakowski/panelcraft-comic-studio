@@ -65,14 +65,13 @@ export function useWizardForm({
 
   const { save: saveStateToDB } = useWizardPersistence({
     activeStep,
-    referenceImageBlobs: {}, // will be passed from parent for now
+    referenceImageBlobs: {}, // Note: these are managed outside for now to avoid circular deps
     moodBoardImageBlobs: [],
     preferredLayoutId: null,
     projectId: null,
   });
 
   const saveToIndexedDB = async (overrides?: any) => {
-    // Simplified version – full implementation can be moved later
     if (typeof window === 'undefined') return;
     try {
       await saveStateToDB(form.watch(), overrides);
@@ -89,11 +88,26 @@ export function useWizardForm({
     }
   };
 
+  // Watched values (convenience)
+  const prompt = form.watch('prompt');
+  const panelCount = form.watch('panelCount');
+  const genres = form.watch('genres');
+  const tones = form.watch('tones');
+  const characters = form.watch('characters');
+  const moodBoardPreset = form.watch('moodBoardPreset');
+
   return {
     form,
     fields,
     append,
     remove,
     saveToIndexedDB,
+    // Convenience watched values
+    prompt,
+    panelCount,
+    genres,
+    tones,
+    characters,
+    moodBoardPreset,
   };
 }
