@@ -16,19 +16,19 @@ All secrets live in the root `.env` (local) or your environment's secret manager
 
 ### API (`apps/api`)
 
-| Variable                    | Required         | Notes                                                   |
-| --------------------------- | ---------------- | ------------------------------------------------------- |
-| `SUPABASE_URL`              | Yes              | Project URL from Supabase dashboard                     |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes              | Service role key — never expose to the browser          |
-| `SUPABASE_ANON_KEY`         | Yes              | Anon key for RLS-scoped client operations               |
-| `XAI_API_KEY`               | Yes              | xAI Grok Imagine API key for image generation           |
-| `CORS_ORIGIN`               | Yes              | Comma-separated list of allowed origins                 |
-| `DISABLE_REDIS`             | Yes              | Set to `false` in any environment running the job queue |
-| `REDIS_HOST`                | If Redis enabled | Defaults to `localhost`                                 |
-| `REDIS_PORT`                | If Redis enabled | Defaults to `6379`                                      |
-| `PORT`                      | No               | API server port, defaults to `3001`                     |
-| `LANGCHAIN_API_KEY`         | No               | LangSmith tracing; omit to disable                      |
-| `LANGCHAIN_TRACING_V2`      | No               | Set to `true` to enable LangSmith traces                |
+| Variable                    | Required         | Notes                                                                                       |
+| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`              | Yes              | Project URL from Supabase dashboard                                                         |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes              | Service role key — never expose to the browser                                              |
+| `SUPABASE_ANON_KEY`         | Yes              | Anon key for RLS-scoped client operations                                                   |
+| `XAI_API_KEY`               | Yes              | xAI Grok Imagine API key for image generation                                               |
+| `CORS_ORIGIN`               | Yes              | Comma-separated list of allowed origins                                                     |
+| `DISABLE_REDIS`             | No               | Must be explicitly set to `false` to enable the job queue; omitting it is treated as `true` |
+| `REDIS_HOST`                | If Redis enabled | Defaults to `localhost`                                                                     |
+| `REDIS_PORT`                | If Redis enabled | Defaults to `6379`                                                                          |
+| `PORT`                      | No               | API server port, defaults to `3001`                                                         |
+| `LANGCHAIN_API_KEY`         | No               | LangSmith tracing; omit to disable                                                          |
+| `LANGCHAIN_TRACING_V2`      | No               | Set to `true` to enable LangSmith traces                                                    |
 
 ### Web (`apps/web`)
 
@@ -41,9 +41,12 @@ All secrets live in the root `.env` (local) or your environment's secret manager
 
 Redis is disabled by default (`DISABLE_REDIS=true`). To enable the job queue locally:
 
-1. Start Redis: `docker compose up -d redis`
-2. Set `DISABLE_REDIS=false` in your root `.env`
-3. Confirm `REDIS_HOST=localhost` and `REDIS_PORT=6379` are set (or rely on defaults)
-4. Restart the dev server: `yarn dev`
+1. Set `DISABLE_REDIS=false` in your root `.env`
+2. Confirm `REDIS_HOST=localhost` and `REDIS_PORT=6379` are set (or rely on defaults)
+3. Run `yarn dev` — the predev hook starts the Docker container automatically
 
-`yarn dev` runs `scripts/start-redis.js` as a predev hook which starts the Docker container automatically if `DISABLE_REDIS` is not `true`.
+To start Redis independently (e.g. for running tests without the dev server):
+
+```bash
+docker compose up -d redis
+```
