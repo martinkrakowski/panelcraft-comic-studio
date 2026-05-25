@@ -42,9 +42,12 @@ export default defineNitroPlugin(async (nitroApp) => {
     },
   };
 
-  const isRedisDisabled = process.env.DISABLE_REDIS === 'true';
+  const isRedisDisabled = config.disableRedis === 'true';
 
   if (!isRedisDisabled) {
+    // BullMQ connects lazily — new Queue() never throws on connection failure,
+    // it only throws on invalid config (e.g. non-numeric port). ECONNREFUSED
+    // surfaces later when the queue or worker first interact with Redis.
     try {
       bullMQQueue = new Queue('comic-generation-queue', {
         connection: redisConnection,

@@ -93,4 +93,27 @@ describe('CORS Middleware Integration Tests', () => {
     expect(response.status).toBe(200);
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
+
+  it('should return 204 for OPTIONS from unauthorized origin but omit CORS headers', async () => {
+    const app = createApp();
+    const router = createRouter();
+
+    app.use(corsMiddleware);
+
+    router.post(
+      '/api/test',
+      defineEventHandler(() => {
+        return { success: true };
+      })
+    );
+    app.use(router);
+
+    const response = await request(toNodeListener(app))
+      .options('/api/test')
+      .set('Origin', 'http://unauthorized.com')
+      .set('Access-Control-Request-Method', 'POST');
+
+    expect(response.status).toBe(204);
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+  });
 });

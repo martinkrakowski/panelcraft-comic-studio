@@ -8,17 +8,13 @@ import { useRuntimeConfig } from 'nitropack/runtime';
  * OPTIONS preflight requests to return 204 No Content.
  */
 export default defineEventHandler((event) => {
-  const config = useRuntimeConfig();
-  const corsConfig = config.cors || {
-    origin: ['http://localhost:3000', 'http://10.10.0.220:3000'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  };
+  const { cors } = useRuntimeConfig();
+  if (!cors) throw new Error('[CORS] runtimeConfig.cors is not configured');
 
   const didHandleCors = handleCors(event, {
-    origin: corsConfig.origin,
-    credentials: corsConfig.credentials,
-    methods: corsConfig.methods as HTTPMethod[],
+    origin: cors.origin,
+    credentials: cors.credentials,
+    methods: cors.methods as HTTPMethod[],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     preflight: {
       statusCode: 204,
