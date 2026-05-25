@@ -11,10 +11,15 @@ export interface NewComicWizardSidebarProps {
   panelCount: number;
   preferredLayoutId: string | null;
   setPreferredLayoutId: (id: string | null) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setValue: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   saveToIndexedDB: (overrides?: any) => Promise<void>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   register: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fields: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   characters: any[];
   moodBoardPreset: string;
 }

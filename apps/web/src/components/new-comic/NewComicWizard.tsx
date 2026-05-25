@@ -149,26 +149,7 @@ export function NewComicWizard() {
         </>
       }
     >
-      <WizardStepContent
-        activeStep={activeStep}
-        form={form}
-        fields={fields}
-        append={append}
-        remove={remove}
-        isAnalyzing={isAnalyzing}
-        handleAnalyzePrompt={handleAnalyzePrompt}
-        handleCharacterImageUpload={handleCharacterImageUpload}
-        handleMoodBoardUpload={handleMoodBoardUpload}
-        isSubmitting={isSubmitting}
-        setActiveStep={setActiveStep}
-        isPolling={isPolling}
-        projectStatus={projectStatus}
-        coverUrl={coverUrl}
-        layoutOptions={layoutOptions}
-        handleLayoutSelect={handleLayoutSelect}
-        handleRetry={handleRetry}
-        saveToIndexedDB={saveToIndexedDB}
-      />
+      <WizardStepContent />
 
       <WizardNavButtons
         activeStep={activeStep}
