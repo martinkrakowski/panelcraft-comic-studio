@@ -375,7 +375,27 @@ export function initComicWorker(
             const project = await projectRepo.load(projectId);
             if (project) {
               const currentStatus = project.getStatus();
-              if (currentStatus === 'processing') {
+              if (job.name === 'regenerate-panel') {
+                // Regenerate originated from a 'completed' project (the
+                // handler rejects other states). The target panel was
+                // flipped to 'pending' before enqueue; failing into
+                // 'pending_review' would strand it. Mark the panel failed
+                // and restore the project to 'completed' so the UI can
+                // re-offer regenerate.
+                const panelIndex = job.data.panelIndex;
+                if (typeof panelIndex === 'number') {
+                  const panels = project.getPanels();
+                  const target = panels[panelIndex];
+                  if (target) {
+                    const failedStatus = PanelStatus.create('failed');
+                    if (failedStatus.success && failedStatus.value) {
+                      target.setStatus(failedStatus.value);
+                      project.setPanels(panels);
+                    }
+                  }
+                }
+                project.setStatus('completed');
+              } else if (currentStatus === 'processing') {
                 project.setStatus('pending_review');
               } else if (
                 job.name === 'start-comic' &&

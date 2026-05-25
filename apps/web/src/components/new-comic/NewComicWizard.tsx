@@ -64,7 +64,11 @@ export function NewComicWizard() {
         // Idea" is jarring. Treat reaching step 4 as the end of the wizard's
         // responsibility and start the next visit fresh.
         if (saved.step >= 4) {
-          await clearWizardState();
+          // Fire-and-forget: don't gate the first render on IndexedDB.
+          // A failure here is non-fatal (we already return defaults below).
+          clearWizardState().catch((err) =>
+            console.warn('Failed to clear stale wizard state', err)
+          );
           return getDefaultWizardValues();
         }
         setActiveStep(saved.step);

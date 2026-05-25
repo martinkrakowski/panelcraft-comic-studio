@@ -86,27 +86,27 @@ export function PanelsGrid({
                   <div className="h-4 w-3/4 bg-slate-800 rounded animate-pulse" />
                 )}
 
-                {onRegenerate && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => onRegenerate(panel.index)}
-                    disabled={
+                {onRegenerate &&
+                  (() => {
+                    const isRegenerating =
                       regeneratingPanelIndex === panel.index ||
                       panel.status === 'pending' ||
-                      panel.status === 'generating'
-                    }
-                    className="w-full text-xs flex items-center justify-center gap-1.5 border border-slate-800"
-                  >
-                    <RefreshCw
-                      className={`h-3.5 w-3.5 ${regeneratingPanelIndex === panel.index ? 'animate-spin' : ''}`}
-                    />
-                    {regeneratingPanelIndex === panel.index ||
-                    panel.status === 'pending'
-                      ? 'Regenerating…'
-                      : 'Regenerate'}
-                  </Button>
-                )}
+                      panel.status === 'generating';
+                    return (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => onRegenerate(panel.index)}
+                        disabled={isRegenerating}
+                        className="w-full text-xs flex items-center justify-center gap-1.5 border border-slate-800"
+                      >
+                        <RefreshCw
+                          className={`h-3.5 w-3.5 ${isRegenerating ? 'animate-spin' : ''}`}
+                        />
+                        {isRegenerating ? 'Regenerating…' : 'Regenerate'}
+                      </Button>
+                    );
+                  })()}
               </CardContent>
             </Card>
           );

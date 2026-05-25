@@ -129,14 +129,22 @@ export async function regeneratePanel(
   }
 
   const status = project.getStatus();
-  if (status !== 'completed' && status !== 'pending_review') {
+  // Limit to 'completed' projects. While pending_review the LangGraph thread
+  // still owns panel state via its checkpoint; mutating panels outside the
+  // graph would diverge the next Command(resume) from reality.
+  if (status !== 'completed') {
     throw new ValidationError(
       `Cannot regenerate panel while project is "${status}" — only ` +
-        `completed or pending_review projects accept regeneration requests.`,
+        `completed projects accept regeneration requests.`,
       'status',
       status
     );
   }
+
+  // Capture the original panel status + project status so we can roll back
+  // if enqueue fails after we've already persisted the "processing" mutation.
+  const originalPanelStatus = panels[panelIndex]!.getStatus();
+  const originalProjectStatus = status;
 
   // Flip the target panel back to pending so the worker (and any UI polling)
   // can see that this panel is being reworked, then mark the project itself
@@ -150,15 +158,34 @@ export async function regeneratePanel(
   project.setStatus('processing');
   await deps.projectRepo.save(project);
 
-  await deps.taskQueue.add(
-    'regenerate-panel',
-    { projectId, panelIndex },
-    {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 2000 },
-      removeOnComplete: true,
+  try {
+    await deps.taskQueue.add(
+      'regenerate-panel',
+      { projectId, panelIndex },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+      }
+    );
+  } catch (err) {
+    // The queue is down or the job was rejected. Without rollback the
+    // project would be stuck as "processing" with a pending panel forever.
+    panels[panelIndex]!.setStatus(originalPanelStatus);
+    project.setPanels(panels);
+    project.setStatus(originalProjectStatus);
+    try {
+      await deps.projectRepo.save(project);
+    } catch (rollbackErr) {
+      deps.logger.error(
+        `[regeneratePanel] Rollback save failed for project ${projectId}: ` +
+          (rollbackErr instanceof Error
+            ? rollbackErr.message
+            : String(rollbackErr))
+      );
     }
-  );
+    throw err;
+  }
 
   deps.logger.info(
     `[regeneratePanel] Enqueued panel ${panelIndex} regeneration for project ${projectId}`
