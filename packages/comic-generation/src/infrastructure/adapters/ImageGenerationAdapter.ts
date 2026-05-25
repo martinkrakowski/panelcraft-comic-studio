@@ -20,8 +20,13 @@ interface XaiImageResponse {
  */
 export class ImageGenerationAdapter implements ImageGenerationPort {
   private readonly apiKey = process.env['XAI_API_KEY'];
-  private readonly qualityModel = 'grok-imagine-image-quality';
-  private readonly standardModel = 'grok-imagine-image';
+  // Model names are env-overridable so accounts without quality access can
+  // ship with the standard tier without code changes. Defaults match the
+  // standard model since it is more widely available on new teams.
+  private readonly qualityModel =
+    process.env['XAI_IMAGE_MODEL_QUALITY'] || 'grok-imagine-image';
+  private readonly standardModel =
+    process.env['XAI_IMAGE_MODEL_STANDARD'] || 'grok-imagine-image';
   private readonly generateEndpoint = 'https://api.x.ai/v1/images/generations';
   private readonly editEndpoint = 'https://api.x.ai/v1/images/edits';
 

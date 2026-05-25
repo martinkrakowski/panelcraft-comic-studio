@@ -22,6 +22,9 @@ All secrets live in the root `.env` (local) or your environment's secret manager
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes              | Service role key — never expose to the browser                                              |
 | `SUPABASE_ANON_KEY`         | Yes              | Anon key for RLS-scoped client operations                                                   |
 | `XAI_API_KEY`               | Yes              | xAI Grok Imagine API key for image generation                                               |
+| `XAI_IMAGE_MODEL_QUALITY`   | No               | High-quality model for covers/panels; defaults to `grok-imagine-image`                      |
+| `XAI_IMAGE_MODEL_STANDARD`  | No               | Standard model for style previews; defaults to `grok-imagine-image`                         |
+| `USE_MOCK_IMAGE`            | No               | Set to `true` to return placeholder URLs instead of calling xAI; defaults to `false`        |
 | `CORS_ORIGIN`               | Yes              | Comma-separated list of allowed origins                                                     |
 | `DISABLE_REDIS`             | No               | Must be explicitly set to `false` to enable the job queue; omitting it is treated as `true` |
 | `REDIS_HOST`                | If Redis enabled | Defaults to `localhost`                                                                     |
