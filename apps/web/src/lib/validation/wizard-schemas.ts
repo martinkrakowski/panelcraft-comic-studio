@@ -48,7 +48,7 @@ export const wizardFormSchema = z.object({
   globalStylePrompt: z
     .string()
     .min(10, 'Style prompt required')
-    .max(500, 'Max 500 characters'),
+    .max(1000, 'Max 1000 characters'),
   moodBoardPreset: z.string().min(1, 'Select a style preset'),
   artDirectionNotes: z.string().max(500, 'Max 500 characters').optional(),
 });
