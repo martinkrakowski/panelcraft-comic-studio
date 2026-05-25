@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useEffectOnce } from '../lib/hooks';
 import { Alert, AlertTitle, AlertDescription, Button } from '@panelcraft/ui';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { defaultLogger } from '@panelcraft/shared';
 
 /**
@@ -22,14 +22,9 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const logged = useRef(false);
-
-  useEffect(() => {
-    if (!logged.current) {
-      defaultLogger.error('Workspace render crash captured:', error);
-      logged.current = true;
-    }
-  }, [error]);
+  useEffectOnce(() => {
+    defaultLogger.error('Workspace render crash captured:', error);
+  });
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-6 text-center">
@@ -44,7 +39,7 @@ export default function Error({
         onClick={() => reset()}
         className="flex items-center gap-2 font-semibold shadow-md"
       >
-        <RefreshCcw className="h-4 w-4" />
+        <RefreshCw className="h-4 w-4" />
         Try again
       </Button>
     </div>

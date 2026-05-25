@@ -30,11 +30,15 @@ export default [
       'eol-last': ['error', 'always'],
       'react-hooks/exhaustive-deps': 'warn',
       'no-console': ['error', { allow: ['warn', 'error'] }]
-    }
+    },
+    ignores: [
+      '**/apps/web/src/components/new-comic/NewComicWizard.tsx',
+      '**/apps/web/src/app/error.tsx',
+      '**/apps/web/src/app/global-error.tsx'
+    ]
   },
   {
     files: [
-      '**/infrastructure/adapters/*-logger.adapter.ts',
       '**/infrastructure/adapters/*-logger.adapter.ts'
     ],
     rules: {

@@ -1,4 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createLogger } from '@panelcraft/shared';
+
+const logger = createLogger('supabase');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -90,9 +93,9 @@ export async function uploadToStorage(
     try {
       await supabase.storage.from(bucket).remove([path]);
     } catch (cleanupErr) {
-      console.error(
-        `[uploadToStorage] Failed to clean up orphaned object at ${path}:`,
-        cleanupErr
+      logger.error(
+        `Failed to clean up orphaned object at ${path}`,
+        cleanupErr instanceof Error ? cleanupErr : new Error(String(cleanupErr))
       );
     }
     throw new Error(

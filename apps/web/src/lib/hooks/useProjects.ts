@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import api from '../api';
 import { ProjectListResponse } from '@panelcraft/types';
-import { useMountEffect } from './useMountEffect';
+import { useEffectOnce } from './useEffectOnce';
 
 /**
  * Custom React hook to retrieve and manage the list of all comic book projects.
@@ -34,7 +34,7 @@ export function useProjects() {
     }
   }, []);
 
-  useMountEffect(() => {
+  useEffectOnce(() => {
     fetchProjects();
   });
 

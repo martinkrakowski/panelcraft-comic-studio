@@ -6,17 +6,23 @@ interface XaiImageResponse {
 }
 
 /**
- * Adapter for generating comic panel images using xAI's Grok image model.
+ * Adapter for generating comic panel images using xAI's Grok Imagine models.
  * Calls xAI's OpenAI-compatible images API directly.
  * Reads XAI_API_KEY from the environment.
+ *
+ * Panel generation uses edit_image (img2img) when a reference URL is provided,
+ * which preserves character appearance across panels. Falls back to generate_image
+ * if no reference is available (e.g. first panel before cover is ready).
  *
  * To switch providers (e.g., Adobe Firefly, Gemini): implement ImageGenerationPort
  * in a new adapter and swap it in the composition root.
  */
 export class ImageGenerationAdapter implements ImageGenerationPort {
   private readonly apiKey = process.env['XAI_API_KEY'];
-  private readonly model = 'grok-2-image';
-  private readonly endpoint = 'https://api.x.ai/v1/images/generations';
+  private readonly qualityModel = 'grok-imagine-image-quality';
+  private readonly standardModel = 'grok-imagine-image';
+  private readonly generateEndpoint = 'https://api.x.ai/v1/images/generations';
+  private readonly editEndpoint = 'https://api.x.ai/v1/images/edits';
 
   async generatePanel(command: GeneratePanelCommand): Promise<string> {
     if (!this.apiKey) {
@@ -27,35 +33,78 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       command.prompt,
       command.styleModifiers
     );
+    const referenceUrl = command.referenceImageUrls?.[0];
 
-    const response = await this.fetchWithTimeout(this.endpoint, {
+    if (referenceUrl) {
+      return this.editImage(referenceUrl, fullPrompt);
+    }
+    return this.generateImage(fullPrompt, this.qualityModel);
+  }
+
+  private async generateImage(prompt: string, model: string): Promise<string> {
+    const response = await this.fetchWithTimeout(this.generateEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({
-        model: this.model,
-        prompt: fullPrompt,
-        n: 1,
-        response_format: 'url',
-      }),
+      body: JSON.stringify({ model, prompt, n: 1, response_format: 'url' }),
     });
 
     if (!response.ok) {
       const body = await response.text();
       throw new Error(
-        `xAI image generation failed (${response.status}): ${body}`
+        `xAI generate_image failed (${response.status}): ${body}`
       );
     }
 
     const json = (await response.json()) as XaiImageResponse;
     const url = json.data[0]?.url;
+    if (!url) throw new Error('xAI generate_image returned no image URL');
+    return url;
+  }
 
-    if (!url) {
-      throw new Error('xAI image generation returned no image URL');
+  private async editImage(
+    referenceUrl: string,
+    prompt: string
+  ): Promise<string> {
+    const imageResponse = await this.fetchWithTimeout(referenceUrl, {}, 30000);
+    if (!imageResponse.ok) {
+      throw new Error(
+        `Failed to fetch reference image for edit: ${imageResponse.status}`
+      );
+    }
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+    const form = new FormData();
+    form.append('model', this.qualityModel);
+    form.append(
+      'image',
+      new Blob([imageBuffer], { type: 'image/webp' }),
+      'reference.webp'
+    );
+    form.append('prompt', prompt);
+    form.append('n', '1');
+    form.append('response_format', 'url');
+
+    const response = await this.fetchWithTimeout(
+      this.editEndpoint,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+        body: form as unknown as BodyInit,
+      },
+      60000
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`xAI edit_image failed (${response.status}): ${body}`);
     }
 
+    const json = (await response.json()) as XaiImageResponse;
+    const url = json.data[0]?.url;
+    if (!url) throw new Error('xAI edit_image returned no image URL');
     return url;
   }
 
@@ -86,14 +135,14 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       : '';
     const fullPrompt = `Comic book cover for story: ${options.prompt}. ${styleDesc} ${characterDesc}. Professional comic cover, bold title, vibrant colors, dynamic composition.`;
 
-    const response = await this.fetchWithTimeout(this.endpoint, {
+    const response = await this.fetchWithTimeout(this.generateEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
-        model: this.model,
+        model: this.qualityModel,
         prompt: fullPrompt,
         n: 1,
         response_format: 'url',
@@ -154,14 +203,14 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       `Quick style preview: ${stylePrompt}.${presetSegment}${moodBoardSegment} ` +
       `Simple comic object on neutral background, clean lines, flat colors.`;
 
-    const response = await this.fetchWithTimeout(this.endpoint, {
+    const response = await this.fetchWithTimeout(this.generateEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
-        model: this.model,
+        model: this.standardModel,
         prompt: fullPrompt,
         n: 1,
         response_format: 'url',

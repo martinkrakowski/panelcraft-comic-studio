@@ -2,7 +2,10 @@ import { defineEventHandler, readBody, setResponseStatus } from 'h3';
 import { ok, fail } from '../../../utils/envelope.js';
 import { parseBody } from '../../../utils/validation.js';
 import { SelectLayoutSchema, ParamIdSchema } from '../../../utils/schemas.js';
+import { createLogger } from '@panelcraft/shared';
 import { getComicUseCase } from '../../../utils/dependencies.js';
+
+const logger = createLogger('layout.post');
 
 /**
  * POST /api/projects/[id]/layout
@@ -53,9 +56,11 @@ export default defineEventHandler(async (event) => {
         await useCase.selectLayout(id, previousLayout);
         rolledBack = true;
       } catch (rollbackErr) {
-        console.error(
-          `[layout.post] Rollback failed for project ${id}:`,
-          rollbackErr
+        logger.error(
+          `Rollback failed for project ${id}`,
+          rollbackErr instanceof Error
+            ? rollbackErr
+            : new Error(String(rollbackErr))
         );
       }
     }

@@ -3,8 +3,6 @@ import { ok } from '../../utils/envelope.js';
 import { parseBody } from '../../utils/validation.js';
 import { AnalyzePromptSchema } from '../../utils/schemas.js';
 import { getLLMClient } from '../../utils/dependencies.js';
-import { checkRateLimit } from '../../utils/rate-limiter.js';
-import { getClientIp } from '../../utils/client-ip.js';
 
 /**
  * POST /api/wizard/analyze-prompt
@@ -13,19 +11,7 @@ import { getClientIp } from '../../utils/client-ip.js';
  * @returns { feedback: string, estimatedCharactersCount: number, suggestedGenres: string[], suggestedTones: string[] }
  */
 export default defineEventHandler(async (event) => {
-  // Rate limiting: 10 requests per minute per client (uses socket address by
-  // default, x-forwarded-for only when TRUST_PROXY is enabled)
-  const clientIp = getClientIp(event);
-  const { allowed, retryAfter } = checkRateLimit(clientIp);
-
-  if (!allowed) {
-    setResponseStatus(event, 429);
-    return {
-      error: 'Too many requests',
-      retryAfter: `${retryAfter} seconds`,
-    };
-  }
-
+  // Rate limiting handled globally by server/middleware/rate-limit.ts
   const { prompt } = parseBody(AnalyzePromptSchema, await readBody(event));
   const llmClient = getLLMClient(event);
 

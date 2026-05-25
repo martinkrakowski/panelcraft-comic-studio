@@ -18,6 +18,7 @@ import {
   CardContent,
   CardFooter,
   Badge,
+  ProjectStatusBadge,
   Button,
   buttonVariants,
   Textarea,
@@ -139,23 +140,6 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return { text: 'Completed', variant: 'success' as const };
-      case 'pending_review':
-        return { text: 'Review Required', variant: 'warning' as const };
-      case 'failed':
-        return { text: 'Failed', variant: 'destructive' as const };
-      case 'processing':
-        return { text: 'Generating Panels...', variant: 'default' as const };
-      case 'created':
-        return { text: 'Creating Outline...', variant: 'default' as const };
-      default:
-        return { text: status, variant: 'secondary' as const };
-    }
-  };
-
   const getPanelStatusLabel = (status: string) => {
     switch (status) {
       case 'completed':
@@ -236,7 +220,6 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
     project.panelCount > 0
       ? (completedPanelCount / project.panelCount) * 100
       : 0;
-  const projectStatus = getStatusLabel(project.status);
 
   return (
     <div className="space-y-6">
@@ -254,7 +237,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
             <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
               {project.prompt}
             </h1>
-            <Badge variant={projectStatus.variant}>{projectStatus.text}</Badge>
+            <ProjectStatusBadge status={project.status} />
           </div>
           <p className="text-xs text-slate-500">Project ID: {project.id}</p>
         </div>

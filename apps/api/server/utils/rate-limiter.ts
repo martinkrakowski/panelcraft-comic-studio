@@ -1,58 +1,44 @@
-/**
- * Simple in-memory rate limiter for API endpoints
- * Limits to 10 requests per minute per IP
- */
+const WINDOW_MS = 60_000; // 1 minute sliding window
 
-const RATE_LIMIT = 10; // requests per window
-const WINDOW_MS = 60 * 1000; // 1 minute
-
-interface RateLimitEntry {
+interface Bucket {
   count: number;
   resetTime: number;
 }
 
-const store = new Map<string, RateLimitEntry>();
+const store = new Map<string, Bucket>();
 
 /**
- * Check if a request from the given IP exceeds the rate limit
- * @param ip - Client IP address
- * @returns { allowed: boolean, retryAfter?: number }
+ * Fixed-window rate limit check keyed on an arbitrary string (e.g. "text:<sessionId>").
+ * Returns count so callers can log proximity to the threshold.
  */
-export function checkRateLimit(ip: string): {
-  allowed: boolean;
-  retryAfter?: number;
-} {
+export function checkRateLimit(
+  key: string,
+  limit: number
+): { allowed: boolean; count: number; retryAfter?: number } {
   const now = Date.now();
-  const entry = store.get(ip);
+  const bucket = store.get(key);
 
-  if (!entry || now > entry.resetTime) {
-    // New window or window expired
-    store.set(ip, { count: 1, resetTime: now + WINDOW_MS });
-    return { allowed: true };
+  if (!bucket || now >= bucket.resetTime) {
+    store.set(key, { count: 1, resetTime: now + WINDOW_MS });
+    return { allowed: true, count: 1 };
   }
 
-  if (entry.count >= RATE_LIMIT) {
+  if (bucket.count >= limit) {
     return {
       allowed: false,
-      retryAfter: Math.ceil((entry.resetTime - now) / 1000),
+      count: bucket.count,
+      retryAfter: Math.ceil((bucket.resetTime - now) / 1000),
     };
   }
 
-  // Increment count
-  entry.count++;
-  store.set(ip, entry);
-  return { allowed: true };
+  bucket.count++;
+  return { allowed: true, count: bucket.count };
 }
 
-// Cleanup expired entries every 5 minutes
-setInterval(
-  () => {
-    const now = Date.now();
-    for (const [ip, entry] of store.entries()) {
-      if (now > entry.resetTime) {
-        store.delete(ip);
-      }
-    }
-  },
-  5 * 60 * 1000
-);
+// Purge expired entries every 5 minutes to prevent unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of store.entries()) {
+    if (now >= bucket.resetTime) store.delete(key);
+  }
+}, 5 * 60_000);
