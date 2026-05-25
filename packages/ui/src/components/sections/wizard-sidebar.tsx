@@ -11,31 +11,33 @@ interface WizardSidebarProps {
    * - `'flex'`: static flex child whose width is driven by
    *   `--panelcraft-sidebar-width`. Use inside a `flex-row` parent. */
   variant?: 'fixed' | 'flex';
+  /** Optional header title. Defaults to "Wizard Settings". */
+  title?: string;
 }
 
 /**
  * Sidebar variant used by the comic-creation wizard. Wraps the generic
- * `Sidebar` with a fixed header ("Wizard Settings") and renders `children`
- * beneath it. Forwards a `ref` to the wrapped `<aside>` element.
+ * `Sidebar` with a fixed header (configurable via `title`, defaults to
+ * "Wizard Settings") and renders `children` beneath it. Forwards a `ref`
+ * to the wrapped `<aside>` element.
  *
  * Inherits its layout behavior (`'fixed'` vs `'flex'`) from the `variant`
  * prop, which is passed straight through to `Sidebar`. Provide step
  * controls, character editors, or style pickers as `children`.
  *
  * @example
- * <WizardSidebar variant="flex">
- *   <StepIndicator />
- *   <PromptForm />
+ * <WizardSidebar variant="flex" title="Project">
+ *   <CollapsibleSection title="Workflow Progress">...</CollapsibleSection>
  * </WizardSidebar>
  */
 export const WizardSidebar = React.forwardRef<
   HTMLDivElement,
   WizardSidebarProps
->(({ children, className, variant }, ref) => {
+>(({ children, className, variant, title = 'Wizard Settings' }, ref) => {
   return (
     <Sidebar ref={ref} variant={variant} className={className}>
       <div className="p-4 border-b border-slate-700">
-        <h2 className="text-sm font-semibold text-white">Wizard Settings</h2>
+        <h2 className="text-sm font-semibold text-white">{title}</h2>
       </div>
       {children}
     </Sidebar>
