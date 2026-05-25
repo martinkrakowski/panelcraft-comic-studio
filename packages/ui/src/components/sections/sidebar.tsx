@@ -2,35 +2,29 @@
 
 import React from 'react';
 
-/** Props for Sidebar component */
 interface SidebarProps {
-  /** Content to display in sidebar */
   children: React.ReactNode;
-  /** Additional CSS classes */
   className?: string;
+  /** Layout mode.
+   * - `'fixed'` (default): absolutely positioned, full-height, left edge of viewport.
+   * - `'flex'`: static flex child; transparent background; width driven by
+   *   `--panelcraft-sidebar-width` (370px). Use inside a `flex-row` parent. */
+  variant?: 'fixed' | 'flex';
 }
 
-/**
- * Fixed-width left sidebar panel (256px) with scrollable content.
- *
- * Positioned absolutely on the left side of the viewport with z-index 30
- * to sit above page content but below modals. Includes an `aria-label`
- * for screen reader navigation landmarks.
- *
- * @example
- * ```tsx
- * <Sidebar className="pt-20">
- *   <NavigationMenu />
- * </Sidebar>
- * ```
- */
+const fixedClasses =
+  'fixed left-0 top-0 h-screen w-64 bg-slate-900 border-r border-slate-700 z-30 overflow-y-auto';
+const flexClasses =
+  'w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 grow-0 bg-transparent border-0 overflow-y-auto';
+
 export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
-  ({ children, className }, ref) => {
+  ({ children, className, variant = 'fixed' }, ref) => {
+    const variantClasses = variant === 'flex' ? flexClasses : fixedClasses;
     return (
       <aside
         ref={ref}
         aria-label="Sidebar navigation"
-        className={`fixed left-0 top-0 h-screen w-64 overflow-y-auto bg-slate-900 border-r border-slate-700 z-30 ${className || ''}`}
+        className={`${variantClasses} ${className || ''}`}
       >
         {children}
       </aside>

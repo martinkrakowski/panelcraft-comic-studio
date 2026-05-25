@@ -36,7 +36,7 @@ export function EditorSidebar({
   characterBible,
 }: EditorSidebarProps) {
   return (
-    <div className="space-y-6 lg:col-span-1">
+    <div className="w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 space-y-6">
       <Card className="border-slate-800/80 bg-slate-900/40">
         <CardHeader className="p-4 pb-2">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-400">

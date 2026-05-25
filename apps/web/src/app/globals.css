@@ -9,13 +9,19 @@
 
     --border: 223 47% 11%;
     --card: 224 71% 4%;
+
+    /* Sidebar layout tokens */
+    --panelcraft-sidebar-width: 370px;
+    --panelcraft-gutter-space: 1.5rem;
   }
 }
 
 body {
   color: hsl(var(--foreground));
   background-color: #030712;
-  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-family:
+    ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol';
 }
 
 /* Custom Scrollbars */
