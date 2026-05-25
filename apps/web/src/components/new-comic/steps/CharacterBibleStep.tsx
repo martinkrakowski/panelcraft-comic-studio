@@ -123,6 +123,27 @@ export function CharacterBibleStep({
               )}
             </div>
 
+            <div>
+              <label
+                htmlFor={`character-consistency-${index}`}
+                className="text-[10px] text-slate-400 uppercase"
+              >
+                Consistency Notes
+              </label>
+              <Textarea
+                id={`character-consistency-${index}`}
+                {...register(`characters.${index}.consistency`)}
+                onBlur={() => saveToIndexedDB()}
+                placeholder="Always wears red scarf, scar over left eye, never smiles..."
+                className="h-20 resize-none bg-slate-800 border border-slate-700 text-white text-sm"
+              />
+              {errors.characters?.[index]?.consistency && (
+                <p className="text-xs text-red-400">
+                  {errors.characters[index]?.consistency?.message}
+                </p>
+              )}
+            </div>
+
             <div className="flex items-center gap-3">
               <input
                 type="file"
