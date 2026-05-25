@@ -5,8 +5,11 @@ import {
   setCookie,
   setResponseStatus,
 } from 'h3';
+import { createLogger } from '@panelcraft/shared';
 import { getClientIp } from '../utils/client-ip.js';
 import { checkRateLimit } from '../utils/rate-limiter.js';
+
+const logger = createLogger('RateLimit');
 
 const TEXT_LIMIT = 40; // RPM per session — reasoning + non-reasoning combined
 const IMAGE_LIMIT = 12; // RPM per session — grok-imagine-image
@@ -57,9 +60,7 @@ export default defineEventHandler((event) => {
       path: '/',
     });
     if (debug) {
-      console.warn(
-        `[RateLimit] New session minted: ${sessionId} (ip=${getClientIp(event)})`
-      );
+      logger.debug('New session minted', { sessionId, ip: getClientIp(event) });
     }
   }
 
@@ -70,15 +71,25 @@ export default defineEventHandler((event) => {
   const pct = Math.round((count / limit) * 100);
 
   if (debug) {
-    console.warn(
-      `[RateLimit] ${method} ${path} | session=${sessionId} | ${callType} ${count}/${limit} (${pct}%)`
-    );
+    logger.debug('Rate limit check', {
+      method,
+      path,
+      sessionId,
+      callType,
+      count,
+      limit,
+      pct,
+    });
   }
 
   if (!allowed) {
-    console.warn(
-      `[RateLimit] 429 | ${method} ${path} | session=${sessionId} | ${callType} limit ${limit} RPM`
-    );
+    logger.warn('Rate limit exceeded — 429', {
+      method,
+      path,
+      sessionId,
+      callType,
+      limit,
+    });
     setResponseStatus(event, 429);
     return {
       error: 'Rate limit exceeded',
@@ -93,8 +104,12 @@ export default defineEventHandler((event) => {
 
   // Warn when a session is approaching its limit, even outside debug mode
   if (count >= Math.floor(limit * WARN_AT)) {
-    console.warn(
-      `[RateLimit] Approaching limit | session=${sessionId} | ${callType} ${count}/${limit} (${pct}%)`
-    );
+    logger.warn('Rate limit approaching threshold', {
+      sessionId,
+      callType,
+      count,
+      limit,
+      pct,
+    });
   }
 });

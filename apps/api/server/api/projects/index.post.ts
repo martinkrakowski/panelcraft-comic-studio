@@ -6,9 +6,12 @@ import {
 import { ok, fail } from '../../utils/envelope.js';
 import { CreateProjectSchema } from '../../utils/schemas.js';
 import { getComicUseCase } from '../../utils/dependencies.js';
+import { createLogger } from '@panelcraft/shared';
 import { getSupabaseClient, uploadToStorage } from '../../utils/supabase.js';
 import { formatLayoutSuggestions } from '../../utils/layout-suggestions.js';
 import sharp from 'sharp';
+
+const logger = createLogger('projects.post');
 
 /**
  * POST /api/projects
@@ -176,9 +179,11 @@ export default defineEventHandler(async (event) => {
       try {
         await supabase.storage.from('comics').remove(uploadedPaths);
       } catch (cleanupErr) {
-        console.error(
-          `[projects.post] Failed to clean up uploads for project ${projectId}:`,
-          cleanupErr
+        logger.error(
+          `Failed to clean up uploads for project ${projectId}`,
+          cleanupErr instanceof Error
+            ? cleanupErr
+            : new Error(String(cleanupErr))
         );
       }
     }
