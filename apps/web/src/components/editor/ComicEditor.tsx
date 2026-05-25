@@ -168,7 +168,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
         />
 
         <div className="flex-1 space-y-6">
-          {project.status === 'pending_layout' &&
+          {!project.selectedLayout &&
             project.layoutOptions &&
             project.layoutOptions.length > 0 && (
               <div className="bg-slate-900/40 border border-violet-500/30 rounded-xl p-6 space-y-4">
