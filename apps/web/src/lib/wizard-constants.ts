@@ -62,3 +62,16 @@ export const STEP_LABELS = [
 export const MAX_PANEL_COUNT = 4; // Limited to minimize token burn on demo
 
 export const PANEL_PREVIEW_LAYOUTS = [[1], [1, 1], [1, 1, 1], [2, 1]] as const;
+
+export function getDefaultWizardValues() {
+  return {
+    prompt: '',
+    panelCount: 4,
+    genres: [] as string[],
+    tones: [] as string[],
+    characters: [{ name: '', role: '', visual: '', consistency: '' }],
+    globalStylePrompt: '',
+    moodBoardPreset: '',
+    artDirectionNotes: '',
+  };
+}
