@@ -335,6 +335,28 @@ Return ONLY valid JSON with no markdown or additional text:
     return { ...state, selectedLayout: selection.selectedLayout };
   }
 
+  private buildCharacterStyleModifiers(
+    state: ComicGraphStateType
+  ): string | undefined {
+    const parts: string[] = [];
+
+    if (state.project.styleReferences?.globalStylePrompt) {
+      parts.push(state.project.styleReferences.globalStylePrompt);
+    }
+
+    const bible = state.project.characterBible as
+      | CharacterBibleData
+      | undefined;
+    if (bible?.characters?.length) {
+      const charDesc = bible.characters
+        .map((c) => `${c.name}: ${c.visual}. ${c.consistency}`)
+        .join('. ');
+      parts.push(`Character consistency — ${charDesc}`);
+    }
+
+    return parts.length ? parts.join('. ') : undefined;
+  }
+
   private async generatePanel(state: ComicGraphStateType) {
     const panelIndex = state.currentPanelIndex;
     const panels = state.project.panels || [];
@@ -355,9 +377,16 @@ Return ONLY valid JSON with no markdown or additional text:
       );
     }
 
+    const styleModifiers = this.buildCharacterStyleModifiers(state);
+    const referenceImageUrls = state.coverImageUrl
+      ? [state.coverImageUrl]
+      : undefined;
+
     const imageUrl = await this.imageGenPort.generatePanel({
       prompt,
       panelNumber: panelIndex + 1,
+      styleModifiers,
+      referenceImageUrls,
     });
 
     const updatedPanels = [...panels];

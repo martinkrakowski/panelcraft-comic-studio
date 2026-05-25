@@ -4,8 +4,6 @@ import { parseBody } from '../../utils/validation.js';
 import { PreviewStyleSchema } from '../../utils/schemas.js';
 import { getImageGenerationClient } from '../../utils/dependencies.js';
 import { uploadToStorage } from '../../utils/supabase.js';
-import { getSignedUrl } from '../../utils/supabase.js';
-import { checkRateLimit } from '../../utils/rate-limiter.js';
 
 /**
  * POST /api/wizard/preview-style
@@ -14,24 +12,7 @@ import { checkRateLimit } from '../../utils/rate-limiter.js';
  * @returns { previewImageUrl: string }
  */
 export default defineEventHandler(async (event) => {
-  // Rate limiting: 10 requests per minute per IP
-  const headerValue = event.node.req.headers['x-forwarded-for'];
-  const clientIp =
-    (Array.isArray(headerValue) ? headerValue[0] : headerValue)
-      ?.split(',')[0]
-      ?.trim() ||
-    event.node.req.socket.remoteAddress ||
-    'unknown';
-  const { allowed, retryAfter } = checkRateLimit(clientIp);
-
-  if (!allowed) {
-    setResponseStatus(event, 429);
-    return {
-      error: 'Too many requests',
-      retryAfter: `${retryAfter} seconds`,
-    };
-  }
-
+  // Rate limiting handled globally by server/middleware/rate-limit.ts (image: 12 RPM)
   const { stylePrompt, preset, moodBoardImages } = parseBody(
     PreviewStyleSchema,
     await readBody(event)
