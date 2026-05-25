@@ -50,6 +50,7 @@ export function CharacterBibleStep({
               </span>
               <button
                 type="button"
+                aria-label={`Remove character ${index + 1}`}
                 onClick={() => {
                   remove(index);
                   saveToIndexedDB();
@@ -62,10 +63,14 @@ export function CharacterBibleStep({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-slate-400 uppercase">
+                <label
+                  htmlFor={`character-name-${index}`}
+                  className="text-[10px] text-slate-400 uppercase"
+                >
                   Name
                 </label>
                 <input
+                  id={`character-name-${index}`}
                   {...register(`characters.${index}.name`)}
                   onBlur={() => saveToIndexedDB()}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white"
@@ -77,10 +82,14 @@ export function CharacterBibleStep({
                 )}
               </div>
               <div>
-                <label className="text-[10px] text-slate-400 uppercase">
+                <label
+                  htmlFor={`character-role-${index}`}
+                  className="text-[10px] text-slate-400 uppercase"
+                >
                   Role
                 </label>
                 <input
+                  id={`character-role-${index}`}
                   {...register(`characters.${index}.role`)}
                   onBlur={() => saveToIndexedDB()}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white"
@@ -94,10 +103,14 @@ export function CharacterBibleStep({
             </div>
 
             <div>
-              <label className="text-[10px] text-slate-400 uppercase">
+              <label
+                htmlFor={`character-visual-${index}`}
+                className="text-[10px] text-slate-400 uppercase"
+              >
                 Visual Description
               </label>
               <Textarea
+                id={`character-visual-${index}`}
                 {...register(`characters.${index}.visual`)}
                 onBlur={() => saveToIndexedDB()}
                 placeholder="Mid-40s, sharp jaw, dark trench coat..."

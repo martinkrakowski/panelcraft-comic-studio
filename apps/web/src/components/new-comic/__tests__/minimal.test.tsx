@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
-
-// Spy on console.error to catch rendering errors
-vi.spyOn(console, 'error').mockImplementation(() => {});
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -84,8 +81,16 @@ vi.mock('../NewComicWizard.module.css', () => ({
 import { NewComicWizard } from '../NewComicWizard';
 
 describe('NewComicWizard Minimal Render', () => {
+  let consoleErrorSpy: any;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Spy on console.error within test lifecycle to detect render errors
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy?.mockRestore();
   });
 
   it('mounts without throwing', () => {

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   render,
   screen,
@@ -124,6 +124,8 @@ import { getWizardState, setWizardState } from '../../../lib/indexedDB';
 import api from '../../../lib/api';
 
 describe('NewComicWizard Phase 1 Smoke Tests', () => {
+  const originalFetch = global.fetch;
+
   beforeEach(() => {
     vi.clearAllMocks();
     global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
@@ -131,6 +133,11 @@ describe('NewComicWizard Phase 1 Smoke Tests', () => {
     // Reset IndexedDB mocks
     (getWizardState as any).mockResolvedValue(null);
     (setWizardState as any).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    global.fetch = originalFetch;
   });
 
   it('renders without crashing and shows step 0', async () => {
