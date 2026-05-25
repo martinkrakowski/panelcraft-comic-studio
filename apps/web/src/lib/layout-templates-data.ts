@@ -130,7 +130,7 @@ export const LAYOUTS_3_PANELS = [
     name: 'Dominant + Dual Insets',
     description: 'Large central focus with two smaller reaction/detail panels',
     panelCount: 3 as const,
-    mood: 'intimate' as const,
+    mood: 'dramatic' as const,
     panels: [
       { x: 0, y: 0, width: 3, height: 4 },
       { x: 3, y: 0, width: 1, height: 2 },

@@ -28,7 +28,7 @@ export interface LayoutTemplate {
   /** CSS grid template for rendering */
   gridTemplate: string;
   /** Emotional impact: dramatic, balanced, dynamic */
-  mood: 'dramatic' | 'balanced' | 'dynamic' | 'intimate';
+  mood: 'dramatic' | 'balanced' | 'dynamic';
 }
 
 export {
@@ -63,29 +63,29 @@ export function getLayoutById(id: string): LayoutTemplate | undefined {
 
 const GENRE_MOOD_MAP: Record<
   string,
-  Array<'dramatic' | 'balanced' | 'dynamic' | 'intimate'>
+  Array<'dramatic' | 'balanced' | 'dynamic'>
 > = {
   Action: ['dynamic', 'dramatic'],
   Adventure: ['dynamic', 'balanced'],
   Fantasy: ['dynamic', 'balanced'],
   'Sci-Fi': ['dynamic', 'balanced'],
-  Noir: ['dramatic', 'intimate'],
-  Mystery: ['intimate', 'balanced'],
-  Horror: ['dramatic', 'intimate'],
+  Noir: ['dramatic'],
+  Mystery: ['balanced', 'dramatic'],
+  Horror: ['dramatic'],
   Comedy: ['balanced'],
-  Drama: ['balanced', 'dramatic', 'intimate'],
+  Drama: ['balanced', 'dramatic'],
   Cyberpunk: ['dynamic', 'dramatic'],
   Superhero: ['dynamic', 'dramatic'],
 };
 
 const TONE_MOOD_MAP: Record<
   string,
-  Array<'dramatic' | 'balanced' | 'dynamic' | 'intimate'>
+  Array<'dramatic' | 'balanced' | 'dynamic'>
 > = {
-  Dark: ['dramatic', 'intimate'],
-  Suspenseful: ['dramatic', 'intimate', 'dynamic'],
+  Dark: ['dramatic'],
+  Suspenseful: ['dramatic', 'dynamic'],
   Lighthearted: ['balanced'],
-  Dramatic: ['dramatic', 'intimate', 'balanced'],
+  Dramatic: ['dramatic', 'balanced'],
   Gritty: ['dramatic', 'dynamic'],
   Whimsical: ['balanced'],
   Epic: ['dramatic', 'dynamic'],
@@ -97,17 +97,13 @@ const TONE_MOOD_MAP: Record<
  */
 export function getLayoutsByMood(
   panelCount: 1 | 2 | 3 | 4,
-  moodOrGenres?: 'dramatic' | 'balanced' | 'dynamic' | 'intimate' | string[],
+  moodOrGenres?: 'dramatic' | 'balanced' | 'dynamic' | string[],
   tones?: string[]
 ): LayoutTemplate[] {
   const layouts = getLayoutsForPanelCount(panelCount);
 
   if (typeof moodOrGenres === 'string') {
-    const mood = moodOrGenres as
-      | 'dramatic'
-      | 'balanced'
-      | 'dynamic'
-      | 'intimate';
+    const mood = moodOrGenres as 'dramatic' | 'balanced' | 'dynamic';
     return layouts.filter((layout) => layout.mood === mood);
   }
 
