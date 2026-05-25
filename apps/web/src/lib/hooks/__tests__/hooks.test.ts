@@ -1,11 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { StrictMode } from 'react';
 import {
   useUnmountEffect,
   useEffectOnce,
   useObjectUrls,
   usePolling,
+  useWizardPersistence,
 } from '../index';
+import { setWizardState } from '../../indexedDB';
+
+vi.mock('../../indexedDB', () => ({
+  setWizardState: vi.fn(),
+  getWizardState: vi.fn(),
+  clearWizardState: vi.fn(),
+}));
 
 describe('useUnmountEffect', () => {
   it('calls cleanup on unmount', () => {
@@ -28,8 +37,26 @@ describe('useEffectOnce', () => {
 
   it('does not run effect again on mount remount (Strict Mode safe)', () => {
     const effect = vi.fn();
-    renderHook(() => useEffectOnce(effect));
+    renderHook(() => useEffectOnce(effect), {
+      wrapper: StrictMode,
+    });
     expect(effect).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs console.error if a cleanup function is returned', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const cleanup = () => {};
+    const effect = () => cleanup;
+
+    renderHook(() => useEffectOnce(effect));
+
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'useEffectOnce: Effect callback returned a cleanup function'
+      )
+    );
+    consoleSpy.mockRestore();
   });
 });
 
@@ -92,5 +119,47 @@ describe('usePolling', () => {
     rerender({ enabled: false });
     act(() => vi.advanceTimersByTime(2000));
     expect(callback).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useWizardPersistence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('persists state with overrides', async () => {
+    const initialState = {
+      activeStep: 1,
+      referenceImageBlobs: {},
+      moodBoardImageBlobs: [],
+      preferredLayoutId: null,
+      projectId: null,
+    };
+    const formValues = {
+      prompt: 'test prompt',
+      panelCount: 3,
+      genres: ['Sci-Fi'],
+      tones: ['Serious'],
+      characters: [],
+      globalStylePrompt: 'test style',
+      moodBoardPreset: 'test preset',
+    };
+
+    const { result } = renderHook(() => useWizardPersistence(initialState));
+
+    await act(async () => {
+      await result.current.save(formValues, { activeStep: 2 });
+    });
+
+    expect(setWizardState).toHaveBeenCalledTimes(1);
+    expect(setWizardState).toHaveBeenCalledWith({
+      wizardStateVersion: 1,
+      step: 2,
+      formValues,
+      referenceImageBlobs: {},
+      moodBoardImageBlobs: [],
+      preferredLayoutId: undefined,
+      projectId: undefined,
+    });
   });
 });

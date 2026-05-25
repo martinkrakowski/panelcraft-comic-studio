@@ -34,9 +34,7 @@ export default [
     ignores: [
       '**/apps/web/src/components/new-comic/NewComicWizard.tsx',
       '**/apps/web/src/app/error.tsx',
-      '**/apps/web/src/app/global-error.tsx',
-      '**/apps/web/src/lib/hooks/useProject.ts',
-      '**/apps/web/src/lib/hooks/useMountEffect.ts'
+      '**/apps/web/src/app/global-error.tsx'
     ]
   },
   {

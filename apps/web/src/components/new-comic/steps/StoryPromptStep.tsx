@@ -3,6 +3,7 @@ import { UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { Button, SelectionChip, Textarea } from '@panelcraft/ui';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
+import { WizardPersistedState } from '../../../lib/hooks';
 import styles from '../NewComicWizard.module.css';
 
 export interface StoryPromptStepProps {
@@ -14,13 +15,7 @@ export interface StoryPromptStepProps {
   setValue: UseFormSetValue<WizardFormValues>;
   isAnalyzing: boolean;
   handleAnalyzePrompt: () => Promise<void>;
-  saveToIndexedDB: (overrides?: {
-    referenceImageBlobs?: Record<string, Blob>;
-    moodBoardImageBlobs?: Blob[];
-    preferredLayoutId?: string | null;
-    projectId?: string | null;
-    activeStep?: number;
-  }) => Promise<void>;
+  saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
 }
 
 export function StoryPromptStep({

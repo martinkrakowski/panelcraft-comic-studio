@@ -97,8 +97,10 @@ export function ReviewSubmitStep({
             </button>
           </div>
           <p className="text-xs text-slate-400">
-            {watchMoodBoardPreset || 'None'} •{' '}
-            {watchGlobalStylePrompt?.slice(0, 50)}...
+            {watchMoodBoardPreset || 'None'}
+            {watchGlobalStylePrompt
+              ? ` • ${watchGlobalStylePrompt.length > 50 ? `${watchGlobalStylePrompt.slice(0, 50)}...` : watchGlobalStylePrompt}`
+              : ''}
           </p>
         </div>
       </div>

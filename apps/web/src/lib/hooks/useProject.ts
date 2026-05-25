@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import api from '../api';
 import { ComicProjectDTO } from '@panelcraft/types';
-import { useMountEffect } from './useMountEffect';
+import { useEffectOnce } from './useEffectOnce';
 import { usePolling } from './usePolling';
 
 /**
@@ -78,7 +78,7 @@ export function useProject(id: string) {
   );
 
   // Initial fetch on mount or id change
-  useMountEffect(() => {
+  useEffectOnce(() => {
     fetchProject();
   });
 

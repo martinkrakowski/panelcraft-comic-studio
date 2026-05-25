@@ -7,6 +7,7 @@ import {
 import { Trash2, ImagePlus, Plus } from 'lucide-react';
 import { Button, Textarea } from '@panelcraft/ui';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
+import { WizardPersistedState } from '../../../lib/hooks';
 import styles from '../NewComicWizard.module.css';
 
 export interface CharacterBibleStepProps {
@@ -16,13 +17,7 @@ export interface CharacterBibleStepProps {
   append: (value: WizardFormValues['characters'][number]) => void;
   remove: (index: number) => void;
   handleCharacterImageUpload: (index: number, file: File) => Promise<void>;
-  saveToIndexedDB: (overrides?: {
-    referenceImageBlobs?: Record<string, Blob>;
-    moodBoardImageBlobs?: Blob[];
-    preferredLayoutId?: string | null;
-    projectId?: string | null;
-    activeStep?: number;
-  }) => Promise<void>;
+  saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
 }
 
 export function CharacterBibleStep({
@@ -90,6 +85,11 @@ export function CharacterBibleStep({
                   onBlur={() => saveToIndexedDB()}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white"
                 />
+                {errors.characters?.[index]?.role && (
+                  <p className="text-xs text-red-400">
+                    {errors.characters[index]?.role?.message}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -103,6 +103,11 @@ export function CharacterBibleStep({
                 placeholder="Mid-40s, sharp jaw, dark trench coat..."
                 className="h-20 resize-none bg-slate-800 border border-slate-700 text-white text-sm"
               />
+              {errors.characters?.[index]?.visual && (
+                <p className="text-xs text-red-400">
+                  {errors.characters[index]?.visual?.message}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3">

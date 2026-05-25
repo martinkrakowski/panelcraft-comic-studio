@@ -330,6 +330,13 @@ export function NewComicWizard() {
             setLayoutOptions(data.data.project.layoutOptions || []);
             setCoverUrl(data.data.project.coverImageUrl || null);
             setIsPolling(false);
+          } else if (data.data.project.status === 'failed') {
+            setIsPolling(false);
+            toast({
+              variant: 'destructive',
+              title: 'Generation failed',
+              description: 'Project generation failed. Please try again.',
+            });
           } else if (
             ['completed', 'pending_review'].includes(data.data.project.status)
           ) {
@@ -341,7 +348,11 @@ export function NewComicWizard() {
         // Ignore poll errors
       }
     },
-    { enabled: isPolling && !!projectId, intervalMs: 2000 }
+    {
+      enabled: isPolling && !!projectId,
+      intervalMs: 2000,
+      immediateFirstCall: true,
+    }
   );
 
   // Adopt Object URLs lifecycle hook
@@ -362,6 +373,14 @@ export function NewComicWizard() {
       });
     }
   };
+
+  // Handle retry on project creation failure
+  const handleRetry = useCallback(async () => {
+    setProjectId(null);
+    setProjectStatus(null);
+    setActiveStep(3); // Go back to review & submit step
+    await saveToIndexedDB({ projectId: null, activeStep: 3 });
+  }, [saveToIndexedDB]);
 
   return (
     <div className="fixed inset-0 bg-slate-950 flex overflow-hidden">
@@ -673,6 +692,7 @@ export function NewComicWizard() {
                     coverUrl={coverUrl}
                     layoutOptions={layoutOptions}
                     handleLayoutSelect={handleLayoutSelect}
+                    onRetry={handleRetry}
                   />
                 )}
               </motion.div>

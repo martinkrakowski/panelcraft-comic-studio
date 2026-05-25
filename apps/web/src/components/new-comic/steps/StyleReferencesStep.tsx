@@ -2,6 +2,7 @@ import React from 'react';
 import { UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
 import { Textarea } from '@panelcraft/ui';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
+import { WizardPersistedState } from '../../../lib/hooks';
 import { STYLE_PRESETS } from '../../../lib/wizard-constants';
 import styles from '../NewComicWizard.module.css';
 
@@ -12,13 +13,7 @@ export interface StyleReferencesStepProps {
   setValue: UseFormSetValue<WizardFormValues>;
   handleMoodBoardUpload: (files: FileList) => Promise<void>;
   moodBoardObjectUrls: string[];
-  saveToIndexedDB: (overrides?: {
-    referenceImageBlobs?: Record<string, Blob>;
-    moodBoardImageBlobs?: Blob[];
-    preferredLayoutId?: string | null;
-    projectId?: string | null;
-    activeStep?: number;
-  }) => Promise<void>;
+  saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
 }
 
 export function StyleReferencesStep({

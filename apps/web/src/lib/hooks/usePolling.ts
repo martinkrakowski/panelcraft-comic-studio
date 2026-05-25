@@ -8,22 +8,34 @@ import { useEffect, useRef } from 'react';
  * @param callback The callback to execute on each interval.
  * @param opts.enabled Whether polling is active.
  * @param opts.intervalMs The interval duration in milliseconds.
+ * @param opts.immediateFirstCall Whether the callback should execute immediately upon enablement.
  *
  * @example
- * usePolling(checkStatus, { enabled: isProcessing, intervalMs: 2000 });
+ * usePolling(checkStatus, { enabled: isProcessing, intervalMs: 2000, immediateFirstCall: true });
  */
 export function usePolling(
   callback: () => void | Promise<void>,
-  { enabled, intervalMs }: { enabled: boolean; intervalMs: number }
+  {
+    enabled,
+    intervalMs,
+    immediateFirstCall = false,
+  }: {
+    enabled: boolean;
+    intervalMs: number;
+    immediateFirstCall?: boolean;
+  }
 ) {
   const callbackRef = useRef(callback);
   callbackRef.current = callback;
 
   useEffect(() => {
     if (!enabled) return;
+    if (immediateFirstCall) {
+      callbackRef.current();
+    }
     const id = setInterval(() => {
       callbackRef.current();
     }, intervalMs);
     return () => clearInterval(id);
-  }, [enabled, intervalMs]);
+  }, [enabled, intervalMs, immediateFirstCall]);
 }

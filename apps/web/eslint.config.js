@@ -20,7 +20,6 @@ export default [
   },
   {
     files: [
-      'src/lib/hooks/useMountEffect.ts',
       'src/lib/hooks/useUnmountEffect.ts',
       'src/lib/hooks/useEffectOnce.ts',
       'src/lib/hooks/useObjectUrls.ts',
