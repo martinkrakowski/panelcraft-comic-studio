@@ -60,10 +60,14 @@ export function StyleReferencesStep({
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-slate-300 uppercase tracking-widest">
+        <label
+          htmlFor="globalStylePrompt"
+          className="text-xs font-semibold text-slate-300 uppercase tracking-widest"
+        >
           Global Style Prompt
         </label>
         <Textarea
+          id="globalStylePrompt"
           {...register('globalStylePrompt')}
           onBlur={() => saveToIndexedDB()}
           placeholder="Gritty noir style with high contrast, heavy shadows..."
@@ -77,10 +81,14 @@ export function StyleReferencesStep({
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-slate-300 uppercase tracking-widest">
+        <label
+          htmlFor="moodBoardImages"
+          className="text-xs font-semibold text-slate-300 uppercase tracking-widest"
+        >
           Mood Board Images
         </label>
         <input
+          id="moodBoardImages"
           type="file"
           multiple
           accept="image/*"
