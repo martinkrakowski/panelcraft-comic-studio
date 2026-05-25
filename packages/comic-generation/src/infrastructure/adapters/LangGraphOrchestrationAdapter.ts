@@ -287,14 +287,10 @@ Return ONLY valid JSON with no markdown or additional text:
 
       if (uploadError) throw uploadError;
 
-      // Get signed URL (1 hour expiry)
-      const { data: signedUrlData } = await this.supabase.storage
-        .from(bucket)
-        .createSignedUrl(storagePath, 3600);
-
+      // Store the durable storage path, not the signed URL (which expires in 1 hour)
       return {
         ...state,
-        coverImageUrl: signedUrlData?.signedUrl || '',
+        coverImageUrl: storagePath,
         project: { ...project, coverImageUrl: storagePath },
       };
     } catch (error) {
@@ -325,9 +321,27 @@ Return ONLY valid JSON with no markdown or additional text:
 
   private async layoutInterrupt(state: ComicGraphStateType) {
     this.logger.info('Pausing for layout selection');
+
+    // Get fresh signed URL from durable storage path for client display
+    let coverImageUrl = '';
+    if (state.coverImageUrl) {
+      try {
+        const { data: signedUrlData } = await this.supabase.storage
+          .from('comics')
+          .createSignedUrl(state.coverImageUrl, 3600);
+        if (signedUrlData?.signedUrl) {
+          coverImageUrl = signedUrlData.signedUrl;
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to generate signed URL for layout preview: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    }
+
     const selection = interrupt({
       type: 'layout_selection',
-      coverImageUrl: state.coverImageUrl,
+      coverImageUrl,
       layoutOptions: state.layoutOptions,
       message: 'Select layout for Page 1',
     }) as { selectedLayout: string };
@@ -378,9 +392,24 @@ Return ONLY valid JSON with no markdown or additional text:
     }
 
     const styleModifiers = this.buildCharacterStyleModifiers(state);
-    const referenceImageUrls = state.coverImageUrl
-      ? [state.coverImageUrl]
-      : undefined;
+
+    // Get fresh signed URL from durable storage path to avoid expired URLs
+    let referenceImageUrls: string[] | undefined;
+    if (state.coverImageUrl) {
+      try {
+        const { data: signedUrlData } = await this.supabase.storage
+          .from('comics')
+          .createSignedUrl(state.coverImageUrl, 3600);
+        if (signedUrlData?.signedUrl) {
+          referenceImageUrls = [signedUrlData.signedUrl];
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to generate fresh signed URL for reference image: ${err instanceof Error ? err.message : String(err)}`
+        );
+        // Continue without reference image rather than failing panel generation
+      }
+    }
 
     const imageUrl = await this.imageGenPort.generatePanel({
       prompt,

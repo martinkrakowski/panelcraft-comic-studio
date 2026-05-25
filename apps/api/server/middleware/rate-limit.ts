@@ -29,6 +29,13 @@ const IMAGE_ROUTES = new Set(['/api/wizard/preview-style']);
 
 type CallType = 'text' | 'image';
 
+/**
+ * Determines the call type for rate limiting based on route and HTTP method.
+ * @param path - Request path (e.g., '/api/wizard/analyze-prompt')
+ * @param method - HTTP method (e.g., 'POST')
+ * @returns 'text' for LLM calls, 'image' for image generation, or null if route is not rate-limited
+ * @example resolveCallType('/api/wizard/analyze-prompt', 'POST') → 'text'
+ */
 function resolveCallType(path: string, method: string): CallType | null {
   if (TEXT_ROUTES.has(path)) return 'text';
   if (IMAGE_ROUTES.has(path)) return 'image';
@@ -37,6 +44,12 @@ function resolveCallType(path: string, method: string): CallType | null {
   return null;
 }
 
+/**
+ * Rate limiting middleware that enforces per-session request limits for LLM and image generation routes.
+ * Uses session cookies when available, falls back to client IP for non-cookie clients (curl, server-to-server).
+ * Returns 429 when limits are exceeded; logs warnings at 80% threshold.
+ * @throws Error if rate limit check fails or cookie operations error
+ */
 export default defineEventHandler((event) => {
   const path = event.path ?? '';
   const method = (event.method ?? 'GET').toUpperCase();
@@ -50,17 +63,35 @@ export default defineEventHandler((event) => {
   // UUID generation overhead on every health-check / static request.
   // Falls back to IP when cookies are unavailable (curl, server-to-server).
   let sessionId = getCookie(event, SESSION_COOKIE);
+  let usesIpFallback = false;
   if (!sessionId) {
-    sessionId = randomUUID();
-    setCookie(event, SESSION_COOKIE, sessionId, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env['NODE_ENV'] === 'production',
-      maxAge: SESSION_MAX_AGE,
-      path: '/',
-    });
-    if (debug) {
-      logger.debug('New session minted', { sessionId, ip: getClientIp(event) });
+    const clientIp = getClientIp(event);
+    // Use IP as fallback to prevent non-cookie clients from evading rate limits
+    sessionId = clientIp;
+    usesIpFallback = true;
+    // Attempt to mint and set a cookie for future requests
+    const newSessionId = randomUUID();
+    try {
+      setCookie(event, SESSION_COOKIE, newSessionId, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env['NODE_ENV'] === 'production',
+        maxAge: SESSION_MAX_AGE,
+        path: '/',
+      });
+      if (debug) {
+        logger.debug('New session minted', {
+          sessionId: newSessionId,
+          ip: clientIp,
+        });
+      }
+    } catch (err) {
+      if (debug) {
+        logger.debug('Failed to set session cookie, using IP fallback', {
+          error: err instanceof Error ? err.message : String(err),
+          ip: clientIp,
+        });
+      }
     }
   }
 
