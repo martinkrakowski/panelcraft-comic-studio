@@ -104,13 +104,15 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       prompt: row.prompt,
       panelCount: row.panel_count,
       panels: [],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      characterBible: row.character_bible ? (row.character_bible as any) : null,
+      characterBible: row.character_bible
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (row.character_bible as any)
+        : null,
       genres: row.genres || undefined,
       tones: row.tones || undefined,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       styleReferences: row.style_references
-        ? (row.style_references as any)
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (row.style_references as any)
         : null,
       coverImageUrl: row.cover_image_url,
       selectedLayout: row.selected_layout,
@@ -132,15 +134,15 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       id: json.id,
       prompt: json.prompt,
       panel_count: json.panelCount,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       character_bible: json.characterBible
-        ? (json.characterBible as any)
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (json.characterBible as any)
         : null,
       genres: json.genres || null,
       tones: json.tones || null,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       style_references: json.styleReferences
-        ? (json.styleReferences as any)
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (json.styleReferences as any)
         : null,
       cover_image_url: json.coverImageUrl || null,
       selected_layout: json.selectedLayout || null,
@@ -148,7 +150,9 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       status: json.status || 'pending_creation',
       created_at: json.createdAt,
       updated_at: new Date().toISOString(),
-      user_id: 'service-role', // Service-role operations; real user_id set by API layer
+      // All-zeros UUID sentinel until frontend auth passes through real user_id.
+      // user_id column is NOT NULL UUID so we cannot use null or a string label.
+      user_id: '00000000-0000-0000-0000-000000000000',
     };
   }
 }
