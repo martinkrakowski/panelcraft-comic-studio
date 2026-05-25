@@ -150,9 +150,10 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       status: json.status || 'pending_creation',
       created_at: json.createdAt,
       updated_at: new Date().toISOString(),
-      // All-zeros UUID sentinel until frontend auth passes through real user_id.
-      // user_id column is NOT NULL UUID so we cannot use null or a string label.
-      user_id: '00000000-0000-0000-0000-000000000000',
+      // Null until frontend auth wires a real authenticated user_id through.
+      // FK to auth.users and NOT NULL are dropped temporarily in migration
+      // 20260525160702_make_user_id_nullable.sql — re-add once auth is live.
+      user_id: null as unknown as string,
     };
   }
 }
