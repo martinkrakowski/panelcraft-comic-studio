@@ -43,7 +43,7 @@ Redis is disabled by default (`DISABLE_REDIS=true`). To enable the job queue loc
 
 1. Set `DISABLE_REDIS=false` in your root `.env`
 2. Confirm `REDIS_HOST=localhost` and `REDIS_PORT=6379` are set (or rely on defaults)
-3. Run `yarn dev` — the predev hook starts the Docker container automatically
+3. Run `yarn dev` — the dev script starts the Docker container automatically before turbo
 
 To start Redis independently (e.g. for running tests without the dev server):
 

@@ -52,9 +52,21 @@ export default defineNitroPlugin(async (nitroApp) => {
     // at startup rather than silently on the first job enqueue.
     try {
       bullMQQueue = new Queue('comic-generation-queue', {
-        connection: redisConnection,
+        connection: {
+          ...redisConnection,
+          // Fail fast: one immediate retry then give up. Without this, IORedis
+          // floods the log with ECONNREFUSED every second indefinitely.
+          retryStrategy: (times: number) => (times >= 1 ? null : 100),
+          // Suppress unhandled IORedis error events emitted during the retry
+          // window before waitUntilReady() rejects — these bypass try-catch.
+          enableOfflineQueue: false,
+        },
       });
+      // Absorb IORedis 'error' events that fire before waitUntilReady() rejects.
+      // Without this listener, Node.js throws an unhandled EventEmitter error.
+      bullMQQueue.on('error', () => undefined);
       await bullMQQueue.waitUntilReady();
+      bullMQQueue.removeAllListeners('error');
       jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue);
       logger.info('[Init] Redis connection verified, job queue ready');
     } catch (error) {
