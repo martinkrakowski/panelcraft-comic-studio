@@ -13,6 +13,8 @@ import { InMemoryProjectRepository } from '@panelcraft/comic-project-management'
 import { BullMQJobQueueAdapter } from '../adapters/BullMQJobQueueAdapter.js';
 import { XaiLLMClientAdapter } from '../adapters/XaiLLMClientAdapter.js';
 import { initComicWorker } from '../workers/comic-worker.js';
+import type { JobQueuePort } from '@panelcraft/comic-generation';
+import type { Worker } from 'bullmq';
 import { createLogger } from '@panelcraft/shared';
 import { getSupabaseClient } from '../utils/supabase.js';
 
@@ -32,10 +34,31 @@ export default defineNitroPlugin(async (nitroApp) => {
   const logger = createLogger('API');
   const redisConnection = { host: config.redisHost, port: redisPort };
   const projectRepo = new InMemoryProjectRepository();
-  const bullMQQueue = new Queue('comic-generation-queue', {
-    connection: redisConnection,
-  });
-  const jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue);
+
+  let bullMQQueue: Queue | null = null;
+  let jobQueueAdapter: JobQueuePort = {
+    add: async () => {
+      logger.warn('[Init] Job queue not available (Redis disabled)');
+    },
+  };
+
+  const isRedisDisabled = process.env.DISABLE_REDIS === 'true';
+
+  if (!isRedisDisabled) {
+    try {
+      bullMQQueue = new Queue('comic-generation-queue', {
+        connection: redisConnection,
+      });
+      jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue);
+      logger.info('[Init] Job queue initialized with Redis');
+    } catch (error) {
+      logger.warn(`[Init] Failed to initialize job queue: ${String(error)}`);
+      bullMQQueue = null;
+    }
+  } else {
+    logger.warn('[Init] Redis disabled via DISABLE_REDIS env var');
+  }
+
   const llmClient = new XaiLLMClientAdapter();
 
   // Image generation: in mock mode return placeholder buffers/URLs without
@@ -75,25 +98,30 @@ export default defineNitroPlugin(async (nitroApp) => {
     event.context.imageGenerationClient = imageGenPort;
   });
 
-  const worker = initComicWorker(
-    langGraphAdapter,
-    projectRepo,
-    bullMQQueue,
-    logger,
-    getSupabaseClient()
-  );
+  let worker: Worker | undefined;
+  if (bullMQQueue) {
+    worker = initComicWorker(
+      langGraphAdapter,
+      projectRepo,
+      bullMQQueue,
+      logger,
+      getSupabaseClient()
+    );
+  }
 
   // Gracefully close BullMQ connections on server shutdown
   nitroApp.hooks.hook('close', async () => {
-    logger.info('[BullMQ] Closing worker and queue connections...');
-    const results = await Promise.allSettled([
-      worker.close(),
-      bullMQQueue.close(),
-    ]);
-    const rejected = results.filter((r) => r.status === 'rejected');
-    if (rejected.length > 0) {
-      logger.error('[BullMQ] Shutdown errors:', undefined, { rejected });
+    if (bullMQQueue) {
+      logger.info('[BullMQ] Closing worker and queue connections...');
+      const results = await Promise.allSettled([
+        worker?.close(),
+        bullMQQueue.close(),
+      ]);
+      const rejected = results.filter((r) => r.status === 'rejected');
+      if (rejected.length > 0) {
+        logger.error(`[BullMQ] Shutdown errors: ${rejected.length} failure(s)`);
+      }
+      logger.info('[BullMQ] Connections closed.');
     }
-    logger.info('[BullMQ] Connections closed.');
   });
 });

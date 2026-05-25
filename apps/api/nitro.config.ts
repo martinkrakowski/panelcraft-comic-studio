@@ -13,6 +13,11 @@ export default {
     port: process.env.PORT ?? '3001',
     redisHost: process.env.REDIS_HOST ?? 'localhost',
     redisPort: process.env.REDIS_PORT ?? '6379',
+    cors: {
+      origin: ['http://localhost:3000', 'http://10.10.0.220:3000'],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    },
   },
 
   cors: {
