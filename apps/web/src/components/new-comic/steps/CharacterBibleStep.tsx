@@ -6,6 +6,7 @@ import {
 } from 'react-hook-form';
 import { Trash2, ImagePlus, Plus } from 'lucide-react';
 import { Button, Textarea } from '@panelcraft/ui';
+import { CharacterCard } from './CharacterCard';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 import { WizardPersistedState } from '../../../lib/hooks';
 import styles from '../NewComicWizard.module.css';
