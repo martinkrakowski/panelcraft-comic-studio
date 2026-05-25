@@ -16,10 +16,11 @@ import {
   useToast,
   Skeleton,
 } from '@panelcraft/ui';
-import { ArrowLeft, RefreshCw, AlertCircle, BookOpen } from 'lucide-react';
+import { ArrowLeft, AlertCircle, BookOpen } from 'lucide-react';
 import { EditorSidebar } from './EditorSidebar';
 import { HITLReviewPanel } from './HITLReviewPanel';
 import { PanelsGrid } from './PanelsGrid';
+import { ProjectStatusStrip } from './ProjectStatusStrip';
 
 interface ComicEditorProps {
   projectId: string;
@@ -27,7 +28,7 @@ interface ComicEditorProps {
 
 export function ComicEditor({ projectId }: ComicEditorProps) {
   const { toast } = useToast();
-  const { project, loading, error, refetch, refreshSilent } =
+  const { project, loading, error, refreshSilent } =
     useProject(projectId);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [selectingLayout, setSelectingLayout] = useState(false);
@@ -113,11 +114,29 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-6 w-32" />
-        <div className="flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space,1.5rem)] items-start">
-          <Skeleton className="h-96 w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 rounded-xl" />
-          <div className="flex-1 space-y-6">
+      <div className="fixed inset-0 bg-slate-950 flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space)] overflow-hidden">
+        {/* ambient gradient blurs (match NewComicWizard) */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+
+        {/* Sidebar skeleton (match flex variant chrome: transparent, no border) */}
+        <div className="w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 overflow-y-auto p-4 pt-20 space-y-4">
+          <div className="h-9 rounded bg-slate-800/80 border-b border-slate-700" />
+          <Skeleton className="h-28 w-full rounded-lg" />
+          <Skeleton className="h-40 w-full rounded-lg" />
+        </div>
+
+        {/* Main content skeleton */}
+        <div className="flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative mt-16">
+          <div className="flex-shrink-0 px-4 pt-4">
+            <Skeleton className="h-4 w-28" />
+          </div>
+          <div className="flex-shrink-0 px-4 py-3 border-b border-slate-800/60">
+            <Skeleton className="h-6 w-64" />
+          </div>
+          {/* Status strip placeholder (prevents pop when real strip mounts) */}
+          <div className="flex-shrink-0 h-12 px-4 bg-slate-900/30" />
+          <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-6 pt-4">
             <Skeleton className="h-40 w-full rounded-xl" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[1, 2].map((i) => (
@@ -132,17 +151,31 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
 
   if (error || !project) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
-        <div className="p-3 bg-red-950/20 border border-red-500/30 rounded-full text-red-400">
-          <AlertCircle className="h-8 w-8" />
+      <div className="fixed inset-0 bg-slate-950 flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space)] overflow-hidden">
+        {/* ambient gradient blurs (match NewComicWizard) */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+
+        {/* Empty sidebar slot for visual consistency (match flex variant: transparent, no border) */}
+        <div className="w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 pt-20" />
+
+        {/* Error content centered in main panel */}
+        <div className="flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative mt-16">
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="flex flex-col items-center justify-center text-center space-y-4 max-w-sm">
+              <div className="p-3 bg-red-950/20 border border-red-500/30 rounded-full text-red-400">
+                <AlertCircle className="h-8 w-8" />
+              </div>
+              <h2 className="text-xl font-semibold">Failed to Load Project</h2>
+              <p className="text-slate-400 text-sm">
+                {error?.message || 'This project could not be loaded.'}
+              </p>
+              <Link href="/" className={buttonVariants({ variant: 'outline' })}>
+                Back to Dashboard
+              </Link>
+            </div>
+          </div>
         </div>
-        <h2 className="text-xl font-semibold">Failed to Load Project</h2>
-        <p className="text-slate-400 max-w-sm text-sm">
-          {error?.message || 'This project could not be loaded.'}
-        </p>
-        <Link href="/" className={buttonVariants({ variant: 'outline' })}>
-          Back to Dashboard
-        </Link>
       </div>
     );
   }
@@ -163,50 +196,61 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
       : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 pb-4 border-b border-slate-800/60">
-        <div className="space-y-1">
+    <div className="fixed inset-0 bg-slate-950 flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space)] overflow-hidden">
+      {/* ambient gradient blurs (match NewComicWizard) */}
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+
+      <EditorSidebar
+        completedPanelCount={completedPanelCount}
+        panelCount={project.panelCount}
+        progressPercent={progressPercent}
+        characterBible={project.characterBible}
+      />
+
+      {/* Main content panel */}
+      <div className="flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative mt-16">
+        {/* Back link (top-left of content area) */}
+        <div className="flex-shrink-0 px-4 pt-4">
           <Link
             href="/"
-            className="inline-flex items-center text-xs text-slate-400 hover:text-white transition-colors duration-200 group mb-2"
+            className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors duration-200 group"
           >
-            <ArrowLeft className="h-3.5 w-3.5 mr-1 transform group-hover:-translate-x-0.5 transition-transform duration-200" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Link>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
-              {project.prompt}
-            </h1>
-            <ProjectStatusBadge status={project.status} />
-          </div>
-          <p className="text-xs text-slate-500">Project ID: {project.id}</p>
         </div>
-        {(project.status === 'created' || project.status === 'processing') && (
-          <div className="flex items-center space-x-2 text-xs font-semibold text-indigo-400 bg-indigo-950/20 border border-indigo-500/20 px-3 py-1.5 rounded-full shadow-sm animate-pulse">
-            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            <span>AI generating story & images...</span>
-          </div>
-        )}
-        {project.status === 'completed' && (
-          <Link
-            href={`/projects/${project.id}/view`}
-            className={`${buttonVariants({ size: 'sm' })} bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1.5`}
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-            View comic page
-          </Link>
-        )}
-      </div>
 
-      <div className="flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space,1.5rem)] items-start">
-        <EditorSidebar
+        {/* Title row: prompt + status badge + ID + CTA */}
+        <div className="flex-shrink-0 px-4 pt-2 pb-3 flex flex-col md:flex-row md:items-start md:justify-between gap-3 border-b border-slate-800/60">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
+                {project.prompt}
+              </h1>
+              <ProjectStatusBadge status={project.status} />
+            </div>
+            <p className="text-xs text-slate-500">Project ID: {project.id}</p>
+          </div>
+          {project.status === 'completed' && (
+            <Link
+              href={`/projects/${project.id}/view`}
+              className={`${buttonVariants({ size: 'sm' })} bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 shrink-0`}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              View comic page
+            </Link>
+          )}
+        </div>
+
+        <ProjectStatusStrip
+          status={project.status}
           completedPanelCount={completedPanelCount}
           panelCount={project.panelCount}
-          progressPercent={progressPercent}
-          characterBible={project.characterBible}
         />
 
-        <div className="flex-1 space-y-6">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-6">
           {!project.selectedLayout &&
             project.layoutOptions &&
             project.layoutOptions.length > 0 && (
