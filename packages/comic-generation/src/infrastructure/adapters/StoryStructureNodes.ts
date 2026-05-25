@@ -59,10 +59,21 @@ Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown
     throw error;
   }
 
-  const panels = state.project.panels || [];
-  const updatedPanels = panels.map(
-    (panel: PanelJSON, idx: number): PanelJSON => {
-      return { ...panel, prompt: (panelPrompts as string[])[idx] };
+  // Panels may not exist when loading from a repository that doesn't persist
+  // them (e.g. SupabaseProjectRepository). Synthesize the panel array from
+  // panelCount in that case so subsequent nodes have something to operate on.
+  const existingPanels = state.project.panels || [];
+  const promptStrings = panelPrompts as string[];
+  const updatedPanels: PanelJSON[] = Array.from(
+    { length: panelCount },
+    (_, idx) => {
+      const existing = existingPanels[idx];
+      return {
+        id: existing?.id ?? `panel-${idx}`,
+        prompt: promptStrings[idx],
+        status: existing?.status ?? 'pending',
+        generatedImageUrl: existing?.generatedImageUrl ?? null,
+      };
     }
   );
 
