@@ -127,6 +127,10 @@ export function useProjectCreation({
             ['completed', 'pending_review'].includes(data.data.project.status)
           ) {
             setIsPolling(false);
+            // Clear persisted wizard state before navigating away so a fresh
+            // "New Comic" click starts from defaults instead of resurrecting
+            // the just-submitted form values.
+            await clearWizardState();
             router.push(`/projects/${projectId}`);
           }
         }

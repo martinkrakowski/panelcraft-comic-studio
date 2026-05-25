@@ -111,6 +111,17 @@ export async function layoutInterrupt(
   state: ComicGraphStateType,
   deps: WorkflowDeps
 ): Promise<ComicGraphStateType> {
+  // Fast-path: when the graph is re-invoked with selectedLayout in the input
+  // state (resume path), skip the interrupt and let the workflow continue.
+  // This guards against LangGraph checkpoint-restore issues — the user's
+  // choice from the previous invocation arrives via input state instead.
+  if (state.selectedLayout) {
+    deps.logger.info(
+      `Layout already selected (${state.selectedLayout}), skipping interrupt`
+    );
+    return state;
+  }
+
   deps.logger.info('Pausing for layout selection');
 
   let coverImageUrl = '';
