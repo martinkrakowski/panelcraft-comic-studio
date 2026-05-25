@@ -15,6 +15,22 @@ export async function structureStory(
 ): Promise<ComicGraphStateType> {
   const { prompt, panelCount } = state.project;
 
+  // Skip on re-runs (resume path): if every panel already has a prompt set,
+  // structureStory has run before. Re-running would regenerate prompts and
+  // wipe previously-approved panels.
+  const existingPanels = state.project.panels || [];
+  const allHavePrompts =
+    existingPanels.length === panelCount &&
+    existingPanels.every(
+      (p) => typeof p.prompt === 'string' && p.prompt.length > 0
+    );
+  if (allHavePrompts) {
+    deps.logger.info(
+      `Skipping structureStory: all ${panelCount} panel prompts already set`
+    );
+    return state;
+  }
+
   deps.logger.info(`Structuring story into ${panelCount} panels...`);
 
   const systemPrompt = `You are an expert comic book writer and storyboarder. Your task is to

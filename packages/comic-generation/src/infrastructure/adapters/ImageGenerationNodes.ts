@@ -213,10 +213,22 @@ export async function generatePanel(
 
 export async function hitlReview(
   state: ComicGraphStateType,
-  _deps: WorkflowDeps
+  deps: WorkflowDeps
 ): Promise<ComicGraphStateType> {
   const reviewPanelIndex = state.currentPanelIndex - 1;
   const panels = state.project.panels || [];
+
+  // Fast-path: when the worker re-invokes the graph with lastFeedback in the
+  // input state (resume-after-approval path), skip the interrupt and let the
+  // conditional edge route to the next node. Same workaround as layoutInterrupt
+  // for the checkpoint-restore issue.
+  if (state.lastFeedback) {
+    deps.logger.info(
+      `Feedback already provided for panel ${reviewPanelIndex} ` +
+        `(approved: ${state.lastFeedback.approved}), skipping interrupt`
+    );
+    return state;
+  }
 
   const feedback = interrupt({
     panelIndex: reviewPanelIndex,

@@ -98,14 +98,34 @@ export function initComicWorker(
             `[Worker] First panel generated for project ${projectId}. Waiting for HITL review.`
           );
         } else if (job.name === 'resume-comic') {
-          const { selectedLayout } = job.data;
+          const { selectedLayout, feedback } = job.data;
           logger.info(
-            `[Worker] Resuming workflow for project ${projectId} with layout: ${selectedLayout}`
+            `[Worker] Resuming workflow for project ${projectId} ` +
+              `(layout: ${selectedLayout || 'from project'}, ` +
+              `feedback: ${feedback ? 'present' : 'none'})`
           );
+
+          // Load latest project state from DB. Without a working checkpointer
+          // restore, this is the source of truth for previously-generated
+          // panels, the selected layout, and the panel index to resume from.
+          const dbProject = await projectRepo.load(projectId);
+          if (!dbProject) throw new Error(`Project ${projectId} not found`);
+          const projectJson = dbProject.toJSON();
+          const layoutToUse =
+            selectedLayout || projectJson.selectedLayout || undefined;
+          const nextPanelIndex = (projectJson.panels || []).filter(
+            (p) => p.status === 'generated' || p.status === 'completed'
+          ).length;
 
           try {
             await graph.invoke(
-              { selectedLayout },
+              {
+                project: projectJson,
+                selectedLayout: layoutToUse,
+                currentPanelIndex: nextPanelIndex,
+                lastFeedback: feedback ?? null,
+                threadId: projectId,
+              },
               {
                 configurable: { thread_id: projectId },
               }

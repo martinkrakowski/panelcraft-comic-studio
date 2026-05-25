@@ -27,7 +27,8 @@ interface ComicEditorProps {
 
 export function ComicEditor({ projectId }: ComicEditorProps) {
   const { toast } = useToast();
-  const { project, loading, error, refetch } = useProject(projectId);
+  const { project, loading, error, refetch, refreshSilent } =
+    useProject(projectId);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [selectingLayout, setSelectingLayout] = useState(false);
 
@@ -40,7 +41,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
         title: 'Layout selected',
         description: 'Resuming workflow to generate panels.',
       });
-      refetch();
+      refreshSilent();
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -73,7 +74,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           : 'Regenerating the current panel with your feedback comments.',
       });
       reset({ approved: true, comment: '' });
-      refetch();
+      refreshSilent();
     } catch (err) {
       toast({
         variant: 'destructive',
