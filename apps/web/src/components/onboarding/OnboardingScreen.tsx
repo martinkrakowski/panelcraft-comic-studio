@@ -3,61 +3,15 @@
 import React, { startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Lightbulb, LayoutTemplate, FolderOpen } from 'lucide-react';
 import { AppCanvasCenter } from '@panelcraft/ui';
+import { TILES, ROUTE_MAP, StartingMethod } from './onboarding-tiles';
+import { OnboardingTile } from './OnboardingTile';
 import styles from './OnboardingScreen.module.css';
-
-type StartingMethod = 'brainstorm' | 'template' | 'load-existing';
-
-interface TileAccent {
-  r: number;
-  g: number;
-  b: number;
-}
-
-/** One tile in the starting-method grid. */
-interface TileConfig {
-  id: StartingMethod;
-  label: string;
-  badgeLabel: string;
-  Icon: React.ComponentType<{ className?: string; size?: number }>;
-  accent: TileAccent;
-}
 
 /** Props for OnboardingScreen. Only className is forwarded (to the centered canvas inner). */
 interface OnboardingScreenProps {
   className?: string;
 }
-
-const TILES: TileConfig[] = [
-  {
-    id: 'brainstorm',
-    label: 'Brainstorm an Idea',
-    badgeLabel: 'AI-Assisted',
-    Icon: Lightbulb,
-    accent: { r: 139, g: 92, b: 246 },
-  },
-  {
-    id: 'template',
-    label: 'Choose a Template',
-    badgeLabel: 'Quick Start',
-    Icon: LayoutTemplate,
-    accent: { r: 6, g: 182, b: 212 },
-  },
-  {
-    id: 'load-existing',
-    label: 'Load Existing Project',
-    badgeLabel: 'Continue',
-    Icon: FolderOpen,
-    accent: { r: 236, g: 72, b: 153 },
-  },
-];
-
-const ROUTE_MAP: Record<StartingMethod, string> = {
-  brainstorm: '/new/brainstorm',
-  template: '/new/template',
-  'load-existing': '/',
-};
 
 const containerVariants = {
   hidden: {},
@@ -135,43 +89,14 @@ export function OnboardingScreen({
 
         {/* Tile grid */}
         <div className="grid grid-cols-3 gap-2.5 w-full">
-          {TILES.map((tile, i) => {
-            const { r, g, b } = tile.accent;
-            return (
-              <motion.button
-                key={tile.id}
-                type="button"
-                variants={itemVariants}
-                custom={i}
-                onClick={() => handleTileClick(tile.id)}
-                style={
-                  {
-                    '--tile-r': r,
-                    '--tile-g': g,
-                    '--tile-b': b,
-                  } as React.CSSProperties
-                }
-                className={[
-                  styles.tile,
-                  'flex flex-col items-center justify-center gap-2 p-3 text-center',
-                  'hover:scale-[1.02] active:scale-[0.98] transition-transform',
-                ].join(' ')}
-                whileTap={{ scale: 0.96 }}
-              >
-                <div className={styles.tileIcon}>
-                  <tile.Icon size={20} className="text-white" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-white leading-tight">
-                    {tile.label}
-                  </p>
-                  <p className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                    {tile.badgeLabel}
-                  </p>
-                </div>
-              </motion.button>
-            );
-          })}
+          {TILES.map((tile, i) => (
+            <OnboardingTile
+              key={tile.id}
+              {...tile}
+              index={i}
+              onSelect={handleTileClick}
+            />
+          ))}
         </div>
       </motion.div>
     </AppCanvasCenter>
