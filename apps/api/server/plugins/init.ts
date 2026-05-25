@@ -9,7 +9,7 @@ import type {
   ImageGenerationPort,
   GeneratePanelCommand,
 } from '@panelcraft/comic-generation';
-import { InMemoryProjectRepository } from '@panelcraft/comic-project-management';
+import { SupabaseProjectRepository } from '@panelcraft/comic-project-management';
 import { BullMQJobQueueAdapter } from '../adapters/BullMQJobQueueAdapter.js';
 import { XaiLLMClientAdapter } from '../adapters/XaiLLMClientAdapter.js';
 import { initComicWorker } from '../workers/comic-worker.js';
@@ -33,7 +33,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
   const logger = createLogger('API');
   const redisConnection = { host: config.redisHost, port: redisPort };
-  const projectRepo = new InMemoryProjectRepository();
+  const projectRepo = new SupabaseProjectRepository(getSupabaseClient());
 
   let bullMQQueue: Queue | null = null;
   let jobQueueAdapter: JobQueuePort = {
