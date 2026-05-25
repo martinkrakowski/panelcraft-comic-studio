@@ -15,6 +15,28 @@ interface ComicJobData {
   };
 }
 
+/**
+ * Initialises the BullMQ worker that drives the comic-generation pipeline.
+ *
+ * Creates a `Worker` bound to the `comic-generation-queue` and registers a
+ * job processor that dispatches on `job.name`:
+ *  - `start-comic`: kicks off the LangGraph workflow for a fresh project,
+ *    pausing at the layout interrupt and persisting `pending_layout` status.
+ *  - `resume-comic`: re-invokes the graph with the user's `selectedLayout`
+ *    and (when present) panel `feedback`, generating exactly one panel per
+ *    invocation and saving `pending_review` (or `completed`) status.
+ * On terminal failure the worker rolls the project back to a safe status
+ * before surrendering the job.
+ *
+ * @param langGraphAdapter - Compiled LangGraph workflow to invoke per job.
+ * @param projectRepo - Repository used to hydrate/save project state.
+ * @param queue - The BullMQ queue this worker drains.
+ * @param logger - Project logger for diagnostic output.
+ * @param supabase - Service-role Supabase client (storage signed URLs,
+ *   checkpointer access).
+ * @returns The constructed BullMQ `Worker`. Caller is responsible for
+ *   closing it on graceful shutdown.
+ */
 export function initComicWorker(
   langGraphAdapter: LangGraphOrchestrationAdapter,
   projectRepo: RelationalDbPort,

@@ -41,7 +41,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
         title: 'Layout selected',
         description: 'Resuming workflow to generate panels.',
       });
-      refreshSilent();
+      await refreshSilent();
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -74,7 +74,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           : 'Regenerating the current panel with your feedback comments.',
       });
       reset({ approved: true, comment: '' });
-      refreshSilent();
+      await refreshSilent();
     } catch (err) {
       toast({
         variant: 'destructive',

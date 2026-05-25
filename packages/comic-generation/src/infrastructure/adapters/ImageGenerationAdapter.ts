@@ -8,15 +8,17 @@ interface XaiImageResponse {
 
 /**
  * Adapter for generating comic panel images using xAI's Grok Imagine models.
- * Calls xAI's OpenAI-compatible images API directly.
- * Reads XAI_API_KEY from the environment.
+ * Calls xAI's OpenAI-compatible images API directly via the `generate_image`
+ * endpoint. Reads `XAI_API_KEY` from the environment.
  *
- * Panel generation uses edit_image (img2img) when a reference URL is provided,
- * which preserves character appearance across panels. Falls back to generate_image
- * if no reference is available (e.g. first panel before cover is ready).
+ * All image generation (covers, panels, style previews) uses prompt-only
+ * `generate_image` requests — xAI does not currently support an OpenAI-style
+ * image-edit endpoint, so character consistency across panels must come from
+ * prompt engineering (style modifiers + character bible injected into the
+ * panel prompt) rather than an img2img reference image.
  *
- * To switch providers (e.g., Adobe Firefly, Gemini): implement ImageGenerationPort
- * in a new adapter and swap it in the composition root.
+ * To switch providers (e.g., Adobe Firefly, Gemini): implement
+ * ImageGenerationPort in a new adapter and swap it in the composition root.
  */
 export class ImageGenerationAdapter implements ImageGenerationPort {
   private readonly apiKey = process.env['XAI_API_KEY'];
