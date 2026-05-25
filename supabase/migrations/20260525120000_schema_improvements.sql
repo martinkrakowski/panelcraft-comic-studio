@@ -89,6 +89,10 @@ CREATE POLICY "Users can update own projects" ON public.comic_projects
 --    Policies cross-check [2] against comic_projects.id to confirm ownership.
 -- -----------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "Users can read own project assets" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload to own project" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own project assets" ON storage.objects;
+
 CREATE POLICY "Users can read own project assets" ON storage.objects
   FOR SELECT
   USING (
