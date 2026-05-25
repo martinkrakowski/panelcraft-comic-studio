@@ -84,7 +84,7 @@ export async function generateCover(
       `Cover generation failed: ${error instanceof Error ? error.message : String(error)}`
     );
     const proj = ComicProject.fromJSON(state.project);
-    proj.setStatus('error');
+    proj.setStatus('failed');
     await deps.projectRepo.save(proj);
     throw error;
   }
@@ -111,6 +111,17 @@ export async function layoutInterrupt(
   state: ComicGraphStateType,
   deps: WorkflowDeps
 ): Promise<ComicGraphStateType> {
+  // Fast-path: when the graph is re-invoked with selectedLayout in the input
+  // state (resume path), skip the interrupt and let the workflow continue.
+  // This guards against LangGraph checkpoint-restore issues — the user's
+  // choice from the previous invocation arrives via input state instead.
+  if (state.selectedLayout) {
+    deps.logger.info(
+      `Layout already selected (${state.selectedLayout}), skipping interrupt`
+    );
+    return state;
+  }
+
   deps.logger.info('Pausing for layout selection');
 
   let coverImageUrl = '';
@@ -202,10 +213,22 @@ export async function generatePanel(
 
 export async function hitlReview(
   state: ComicGraphStateType,
-  _deps: WorkflowDeps
+  deps: WorkflowDeps
 ): Promise<ComicGraphStateType> {
   const reviewPanelIndex = state.currentPanelIndex - 1;
   const panels = state.project.panels || [];
+
+  // Fast-path: when the worker re-invokes the graph with lastFeedback in the
+  // input state (resume-after-approval path), skip the interrupt and let the
+  // conditional edge route to the next node. Same workaround as layoutInterrupt
+  // for the checkpoint-restore issue.
+  if (state.lastFeedback) {
+    deps.logger.info(
+      `Feedback already provided for panel ${reviewPanelIndex} ` +
+        `(approved: ${state.lastFeedback.approved}), skipping interrupt`
+    );
+    return state;
+  }
 
   const feedback = interrupt({
     panelIndex: reviewPanelIndex,

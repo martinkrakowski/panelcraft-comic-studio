@@ -17,6 +17,7 @@
     "@panelcraft/shared": "workspace:*",
     "@supabase/supabase-js": "^2.106.1",
     "bullmq": "^5.4.2",
+    "dotenv": "^16.3.1",
     "h3": "^1.15.11",
     "nitropack": "^2.13.4",
     "redis": "^4.6.12",

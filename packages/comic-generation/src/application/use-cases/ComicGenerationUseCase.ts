@@ -38,8 +38,25 @@ export class ComicGenerationUseCase implements RestControllerPort {
   }): Promise<string> {
     return createProject(options, {
       projectRepo: this.projectRepo,
-      taskQueue: this.taskQueue,
     });
+  }
+
+  /**
+   * Queue the comic generation workflow. Call this only after the project
+   * is fully provisioned (e.g. file uploads complete). Splitting this from
+   * createProject prevents the worker from starting on half-created projects
+   * if the API layer fails between save and upload.
+   */
+  async startComicGeneration(projectId: string): Promise<void> {
+    await this.taskQueue.add(
+      'start-comic',
+      { projectId },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+      }
+    );
   }
 
   async getProject(id: string): Promise<ComicProject> {

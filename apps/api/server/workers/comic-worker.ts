@@ -8,8 +8,35 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 interface ComicJobData {
   projectId: string;
   selectedLayout?: string;
+  feedback?: {
+    approved: boolean;
+    comment?: string;
+    regenerationHint?: string;
+  };
 }
 
+/**
+ * Initialises the BullMQ worker that drives the comic-generation pipeline.
+ *
+ * Creates a `Worker` bound to the `comic-generation-queue` and registers a
+ * job processor that dispatches on `job.name`:
+ *  - `start-comic`: kicks off the LangGraph workflow for a fresh project,
+ *    pausing at the layout interrupt and persisting `pending_layout` status.
+ *  - `resume-comic`: re-invokes the graph with the user's `selectedLayout`
+ *    and (when present) panel `feedback`, generating exactly one panel per
+ *    invocation and saving `pending_review` (or `completed`) status.
+ * On terminal failure the worker rolls the project back to a safe status
+ * before surrendering the job.
+ *
+ * @param langGraphAdapter - Compiled LangGraph workflow to invoke per job.
+ * @param projectRepo - Repository used to hydrate/save project state.
+ * @param queue - The BullMQ queue this worker drains.
+ * @param logger - Project logger for diagnostic output.
+ * @param supabase - Service-role Supabase client (storage signed URLs,
+ *   checkpointer access).
+ * @returns The constructed BullMQ `Worker`. Caller is responsible for
+ *   closing it on graceful shutdown.
+ */
 export function initComicWorker(
   langGraphAdapter: LangGraphOrchestrationAdapter,
   projectRepo: RelationalDbPort,
@@ -98,14 +125,34 @@ export function initComicWorker(
             `[Worker] First panel generated for project ${projectId}. Waiting for HITL review.`
           );
         } else if (job.name === 'resume-comic') {
-          const { selectedLayout } = job.data;
+          const { selectedLayout, feedback } = job.data;
           logger.info(
-            `[Worker] Resuming workflow for project ${projectId} with layout: ${selectedLayout}`
+            `[Worker] Resuming workflow for project ${projectId} ` +
+              `(layout: ${selectedLayout || 'from project'}, ` +
+              `feedback: ${feedback ? 'present' : 'none'})`
           );
+
+          // Load latest project state from DB. Without a working checkpointer
+          // restore, this is the source of truth for previously-generated
+          // panels, the selected layout, and the panel index to resume from.
+          const dbProject = await projectRepo.load(projectId);
+          if (!dbProject) throw new Error(`Project ${projectId} not found`);
+          const dbProjectJson = dbProject.toJSON();
+          const layoutToUse =
+            selectedLayout || dbProjectJson.selectedLayout || undefined;
+          const nextPanelIndex = (dbProjectJson.panels || []).filter(
+            (p) => p.status === 'generated' || p.status === 'completed'
+          ).length;
 
           try {
             await graph.invoke(
-              { selectedLayout },
+              {
+                project: dbProjectJson,
+                selectedLayout: layoutToUse,
+                currentPanelIndex: nextPanelIndex,
+                lastFeedback: feedback ?? null,
+                threadId: projectId,
+              },
               {
                 configurable: { thread_id: projectId },
               }

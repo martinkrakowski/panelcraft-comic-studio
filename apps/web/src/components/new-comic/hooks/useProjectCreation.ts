@@ -127,6 +127,13 @@ export function useProjectCreation({
             ['completed', 'pending_review'].includes(data.data.project.status)
           ) {
             setIsPolling(false);
+            // Fire-and-forget cleanup of persisted wizard state — awaiting
+            // could hang here if the IndexedDB transaction stalls and would
+            // block navigation to the project page. The next 'New Comic'
+            // click reads fresh state, so a delayed clear is acceptable.
+            clearWizardState().catch((err) => {
+              console.warn('Failed to clear wizard state', err);
+            });
             router.push(`/projects/${projectId}`);
           }
         }

@@ -3,22 +3,6 @@ import { createLogger } from '@panelcraft/shared';
 
 const logger = createLogger('supabase');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
-
-if (!SUPABASE_URL) {
-  throw new Error('Missing SUPABASE_URL environment variable');
-}
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error(
-    'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
-      'The backend requires the service-role key to perform privileged storage ' +
-      'operations (uploads, deletions, signed URL generation). Do not ship the ' +
-      'anon key in its place.'
-  );
-}
-
 let serviceClient: SupabaseClient | null = null;
 
 /**
@@ -30,7 +14,17 @@ let serviceClient: SupabaseClient | null = null;
  */
 export function getSupabaseClient(): SupabaseClient {
   if (!serviceClient) {
-    serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url) throw new Error('Missing SUPABASE_URL environment variable');
+    if (!key)
+      throw new Error(
+        'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+          'The backend requires the service-role key to perform privileged storage ' +
+          'operations (uploads, deletions, signed URL generation). Do not ship the ' +
+          'anon key in its place.'
+      );
+    serviceClient = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
   }
@@ -46,12 +40,14 @@ export function getSupabaseClient(): SupabaseClient {
  * configured.
  */
 export function getSupabaseAnonClient(): SupabaseClient {
-  if (!SUPABASE_ANON_KEY) {
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  if (!url) throw new Error('Missing SUPABASE_URL environment variable');
+  if (!anonKey)
     throw new Error(
       'Missing SUPABASE_ANON_KEY environment variable; required for anon client'
     );
-  }
-  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

@@ -82,10 +82,18 @@ export function useProject(id: string) {
     fetchProject();
   });
 
-  const isGenerating = !!(
-    project &&
-    (project.status === 'created' || project.status === 'processing')
-  );
+  // Poll while the project is in any in-flight state. The workflow churns
+  // through pending_creation → processing → pending_layout → pending_review
+  // (between HITL gates) → completed; polling stops once a terminal state
+  // is reached.
+  const inFlightStatuses = new Set([
+    'created',
+    'processing',
+    'pending_creation',
+    'pending_layout',
+    'pending_review',
+  ]);
+  const isGenerating = !!(project && inFlightStatuses.has(project.status));
 
   // Delegate background status checking to the semantic polling hook
   usePolling(

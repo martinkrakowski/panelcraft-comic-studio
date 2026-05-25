@@ -1,3 +1,12 @@
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : ['http://localhost:3000'];
+
 export default {
   srcDir: 'server',
   compatibilityDate: '2026-05-23',
@@ -7,17 +16,19 @@ export default {
     port: 3001,
   },
 
-  // Nitro defaults to port 3000 — set explicitly to match existing .env
-  // Use useRuntimeConfig() in handlers for typed environment variables (preferred over raw process.env)
   runtimeConfig: {
+    rootEnvPath: resolve(__dirname, '../../.env'),
     port: process.env.PORT ?? '3001',
     redisHost: process.env.REDIS_HOST ?? 'localhost',
     redisPort: process.env.REDIS_PORT ?? '6379',
-  },
-
-  cors: {
-    origin: ['http://localhost:3000', 'http://10.10.0.220:3000'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    // Default to 'true' so omitting DISABLE_REDIS disables the queue —
+    // matches the documented behavior in DEPLOYMENT.md and prevents accidental
+    // startup retries against a Redis that isn't running locally.
+    disableRedis: process.env.DISABLE_REDIS ?? 'true',
+    cors: {
+      origin: corsOrigins,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    },
   },
 };

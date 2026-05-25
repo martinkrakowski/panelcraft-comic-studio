@@ -72,6 +72,9 @@ Thumbs.db
 *.db
 prisma/migrations/
 
+# --- Supabase ---
+supabase/.temp/
+
 # --- Coverage & Testing ---
 coverage/
 .nyc_output/

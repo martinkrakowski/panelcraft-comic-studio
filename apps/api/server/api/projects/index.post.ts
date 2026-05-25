@@ -172,6 +172,11 @@ export default defineEventHandler(async (event) => {
       referenceImagePaths,
       moodBoardImagePaths,
     });
+
+    // Step 4: Project is fully provisioned — now queue the LangGraph workflow.
+    // Queuing here (vs. inside createProject) ensures the worker never picks
+    // up a half-created project when file uploads fail.
+    await getComicUseCase(event).startComicGeneration(projectId);
   } catch (uploadOrUpdateErr) {
     // Compensation: best-effort cleanup of any uploaded objects so we don't
     // leave orphans pinned to a project that may never finish provisioning.

@@ -1,3 +1,11 @@
+export type {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+  Json,
+} from './database.types.js';
+
 export interface CharacterValue {
   name: string;
   role: string;

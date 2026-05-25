@@ -14,7 +14,7 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.3.4",
+    "@hookform/resolvers": "^5.4.0",
     "@panelcraft/shared": "workspace:*",
     "@panelcraft/types": "workspace:*",
     "@panelcraft/ui": "workspace:*",

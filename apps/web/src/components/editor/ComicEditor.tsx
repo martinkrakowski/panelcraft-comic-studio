@@ -27,8 +27,31 @@ interface ComicEditorProps {
 
 export function ComicEditor({ projectId }: ComicEditorProps) {
   const { toast } = useToast();
-  const { project, loading, error, refetch } = useProject(projectId);
+  const { project, loading, error, refetch, refreshSilent } =
+    useProject(projectId);
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [selectingLayout, setSelectingLayout] = useState(false);
+
+  const onSelectLayout = async (layout: string) => {
+    setSelectingLayout(true);
+    try {
+      await api.selectLayout(projectId, layout);
+      toast({
+        variant: 'success',
+        title: 'Layout selected',
+        description: 'Resuming workflow to generate panels.',
+      });
+      await refreshSilent();
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Layout selection failed',
+        description: err instanceof Error ? err.message : 'An error occurred.',
+      });
+    } finally {
+      setSelectingLayout(false);
+    }
+  };
 
   const { register, handleSubmit, setValue, reset } =
     useForm<SubmitReviewFormValues>({
@@ -51,7 +74,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           : 'Regenerating the current panel with your feedback comments.',
       });
       reset({ approved: true, comment: '' });
-      refetch();
+      await refreshSilent();
     } catch (err) {
       toast({
         variant: 'destructive',
@@ -99,9 +122,13 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
     );
   }
 
-  const activeReviewPanel = project.panels.find(
-    (p) => p.status === 'generated'
-  );
+  // Only surface HITL review when project is in pending_review (otherwise
+  // panels that finished generating in a completed comic would resurrect
+  // the review form and trigger 400s on the next approve click).
+  const activeReviewPanel =
+    project.status === 'pending_review'
+      ? project.panels.find((p) => p.status === 'generated')
+      : undefined;
   const completedPanelCount = project.panels.filter(
     (p) => p.status === 'completed'
   ).length;
@@ -146,6 +173,34 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
         />
 
         <div className="flex-1 space-y-6">
+          {!project.selectedLayout &&
+            project.layoutOptions &&
+            project.layoutOptions.length > 0 && (
+              <div className="bg-slate-900/40 border border-violet-500/30 rounded-xl p-6 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    Choose a layout
+                  </h2>
+                  <p className="text-sm text-slate-400">
+                    The AI suggested these layouts based on your story. Pick one
+                    to continue.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {project.layoutOptions.map((layout) => (
+                    <button
+                      key={layout}
+                      type="button"
+                      disabled={selectingLayout}
+                      onClick={() => onSelectLayout(layout)}
+                      className="text-left p-4 rounded-lg border border-slate-700 bg-slate-800 hover:border-violet-500 hover:bg-violet-500/10 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {layout}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           {activeReviewPanel && (
             <HITLReviewPanel
               activeReviewPanel={activeReviewPanel}

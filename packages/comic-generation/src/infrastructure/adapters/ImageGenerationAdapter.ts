@@ -8,20 +8,27 @@ interface XaiImageResponse {
 
 /**
  * Adapter for generating comic panel images using xAI's Grok Imagine models.
- * Calls xAI's OpenAI-compatible images API directly.
- * Reads XAI_API_KEY from the environment.
+ * Calls xAI's OpenAI-compatible images API directly via the `generate_image`
+ * endpoint. Reads `XAI_API_KEY` from the environment.
  *
- * Panel generation uses edit_image (img2img) when a reference URL is provided,
- * which preserves character appearance across panels. Falls back to generate_image
- * if no reference is available (e.g. first panel before cover is ready).
+ * All image generation (covers, panels, style previews) uses prompt-only
+ * `generate_image` requests — xAI does not currently support an OpenAI-style
+ * image-edit endpoint, so character consistency across panels must come from
+ * prompt engineering (style modifiers + character bible injected into the
+ * panel prompt) rather than an img2img reference image.
  *
- * To switch providers (e.g., Adobe Firefly, Gemini): implement ImageGenerationPort
- * in a new adapter and swap it in the composition root.
+ * To switch providers (e.g., Adobe Firefly, Gemini): implement
+ * ImageGenerationPort in a new adapter and swap it in the composition root.
  */
 export class ImageGenerationAdapter implements ImageGenerationPort {
   private readonly apiKey = process.env['XAI_API_KEY'];
-  private readonly qualityModel = 'grok-imagine-image-quality';
-  private readonly standardModel = 'grok-imagine-image';
+  // Model names are env-overridable so accounts without quality access can
+  // ship with the standard tier without code changes. Defaults match the
+  // standard model since it is more widely available on new teams.
+  private readonly qualityModel =
+    process.env['XAI_IMAGE_MODEL_QUALITY'] || 'grok-imagine-image';
+  private readonly standardModel =
+    process.env['XAI_IMAGE_MODEL_STANDARD'] || 'grok-imagine-image';
   private readonly generateEndpoint = 'https://api.x.ai/v1/images/generations';
   private readonly editEndpoint = 'https://api.x.ai/v1/images/edits';
 
@@ -33,8 +40,11 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       command.prompt,
       command.styleModifiers
     );
-    const referenceUrl = command.referenceImageUrls?.[0];
-    if (referenceUrl) return this.editImage(referenceUrl, fullPrompt);
+    // Note: xAI's image API (as of late 2025) does not support OpenAI-style
+    // image edits (multipart form data → 415). For now we always call
+    // generate_image with a prompt-only request — character consistency must
+    // come from the style modifiers and prompt engineering rather than an
+    // img2img reference. Revisit if xAI ships a JSON-compatible edit endpoint.
     return this.generateImage(fullPrompt, this.qualityModel);
   }
 
