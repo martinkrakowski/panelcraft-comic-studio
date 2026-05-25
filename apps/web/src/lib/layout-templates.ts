@@ -40,6 +40,7 @@ export {
 } from './layout-templates-data';
 
 import { ALL_LAYOUTS } from './layout-templates-data';
+import type { GenreType, ToneType } from './wizard-constants';
 
 /**
  * Get all layout templates for a given panel count
@@ -62,7 +63,7 @@ export function getLayoutById(id: string): LayoutTemplate | undefined {
 }
 
 const GENRE_MOOD_MAP: Record<
-  string,
+  GenreType,
   Array<'dramatic' | 'balanced' | 'dynamic'>
 > = {
   Action: ['dynamic', 'dramatic'],
@@ -79,7 +80,7 @@ const GENRE_MOOD_MAP: Record<
 };
 
 const TONE_MOOD_MAP: Record<
-  string,
+  ToneType,
   Array<'dramatic' | 'balanced' | 'dynamic'>
 > = {
   Dark: ['dramatic'],
@@ -117,7 +118,7 @@ export function getLayoutsByMood(
       let score = 0;
 
       genres.forEach((genre) => {
-        const matchingMoods = GENRE_MOOD_MAP[genre];
+        const matchingMoods = GENRE_MOOD_MAP[genre as GenreType];
         if (matchingMoods) {
           const index = matchingMoods.indexOf(layout.mood);
           if (index !== -1) {
@@ -128,7 +129,7 @@ export function getLayoutsByMood(
 
       if (tones) {
         tones.forEach((tone) => {
-          const matchingMoods = TONE_MOOD_MAP[tone];
+          const matchingMoods = TONE_MOOD_MAP[tone as ToneType];
           if (matchingMoods) {
             const index = matchingMoods.indexOf(layout.mood);
             if (index !== -1) {
