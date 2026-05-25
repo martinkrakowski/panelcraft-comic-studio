@@ -38,8 +38,11 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       command.prompt,
       command.styleModifiers
     );
-    const referenceUrl = command.referenceImageUrls?.[0];
-    if (referenceUrl) return this.editImage(referenceUrl, fullPrompt);
+    // Note: xAI's image API (as of late 2025) does not support OpenAI-style
+    // image edits (multipart form data → 415). For now we always call
+    // generate_image with a prompt-only request — character consistency must
+    // come from the style modifiers and prompt engineering rather than an
+    // img2img reference. Revisit if xAI ships a JSON-compatible edit endpoint.
     return this.generateImage(fullPrompt, this.qualityModel);
   }
 
