@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "turbo build",
+    "predev": "node scripts/start-redis.js",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",

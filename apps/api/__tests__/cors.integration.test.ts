@@ -94,6 +94,10 @@ describe('CORS Middleware Integration Tests', () => {
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
 
+  // h3's handleCors always returns 204 for OPTIONS regardless of origin — it simply
+  // withholds the access-control-allow-origin header, which is enough for the browser
+  // to reject the preflight. 403 would be more readable in DevTools but is not required
+  // by the Fetch spec and would require bypassing handleCors entirely.
   it('should return 204 for OPTIONS from unauthorized origin but omit CORS headers', async () => {
     const app = createApp();
     const router = createRouter();

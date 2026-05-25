@@ -48,14 +48,20 @@ export default defineNitroPlugin(async (nitroApp) => {
     // BullMQ connects lazily — new Queue() never throws on connection failure,
     // it only throws on invalid config (e.g. non-numeric port). ECONNREFUSED
     // surfaces later when the queue or worker first interact with Redis.
+    // waitUntilReady() forces an eager connection check so failures are visible
+    // at startup rather than silently on the first job enqueue.
     try {
       bullMQQueue = new Queue('comic-generation-queue', {
         connection: redisConnection,
       });
+      await bullMQQueue.waitUntilReady();
       jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue);
-      logger.info('[Init] Job queue initialized with Redis');
+      logger.info('[Init] Redis connection verified, job queue ready');
     } catch (error) {
-      logger.warn(`[Init] Failed to initialize job queue: ${String(error)}`);
+      logger.warn(
+        `[Init] Redis unreachable, falling back to stub queue: ${String(error)}`
+      );
+      await bullMQQueue?.close().catch(() => undefined);
       bullMQQueue = null;
     }
   } else {
