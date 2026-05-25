@@ -178,6 +178,8 @@ export function NewComicWizard() {
         moodBoardPreset={moodBoardPreset}
       />
 
+      {/* mt-16 only on steps 0–2 to clear the WizardSidebar's chrome; from
+          step 3 onward the sidebar is hidden so no top spacing is needed. */}
       <div
         className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative ${activeStep < 3 ? 'mt-16' : ''}`}
       >

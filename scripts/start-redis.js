@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/ sits one level below the repo root, so ../ is the root .env.
 // Load root first (lower priority), then any local override if present.
 config({ path: resolve(__dirname, '../.env') });
-config({ path: resolve(__dirname, '.env') });
+config({ path: resolve(__dirname, '../.env.local') });
 
 if (process.env.DISABLE_REDIS === 'true') {
   console.log('[dev] DISABLE_REDIS=true, skipping Redis startup');

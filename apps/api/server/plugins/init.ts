@@ -64,9 +64,12 @@ export default defineNitroPlugin(async (nitroApp) => {
       });
       // Absorb IORedis 'error' events that fire before waitUntilReady() rejects.
       // Without this listener, Node.js throws an unhandled EventEmitter error.
-      bullMQQueue.on('error', () => undefined);
+      // Use a named handler so we can remove only this listener afterwards,
+      // preserving any other error handling BullMQ/IORedis attaches internally.
+      const suppressInitErrors = () => undefined;
+      bullMQQueue.on('error', suppressInitErrors);
       await bullMQQueue.waitUntilReady();
-      bullMQQueue.removeAllListeners('error');
+      bullMQQueue.off('error', suppressInitErrors);
       jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue);
       logger.info('[Init] Redis connection verified, job queue ready');
     } catch (error) {

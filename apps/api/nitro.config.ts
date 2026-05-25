@@ -21,7 +21,10 @@ export default {
     port: process.env.PORT ?? '3001',
     redisHost: process.env.REDIS_HOST ?? 'localhost',
     redisPort: process.env.REDIS_PORT ?? '6379',
-    disableRedis: process.env.DISABLE_REDIS ?? 'false',
+    // Default to 'true' so omitting DISABLE_REDIS disables the queue —
+    // matches the documented behavior in DEPLOYMENT.md and prevents accidental
+    // startup retries against a Redis that isn't running locally.
+    disableRedis: process.env.DISABLE_REDIS ?? 'true',
     cors: {
       origin: corsOrigins,
       credentials: true,
