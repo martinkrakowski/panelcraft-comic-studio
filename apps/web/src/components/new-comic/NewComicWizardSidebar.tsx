@@ -12,7 +12,7 @@ import {
   TONE_OPTIONS,
   STYLE_PRESETS,
 } from '../../lib/wizard-constants';
-import { getLayoutsForPanelCount } from '../../lib/layout-templates';
+import { getLayoutsByMood } from '../../lib/layout-templates';
 import { LayoutPreview } from './LayoutPreview';
 
 export interface NewComicWizardSidebarProps {
@@ -124,7 +124,7 @@ export function NewComicWizardSidebar({
 
           <CollapsibleSection title="Recommended Layouts">
             <div className="space-y-3">
-              {getLayoutsForPanelCount(panelCount as 1 | 2 | 3 | 4).map(
+              {getLayoutsByMood(panelCount as 1 | 2 | 3 | 4, genres, tones).map(
                 (layout) => (
                   <button
                     key={layout.id}

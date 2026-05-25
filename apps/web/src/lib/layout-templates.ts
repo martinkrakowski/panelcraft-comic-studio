@@ -61,14 +61,89 @@ export function getLayoutById(id: string): LayoutTemplate | undefined {
   return undefined;
 }
 
+const GENRE_MOOD_MAP: Record<
+  string,
+  Array<'dramatic' | 'balanced' | 'dynamic' | 'intimate'>
+> = {
+  Action: ['dynamic', 'dramatic'],
+  Adventure: ['dynamic', 'balanced'],
+  Fantasy: ['dynamic', 'balanced'],
+  'Sci-Fi': ['dynamic', 'balanced'],
+  Noir: ['dramatic', 'intimate'],
+  Mystery: ['intimate', 'balanced'],
+  Horror: ['dramatic', 'intimate'],
+  Comedy: ['balanced'],
+  Drama: ['balanced', 'dramatic', 'intimate'],
+  Cyberpunk: ['dynamic', 'dramatic'],
+  Superhero: ['dynamic', 'dramatic'],
+};
+
+const TONE_MOOD_MAP: Record<
+  string,
+  Array<'dramatic' | 'balanced' | 'dynamic' | 'intimate'>
+> = {
+  Dark: ['dramatic', 'intimate'],
+  Suspenseful: ['dramatic', 'intimate', 'dynamic'],
+  Lighthearted: ['balanced'],
+  Dramatic: ['dramatic', 'intimate', 'balanced'],
+  Gritty: ['dramatic', 'dynamic'],
+  Whimsical: ['balanced'],
+  Epic: ['dramatic', 'dynamic'],
+  Cinematic: ['dramatic', 'dynamic'],
+};
+
 /**
- * Get recommended layouts by mood/story context
+ * Get recommended layouts by matching genres/tones to layout moods, or filtering by a single mood.
  */
 export function getLayoutsByMood(
   panelCount: 1 | 2 | 3 | 4,
-  mood: 'dramatic' | 'balanced' | 'dynamic' | 'intimate'
+  moodOrGenres?: 'dramatic' | 'balanced' | 'dynamic' | 'intimate' | string[],
+  tones?: string[]
 ): LayoutTemplate[] {
-  return getLayoutsForPanelCount(panelCount).filter(
-    (layout) => layout.mood === mood
-  );
+  const layouts = getLayoutsForPanelCount(panelCount);
+
+  if (typeof moodOrGenres === 'string') {
+    const mood = moodOrGenres as
+      | 'dramatic'
+      | 'balanced'
+      | 'dynamic'
+      | 'intimate';
+    return layouts.filter((layout) => layout.mood === mood);
+  }
+
+  const genres = Array.isArray(moodOrGenres) ? moodOrGenres : [];
+  if (genres.length === 0 && (!tones || tones.length === 0)) {
+    return layouts;
+  }
+
+  return layouts
+    .map((layout) => {
+      let score = 0;
+
+      genres.forEach((genre) => {
+        const matchingMoods = GENRE_MOOD_MAP[genre];
+        if (matchingMoods) {
+          const index = matchingMoods.indexOf(layout.mood);
+          if (index !== -1) {
+            score += index === 0 ? 3 : 1;
+          }
+        }
+      });
+
+      if (tones) {
+        tones.forEach((tone) => {
+          const matchingMoods = TONE_MOOD_MAP[tone];
+          if (matchingMoods) {
+            const index = matchingMoods.indexOf(layout.mood);
+            if (index !== -1) {
+              score += index === 0 ? 3 : 1;
+            }
+          }
+        });
+      }
+
+      return { layout, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.layout);
 }
