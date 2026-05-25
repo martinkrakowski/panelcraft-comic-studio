@@ -1,4 +1,5 @@
 import { Worker, Job, Queue } from 'bullmq';
+import { Command } from '@langchain/langgraph';
 import type { LangGraphOrchestrationAdapter } from '@panelcraft/comic-generation';
 import type { RelationalDbPort } from '@panelcraft/comic-generation';
 import { ComicProject } from '@panelcraft/comic-project-management';
@@ -71,36 +72,46 @@ export function initComicWorker(
               { configurable: { thread_id: projectId } }
             );
           } catch (err) {
-            // Handle layout interrupt (NodeInterrupt from LangGraph)
             if (
               err &&
               typeof err === 'object' &&
               'name' in err &&
-              (err as { name: string }).name === 'NodeInterrupt'
+              ['NodeInterrupt', 'GraphInterrupt'].includes(
+                (err as { name: string }).name
+              )
             ) {
-              const state = await graph.getState({
-                configurable: { thread_id: projectId },
-              });
-              const updatedProject = ComicProject.fromJSON(
-                state.values.project
-              );
-              // Persist the cover + layout options that live at the LangGraph
-              // root state into the project entity so the layout chooser UI
-              // can read them back after the interrupt.
-              if (state.values.coverImageUrl) {
-                updatedProject.setCoverImageUrl(state.values.coverImageUrl);
-              }
-              if (Array.isArray(state.values.layoutOptions)) {
-                updatedProject.setLayoutOptions(state.values.layoutOptions);
-              }
-              updatedProject.setStatus('pending_layout');
-              await projectRepo.save(updatedProject);
               logger.info(
-                `[Worker] Project ${projectId} paused for layout selection`
+                `[Worker] Project ${projectId} paused by expected workflow interrupt`
               );
-              return;
+            } else {
+              throw err;
             }
-            throw err;
+          }
+
+          // The first interrupt in the workflow is the layout interrupt. If
+          // selectedLayout is still missing in the graph state we know the
+          // run paused there; persist pending_layout so the UI can render the
+          // layout chooser. Otherwise the run progressed past layout and
+          // interrupted at hitlReview after generating panel 0.
+          const startState = await graph.getState({
+            configurable: { thread_id: projectId },
+          });
+          if (!startState.values.selectedLayout) {
+            const updatedProject = ComicProject.fromJSON(
+              startState.values.project
+            );
+            if (startState.values.coverImageUrl) {
+              updatedProject.setCoverImageUrl(startState.values.coverImageUrl);
+            }
+            if (Array.isArray(startState.values.layoutOptions)) {
+              updatedProject.setLayoutOptions(startState.values.layoutOptions);
+            }
+            updatedProject.setStatus('pending_layout');
+            await projectRepo.save(updatedProject);
+            logger.info(
+              `[Worker] Project ${projectId} paused for layout selection`
+            );
+            return;
           }
 
           const currentThreadState = await graph.getState({
@@ -132,37 +143,34 @@ export function initComicWorker(
               `feedback: ${feedback ? 'present' : 'none'})`
           );
 
-          // Load latest project state from DB. Without a working checkpointer
-          // restore, this is the source of truth for previously-generated
-          // panels, the selected layout, and the panel index to resume from.
-          const dbProject = await projectRepo.load(projectId);
-          if (!dbProject) throw new Error(`Project ${projectId} not found`);
-          const dbProjectJson = dbProject.toJSON();
-          const layoutToUse =
-            selectedLayout || dbProjectJson.selectedLayout || undefined;
-          const nextPanelIndex = (dbProjectJson.panels || []).filter(
-            (p) => p.status === 'generated' || p.status === 'completed'
-          ).length;
+          // Build the LangGraph Command that resumes the suspended graph.
+          // The first interrupt() encountered after resume returns this value
+          // (consumeNullResume removes it after first use, so any later
+          // interrupt() in the same invoke — e.g. the *next* hitlReview after
+          // generatePanel in the in-graph loop — will throw and pause again).
+          let resumeValue: unknown;
+          if (feedback) {
+            resumeValue = feedback;
+          } else if (selectedLayout) {
+            resumeValue = { selectedLayout };
+          } else {
+            throw new Error(
+              `[Worker] resume-comic requires either feedback or selectedLayout`
+            );
+          }
 
           try {
-            await graph.invoke(
-              {
-                project: dbProjectJson,
-                selectedLayout: layoutToUse,
-                currentPanelIndex: nextPanelIndex,
-                lastFeedback: feedback ?? null,
-                threadId: projectId,
-              },
-              {
-                configurable: { thread_id: projectId },
-              }
-            );
+            await graph.invoke(new Command({ resume: resumeValue }), {
+              configurable: { thread_id: projectId },
+            });
           } catch (err) {
             if (
               err &&
               typeof err === 'object' &&
               'name' in err &&
-              (err as { name: string }).name === 'NodeInterrupt'
+              ['NodeInterrupt', 'GraphInterrupt'].includes(
+                (err as { name: string }).name
+              )
             ) {
               logger.info(
                 `[Worker] Project ${projectId} paused by expected workflow interrupt`
@@ -187,12 +195,17 @@ export function initComicWorker(
               currentThreadState.values.layoutOptions
             );
           }
+          const rawPanelCount = updatedProject.getPanelCount();
           const panelCountValue =
-            typeof updatedProject.getPanelCount() === 'number'
-              ? updatedProject.getPanelCount()
-              : updatedProject.getPanelCount().getValue();
+            typeof rawPanelCount === 'number'
+              ? rawPanelCount
+              : rawPanelCount.getValue();
 
-          if (currentThreadState.values.currentPanelIndex >= panelCountValue) {
+          const completedPanelCount = updatedProject
+            .getPanels()
+            .filter((p) => p.getStatus().getValue() === 'completed').length;
+
+          if (completedPanelCount >= panelCountValue) {
             updatedProject.setStatus('completed');
             logger.info(
               `[Worker] Comic generation completed for project ${projectId}.`
@@ -201,7 +214,7 @@ export function initComicWorker(
             updatedProject.setStatus('pending_review');
             logger.info(
               `[Worker] Panel ${currentThreadState.values.currentPanelIndex} generated. ` +
-                `Waiting for HITL review (${currentThreadState.values.currentPanelIndex}/${panelCountValue}).`
+                `Waiting for HITL review (${completedPanelCount}/${panelCountValue} completed).`
             );
           }
           await projectRepo.save(updatedProject);

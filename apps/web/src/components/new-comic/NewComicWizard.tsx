@@ -10,6 +10,7 @@ import { NewComicWizardSidebar } from './NewComicWizardSidebar';
 import { useObjectUrls, useWizardPersistence } from '../../lib/hooks';
 import {
   getWizardState,
+  clearWizardState,
   IndexedDBQuotaExceededError,
 } from '../../lib/indexedDB';
 import {
@@ -58,12 +59,19 @@ export function NewComicWizard() {
       if (typeof window === 'undefined') return getDefaultWizardValues();
       const saved = await getWizardState();
       if (saved?.wizardStateVersion === 1) {
+        // Post-submission state (layout chooser) lives on the project page;
+        // dropping users straight back into step 4 when they click "Brainstorm
+        // Idea" is jarring. Treat reaching step 4 as the end of the wizard's
+        // responsibility and start the next visit fresh.
+        if (saved.step >= 4) {
+          await clearWizardState();
+          return getDefaultWizardValues();
+        }
         setActiveStep(saved.step);
         setReferenceImageBlobs(saved.referenceImageBlobs || {});
         setMoodBoardImageBlobs(saved.moodBoardImageBlobs || []);
         setPreferredLayoutId(saved.preferredLayoutId || null);
         setProjectId(saved.projectId || null);
-        if (saved.step === 4 && saved.projectId) setIsPolling(true);
         return saved.formValues as WizardFormValues;
       }
       return getDefaultWizardValues();

@@ -1,7 +1,16 @@
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { config as loadEnv } from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootEnvPath = resolve(__dirname, '../../.env');
+
+// Load the monorepo-root .env into process.env BEFORE the runtimeConfig literal
+// below is evaluated. Nitro's built-in loader only looks in apps/api/, where no
+// .env exists, so without this all process.env reads in this file would see an
+// empty environment and silently fall back to defaults — most visibly making
+// DISABLE_REDIS=false in the root .env get overridden by the 'true' fallback.
+loadEnv({ path: rootEnvPath });
 
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
@@ -17,7 +26,7 @@ export default {
   },
 
   runtimeConfig: {
-    rootEnvPath: resolve(__dirname, '../../.env'),
+    rootEnvPath,
     port: process.env.PORT ?? '3001',
     redisHost: process.env.REDIS_HOST ?? 'localhost',
     redisPort: process.env.REDIS_PORT ?? '6379',
