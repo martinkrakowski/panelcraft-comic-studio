@@ -1544,6 +1544,7 @@ __metadata:
     autoprefixer: "npm:^10.4.18"
     eslint: "npm:^9.0.0"
     framer-motion: "npm:^11.3.0"
+    html-to-image: "npm:^1.11.13"
     jsdom: "npm:^29.1.1"
     lucide-react: "npm:^0.435.0"
     next: "npm:^15.0.3"
@@ -5534,6 +5535,13 @@ __metadata:
   version: 2.0.2
   resolution: "html-escaper@npm:2.0.2"
   checksum: 10c0/208e8a12de1a6569edbb14544f4567e6ce8ecc30b9394fcaa4e7bb1e60c12a7c9a1ed27e31290817157e8626f3a4f29e76c8747030822eb84a6abb15c255f0a0
+  languageName: node
+  linkType: hard
+
+"html-to-image@npm:^1.11.13":
+  version: 1.11.13
+  resolution: "html-to-image@npm:1.11.13"
+  checksum: 10c0/03bd7192d87b99499e37ff12a8e2b41ddce4cf8e33a93dfadff18df0f213434c7f1ba8328db2158f4805da07b7aec3c90aec3152908281153217e86784218b10
   languageName: node
   linkType: hard
 

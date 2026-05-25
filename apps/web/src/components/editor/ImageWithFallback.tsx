@@ -7,12 +7,21 @@ interface ImageWithFallbackProps {
   src: string;
   alt: string;
   className?: string;
+  /**
+   * When true, requests the image with `crossOrigin="anonymous"` so the
+   * resulting pixels can be read back through canvas (required for the
+   * comic-page PNG export). Only set this for hosts that send CORS headers
+   * (e.g., Supabase signed URLs); enabling it for non-CORS hosts will
+   * silently block the image.
+   */
+  crossOrigin?: boolean;
 }
 
 export function ImageWithFallback({
   src,
   alt,
   className,
+  crossOrigin,
 }: ImageWithFallbackProps) {
   const [error, setError] = React.useState(false);
 
@@ -30,6 +39,7 @@ export function ImageWithFallback({
       src={src}
       alt={alt}
       className={className}
+      crossOrigin={crossOrigin ? 'anonymous' : undefined}
       onError={() => setError(true)}
     />
   );

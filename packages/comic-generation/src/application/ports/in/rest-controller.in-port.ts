@@ -102,4 +102,11 @@ export interface RestControllerPort {
     projectId: string,
     paths: { referenceImagePaths?: string[]; moodBoardImagePaths?: string[] }
   ): Promise<void>;
+
+  /**
+   * Marks a single panel as pending and enqueues a regeneration job. Allowed
+   * once the project is `completed` or `pending_review` so the user can
+   * iterate on individual frames after the HITL flow has finished.
+   */
+  regeneratePanel(projectId: string, panelIndex: number): Promise<void>;
 }

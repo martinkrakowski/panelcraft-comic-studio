@@ -111,10 +111,8 @@ export async function layoutInterrupt(
   state: ComicGraphStateType,
   deps: WorkflowDeps
 ): Promise<ComicGraphStateType> {
-  // Fast-path: when the graph is re-invoked with selectedLayout in the input
-  // state (resume path), skip the interrupt and let the workflow continue.
-  // This guards against LangGraph checkpoint-restore issues — the user's
-  // choice from the previous invocation arrives via input state instead.
+  // Selection already in state (e.g. checkpoint already advanced past this
+  // node in a previous run); nothing to do.
   if (state.selectedLayout) {
     deps.logger.info(
       `Layout already selected (${state.selectedLayout}), skipping interrupt`
@@ -140,6 +138,10 @@ export async function layoutInterrupt(
     }
   }
 
+  // interrupt() throws GraphInterrupt on first hit and is resumed by the
+  // worker invoking with `new Command({ resume: { selectedLayout } })`.
+  // Subsequent interrupt() calls in later nodes will not re-consume this
+  // resume value because consumeNullResume() removes it after the first use.
   const selection = interrupt({
     type: 'layout_selection',
     coverImageUrl,
@@ -190,17 +192,47 @@ export async function generatePanel(
     }
   }
 
-  const imageUrl = await deps.imageGenPort.generatePanel({
+  const remoteImageUrl = await deps.imageGenPort.generatePanel({
     prompt,
     panelNumber: panelIndex + 1,
     styleModifiers,
     referenceImageUrls,
   });
 
+  // Stage the generated panel in Supabase Storage so we own its URL forever
+  // (xAI returns short-lived signed URLs) and so the page exporter can read
+  // pixels back from canvas — Supabase serves CORS headers, the xAI CDN
+  // doesn't. Errors here surface as panel regenerations rather than data loss.
+  const projectId = state.project.id;
+  const storagePath = `comics/${projectId}/panels/${panelIndex}.webp`;
+  let stagedPath = remoteImageUrl;
+  try {
+    const imageResponse = await fetch(remoteImageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(
+        `Failed to fetch generated panel from CDN: HTTP ${imageResponse.status}`
+      );
+    }
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const { error: uploadError } = await deps.supabase.storage
+      .from('comics')
+      .upload(storagePath, imageBuffer, {
+        contentType: 'image/webp',
+        upsert: true,
+      });
+    if (uploadError) throw uploadError;
+    stagedPath = storagePath;
+  } catch (err) {
+    deps.logger.warn(
+      `Panel ${panelIndex} stage-to-Supabase failed; falling back to remote URL: ` +
+        `${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
   const updatedPanels = [...panels];
   updatedPanels[panelIndex] = {
     ...(panel as PanelJSON),
-    generatedImageUrl: imageUrl,
+    generatedImageUrl: stagedPath,
     status: 'generated',
   };
 
@@ -218,29 +250,40 @@ export async function hitlReview(
   const reviewPanelIndex = state.currentPanelIndex - 1;
   const panels = state.project.panels || [];
 
-  // Fast-path: when the worker re-invokes the graph with lastFeedback in the
-  // input state (resume-after-approval path), skip the interrupt and let the
-  // conditional edge route to the next node. Same workaround as layoutInterrupt
-  // for the checkpoint-restore issue.
-  if (state.lastFeedback) {
-    deps.logger.info(
-      `Feedback already provided for panel ${reviewPanelIndex} ` +
-        `(approved: ${state.lastFeedback.approved}), skipping interrupt`
-    );
-    return state;
-  }
-
+  // interrupt() throws GraphInterrupt on first hit. On resume via
+  // `new Command({ resume: feedback })` it returns the feedback value here.
+  // In the in-graph loop, this node runs once per panel: the *first*
+  // hitlReview call within a single invoke is the one consumed by Command's
+  // resume; later calls (after another generatePanel) will throw again
+  // because consumeNullResume() removes the resume after first use.
   const feedback = interrupt({
     panelIndex: reviewPanelIndex,
     panel: panels[reviewPanelIndex],
     message: 'Review generated panel and provide feedback',
   }) as HITLFeedbackData;
 
+  deps.logger.info(
+    `Applying HITL feedback for panel ${reviewPanelIndex} (approved: ${feedback.approved})`
+  );
+
+  const updatedPanels = [...panels];
+  if (reviewPanelIndex >= 0 && updatedPanels[reviewPanelIndex]) {
+    updatedPanels[reviewPanelIndex] = {
+      ...(updatedPanels[reviewPanelIndex] as PanelJSON),
+      status: feedback.approved ? 'completed' : 'pending',
+    };
+  }
+
   const newIndex = feedback.approved
     ? state.currentPanelIndex
     : state.currentPanelIndex - 1;
 
-  return { ...state, lastFeedback: feedback, currentPanelIndex: newIndex };
+  return {
+    ...state,
+    project: { ...state.project, panels: updatedPanels },
+    lastFeedback: feedback,
+    currentPanelIndex: newIndex,
+  };
 }
 
 export async function finalizeComic(

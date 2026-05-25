@@ -1,18 +1,56 @@
 import { Worker, Job, Queue } from 'bullmq';
-import type { LangGraphOrchestrationAdapter } from '@panelcraft/comic-generation';
+import { Command } from '@langchain/langgraph';
+import type {
+  LangGraphOrchestrationAdapter,
+  ImageGenerationPort,
+} from '@panelcraft/comic-generation';
 import type { RelationalDbPort } from '@panelcraft/comic-generation';
-import { ComicProject } from '@panelcraft/comic-project-management';
+import {
+  ComicProject,
+  PanelStatus,
+} from '@panelcraft/comic-project-management';
 import type { LoggerPort } from '@panelcraft/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface ComicJobData {
   projectId: string;
   selectedLayout?: string;
+  panelIndex?: number;
   feedback?: {
     approved: boolean;
     comment?: string;
     regenerationHint?: string;
   };
+}
+
+interface CharacterBibleEntry {
+  name?: string;
+  visual?: string;
+  consistency?: string;
+}
+
+/**
+ * Build the prompt modifiers passed to imageGenPort.generatePanel.
+ * Mirrors `buildCharacterStyleModifiers` inside the graph node so that
+ * out-of-graph regeneration produces visually consistent panels.
+ */
+function buildStyleModifiers(project: ComicProject): string | undefined {
+  const json = project.toJSON();
+  const parts: string[] = [];
+  if (json.styleReferences?.globalStylePrompt) {
+    parts.push(json.styleReferences.globalStylePrompt);
+  }
+  const bible = json.characterBible as
+    | { characters?: CharacterBibleEntry[] }
+    | null
+    | undefined;
+  if (bible?.characters?.length) {
+    const charDesc = bible.characters
+      .map((c) => `${c.name}: ${c.visual}. ${c.consistency}`)
+      .join('. ');
+    parts.push(`Character consistency — ${charDesc}`);
+  }
+  return parts.length ? parts.join('. ') : undefined;
 }
 
 /**
@@ -42,7 +80,8 @@ export function initComicWorker(
   projectRepo: RelationalDbPort,
   queue: Queue,
   logger: LoggerPort,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  imageGenPort: ImageGenerationPort
 ) {
   const graph = langGraphAdapter.getGraph();
 
@@ -71,36 +110,46 @@ export function initComicWorker(
               { configurable: { thread_id: projectId } }
             );
           } catch (err) {
-            // Handle layout interrupt (NodeInterrupt from LangGraph)
             if (
               err &&
               typeof err === 'object' &&
               'name' in err &&
-              (err as { name: string }).name === 'NodeInterrupt'
+              ['NodeInterrupt', 'GraphInterrupt'].includes(
+                (err as { name: string }).name
+              )
             ) {
-              const state = await graph.getState({
-                configurable: { thread_id: projectId },
-              });
-              const updatedProject = ComicProject.fromJSON(
-                state.values.project
-              );
-              // Persist the cover + layout options that live at the LangGraph
-              // root state into the project entity so the layout chooser UI
-              // can read them back after the interrupt.
-              if (state.values.coverImageUrl) {
-                updatedProject.setCoverImageUrl(state.values.coverImageUrl);
-              }
-              if (Array.isArray(state.values.layoutOptions)) {
-                updatedProject.setLayoutOptions(state.values.layoutOptions);
-              }
-              updatedProject.setStatus('pending_layout');
-              await projectRepo.save(updatedProject);
               logger.info(
-                `[Worker] Project ${projectId} paused for layout selection`
+                `[Worker] Project ${projectId} paused by expected workflow interrupt`
               );
-              return;
+            } else {
+              throw err;
             }
-            throw err;
+          }
+
+          // The first interrupt in the workflow is the layout interrupt. If
+          // selectedLayout is still missing in the graph state we know the
+          // run paused there; persist pending_layout so the UI can render the
+          // layout chooser. Otherwise the run progressed past layout and
+          // interrupted at hitlReview after generating panel 0.
+          const startState = await graph.getState({
+            configurable: { thread_id: projectId },
+          });
+          if (!startState.values.selectedLayout) {
+            const updatedProject = ComicProject.fromJSON(
+              startState.values.project
+            );
+            if (startState.values.coverImageUrl) {
+              updatedProject.setCoverImageUrl(startState.values.coverImageUrl);
+            }
+            if (Array.isArray(startState.values.layoutOptions)) {
+              updatedProject.setLayoutOptions(startState.values.layoutOptions);
+            }
+            updatedProject.setStatus('pending_layout');
+            await projectRepo.save(updatedProject);
+            logger.info(
+              `[Worker] Project ${projectId} paused for layout selection`
+            );
+            return;
           }
 
           const currentThreadState = await graph.getState({
@@ -132,37 +181,34 @@ export function initComicWorker(
               `feedback: ${feedback ? 'present' : 'none'})`
           );
 
-          // Load latest project state from DB. Without a working checkpointer
-          // restore, this is the source of truth for previously-generated
-          // panels, the selected layout, and the panel index to resume from.
-          const dbProject = await projectRepo.load(projectId);
-          if (!dbProject) throw new Error(`Project ${projectId} not found`);
-          const dbProjectJson = dbProject.toJSON();
-          const layoutToUse =
-            selectedLayout || dbProjectJson.selectedLayout || undefined;
-          const nextPanelIndex = (dbProjectJson.panels || []).filter(
-            (p) => p.status === 'generated' || p.status === 'completed'
-          ).length;
+          // Build the LangGraph Command that resumes the suspended graph.
+          // The first interrupt() encountered after resume returns this value
+          // (consumeNullResume removes it after first use, so any later
+          // interrupt() in the same invoke — e.g. the *next* hitlReview after
+          // generatePanel in the in-graph loop — will throw and pause again).
+          let resumeValue: unknown;
+          if (feedback) {
+            resumeValue = feedback;
+          } else if (selectedLayout) {
+            resumeValue = { selectedLayout };
+          } else {
+            throw new Error(
+              `[Worker] resume-comic requires either feedback or selectedLayout`
+            );
+          }
 
           try {
-            await graph.invoke(
-              {
-                project: dbProjectJson,
-                selectedLayout: layoutToUse,
-                currentPanelIndex: nextPanelIndex,
-                lastFeedback: feedback ?? null,
-                threadId: projectId,
-              },
-              {
-                configurable: { thread_id: projectId },
-              }
-            );
+            await graph.invoke(new Command({ resume: resumeValue }), {
+              configurable: { thread_id: projectId },
+            });
           } catch (err) {
             if (
               err &&
               typeof err === 'object' &&
               'name' in err &&
-              (err as { name: string }).name === 'NodeInterrupt'
+              ['NodeInterrupt', 'GraphInterrupt'].includes(
+                (err as { name: string }).name
+              )
             ) {
               logger.info(
                 `[Worker] Project ${projectId} paused by expected workflow interrupt`
@@ -187,12 +233,17 @@ export function initComicWorker(
               currentThreadState.values.layoutOptions
             );
           }
+          const rawPanelCount = updatedProject.getPanelCount();
           const panelCountValue =
-            typeof updatedProject.getPanelCount() === 'number'
-              ? updatedProject.getPanelCount()
-              : updatedProject.getPanelCount().getValue();
+            typeof rawPanelCount === 'number'
+              ? rawPanelCount
+              : rawPanelCount.getValue();
 
-          if (currentThreadState.values.currentPanelIndex >= panelCountValue) {
+          const completedPanelCount = updatedProject
+            .getPanels()
+            .filter((p) => p.getStatus().getValue() === 'completed').length;
+
+          if (completedPanelCount >= panelCountValue) {
             updatedProject.setStatus('completed');
             logger.info(
               `[Worker] Comic generation completed for project ${projectId}.`
@@ -201,10 +252,116 @@ export function initComicWorker(
             updatedProject.setStatus('pending_review');
             logger.info(
               `[Worker] Panel ${currentThreadState.values.currentPanelIndex} generated. ` +
-                `Waiting for HITL review (${currentThreadState.values.currentPanelIndex}/${panelCountValue}).`
+                `Waiting for HITL review (${completedPanelCount}/${panelCountValue} completed).`
             );
           }
           await projectRepo.save(updatedProject);
+        } else if (job.name === 'regenerate-panel') {
+          // Regeneration of a single panel after the project has already
+          // completed (or while it's mid-review). We bypass LangGraph
+          // entirely here — the graph's HITL loop assumes sequential
+          // generation, and re-entering it for a one-off panel rework
+          // would require resetting the checkpoint. A direct call to
+          // imageGenPort is simpler and matches what the graph node does.
+          const { panelIndex } = job.data;
+          if (typeof panelIndex !== 'number') {
+            throw new Error('[Worker] regenerate-panel job missing panelIndex');
+          }
+          const panels = project.getPanels();
+          const targetPanel = panels[panelIndex];
+          if (!targetPanel) {
+            throw new Error(
+              `[Worker] Panel ${panelIndex} not found on project ${projectId}`
+            );
+          }
+          const prompt = targetPanel.getPrompt()?.trim();
+          if (!prompt) {
+            throw new Error(
+              `[Worker] Panel ${panelIndex} has no prompt; cannot regenerate`
+            );
+          }
+
+          logger.info(
+            `[Worker] Regenerating panel ${panelIndex} for project ${projectId}`
+          );
+
+          const styleModifiers = buildStyleModifiers(project);
+          let referenceImageUrls: string[] | undefined;
+          const coverPath = project.getCoverImageUrl();
+          if (coverPath && !/^https?:\/\//i.test(coverPath)) {
+            try {
+              const { data: signedUrlData } = await supabase.storage
+                .from('comics')
+                .createSignedUrl(coverPath, 3600);
+              if (signedUrlData?.signedUrl) {
+                referenceImageUrls = [signedUrlData.signedUrl];
+              }
+            } catch (err) {
+              logger.warn(
+                `[Worker] Failed to sign cover for regen reference: ${err instanceof Error ? err.message : String(err)}`
+              );
+            }
+          }
+
+          const remoteUrl = await imageGenPort.generatePanel({
+            prompt,
+            panelNumber: panelIndex + 1,
+            styleModifiers,
+            referenceImageUrls,
+          });
+
+          // Persist the regenerated image to Supabase so the URL doesn't
+          // expire and CORS-dependent features (PNG export) keep working.
+          const storagePath = `comics/${projectId}/panels/${panelIndex}.webp`;
+          let stagedPath = remoteUrl;
+          try {
+            const imageResponse = await fetch(remoteUrl);
+            if (!imageResponse.ok) {
+              throw new Error(
+                `Failed to fetch regenerated panel from CDN: HTTP ${imageResponse.status}`
+              );
+            }
+            const buffer = Buffer.from(await imageResponse.arrayBuffer());
+            const { error: uploadError } = await supabase.storage
+              .from('comics')
+              .upload(storagePath, buffer, {
+                contentType: 'image/webp',
+                upsert: true,
+              });
+            if (uploadError) throw uploadError;
+            stagedPath = storagePath;
+          } catch (err) {
+            logger.warn(
+              `[Worker] Regenerated panel ${panelIndex} stage-to-Supabase failed; ` +
+                `falling back to remote URL: ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
+
+          targetPanel.setGeneratedImageUrl(stagedPath);
+          const completedStatus = PanelStatus.create('completed');
+          if (!completedStatus.success || !completedStatus.value) {
+            throw new Error('Failed to construct completed PanelStatus');
+          }
+          targetPanel.setStatus(completedStatus.value);
+          project.setPanels(panels);
+
+          const rawPanelCount = project.getPanelCount();
+          const panelCountValue =
+            typeof rawPanelCount === 'number'
+              ? rawPanelCount
+              : rawPanelCount.getValue();
+          const completedCount = panels.filter(
+            (p) => p.getStatus().getValue() === 'completed'
+          ).length;
+          project.setStatus(
+            completedCount >= panelCountValue ? 'completed' : 'pending_review'
+          );
+          await projectRepo.save(project);
+
+          logger.info(
+            `[Worker] Panel ${panelIndex} regenerated; project status set to ` +
+              `${project.getStatus()}`
+          );
         }
       } catch (error) {
         logger.error(
@@ -218,7 +375,27 @@ export function initComicWorker(
             const project = await projectRepo.load(projectId);
             if (project) {
               const currentStatus = project.getStatus();
-              if (currentStatus === 'processing') {
+              if (job.name === 'regenerate-panel') {
+                // Regenerate originated from a 'completed' project (the
+                // handler rejects other states). The target panel was
+                // flipped to 'pending' before enqueue; failing into
+                // 'pending_review' would strand it. Mark the panel failed
+                // and restore the project to 'completed' so the UI can
+                // re-offer regenerate.
+                const panelIndex = job.data.panelIndex;
+                if (typeof panelIndex === 'number') {
+                  const panels = project.getPanels();
+                  const target = panels[panelIndex];
+                  if (target) {
+                    const failedStatus = PanelStatus.create('failed');
+                    if (failedStatus.success && failedStatus.value) {
+                      target.setStatus(failedStatus.value);
+                      project.setPanels(panels);
+                    }
+                  }
+                }
+                project.setStatus('completed');
+              } else if (currentStatus === 'processing') {
                 project.setStatus('pending_review');
               } else if (
                 job.name === 'start-comic' &&

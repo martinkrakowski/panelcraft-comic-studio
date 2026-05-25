@@ -75,16 +75,19 @@ export class LangGraphOrchestrationAdapter {
     workflow.addEdge('suggestLayouts', 'layoutInterrupt');
     workflow.addEdge('layoutInterrupt', 'generatePanel');
     workflow.addEdge('generatePanel', 'hitlReview');
-    // After each panel + (skipped) review, either finalize when all panels
-    // are done or stop the workflow so the worker can save pending_review
-    // and wait for the user's next approval. The previous in-graph loop
-    // cascaded through all remaining panels on a single resume because the
-    // checkpointer doesn't reliably re-interrupt at hitlReview.
+    // hitlReview either:
+    //  - finalizes the comic if all panels are reviewed,
+    //  - loops back to generatePanel for the next panel (after applying
+    //    feedback from a previous resume), or
+    //  - interrupts and waits for the next user review.
+    // The in-graph loop is safe because hitlReview clears lastFeedback after
+    // applying it, so subsequent invocations of the node within the same run
+    // will hit the interrupt() path instead of cascading.
     workflow.addConditionalEdges('hitlReview', (state: ComicGraphStateType) => {
       if (state.currentPanelIndex >= state.project.panelCount) {
         return 'finalizeComic';
       }
-      return END;
+      return 'generatePanel';
     });
     workflow.addEdge('finalizeComic', END);
 

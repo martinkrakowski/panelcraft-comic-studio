@@ -149,5 +149,20 @@ export const api = {
       body: JSON.stringify(input),
     });
   },
+
+  /**
+   * Regenerate a single completed panel. The project transitions to
+   * `processing` while the worker runs and back to its prior terminal state
+   * once the new image is staged.
+   */
+  async regeneratePanel(
+    id: string,
+    panelIndex: number
+  ): Promise<{ message: string }> {
+    return request<{ message: string }>(
+      `/api/projects/${id}/panels/${panelIndex}/regenerate`,
+      { method: 'POST' }
+    );
+  },
 };
 export default api;
