@@ -122,9 +122,13 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
     );
   }
 
-  const activeReviewPanel = project.panels.find(
-    (p) => p.status === 'generated'
-  );
+  // Only surface HITL review when project is in pending_review (otherwise
+  // panels that finished generating in a completed comic would resurrect
+  // the review form and trigger 400s on the next approve click).
+  const activeReviewPanel =
+    project.status === 'pending_review'
+      ? project.panels.find((p) => p.status === 'generated')
+      : undefined;
   const completedPanelCount = project.panels.filter(
     (p) => p.status === 'completed'
   ).length;
