@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 /** Props for CollapsibleSection component */
@@ -35,8 +35,8 @@ export const CollapsibleSection = React.forwardRef<
   CollapsibleSectionProps
 >(({ title, children, defaultOpen = true, className }, ref) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  const contentId = `collapsible-content-${Math.random().toString(36).substr(2, 9)}`;
+  const id = useId();
+  const contentId = `collapsible-content-${id}`;
 
   return (
     <div ref={ref} className={`border-b border-slate-700 ${className || ''}`}>

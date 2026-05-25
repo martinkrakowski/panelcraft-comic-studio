@@ -38,6 +38,7 @@ pnpm-lock.yaml
 .opencode/
 cursor/
 claude/
+.mcp.json
 
 # --- Logs & Temporary Files ---
 *.log
