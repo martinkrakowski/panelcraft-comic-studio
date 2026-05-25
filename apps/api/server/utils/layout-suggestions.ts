@@ -71,7 +71,7 @@ const LAYOUT_SUGGESTIONS: Record<number, LayoutSuggestion[]> = {
       id: 'dominant-insets',
       name: 'Dominant + Dual Insets',
       description: 'Large central focus with two reaction panels',
-      mood: 'intimate',
+      mood: 'dramatic',
       priority: 3,
     },
     {

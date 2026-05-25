@@ -1,8 +1,10 @@
+import type { PanelJSON } from '@panelcraft/comic-project-management';
+
 export interface ComicProjectJSON {
   id: string;
   prompt: string;
   panelCount: number;
-  panels?: unknown[];
+  panels?: PanelJSON[];
   characterBible?: unknown;
   genres?: string[];
   tones?: string[];

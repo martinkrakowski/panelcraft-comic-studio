@@ -1,5 +1,6 @@
 import type { ImageGenerationPort } from '../../application/ports/out/image-generation.out-port.js';
 import type { GeneratePanelCommand } from '../../application/commands/GeneratePanelCommand.js';
+import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 interface XaiImageResponse {
   data: Array<{ url: string; revised_prompt?: string }>;
@@ -28,21 +29,17 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     if (!this.apiKey) {
       throw new Error('XAI_API_KEY environment variable is not set');
     }
-
     const fullPrompt = this.buildComicPrompt(
       command.prompt,
       command.styleModifiers
     );
     const referenceUrl = command.referenceImageUrls?.[0];
-
-    if (referenceUrl) {
-      return this.editImage(referenceUrl, fullPrompt);
-    }
+    if (referenceUrl) return this.editImage(referenceUrl, fullPrompt);
     return this.generateImage(fullPrompt, this.qualityModel);
   }
 
   private async generateImage(prompt: string, model: string): Promise<string> {
-    const response = await this.fetchWithTimeout(this.generateEndpoint, {
+    const response = await fetchWithTimeout(this.generateEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,7 +54,6 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
         `xAI generate_image failed (${response.status}): ${body}`
       );
     }
-
     const json = (await response.json()) as XaiImageResponse;
     const url = json.data[0]?.url;
     if (!url) throw new Error('xAI generate_image returned no image URL');
@@ -68,7 +64,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     referenceUrl: string,
     prompt: string
   ): Promise<string> {
-    const imageResponse = await this.fetchWithTimeout(referenceUrl, {}, 30000);
+    const imageResponse = await fetchWithTimeout(referenceUrl, {}, 30000);
     if (!imageResponse.ok) {
       throw new Error(
         `Failed to fetch reference image for edit: ${imageResponse.status}`
@@ -87,7 +83,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     form.append('n', '1');
     form.append('response_format', 'url');
 
-    const response = await this.fetchWithTimeout(
+    const response = await fetchWithTimeout(
       this.editEndpoint,
       {
         method: 'POST',
@@ -101,31 +97,19 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       const body = await response.text();
       throw new Error(`xAI edit_image failed (${response.status}): ${body}`);
     }
-
     const json = (await response.json()) as XaiImageResponse;
     const url = json.data[0]?.url;
     if (!url) throw new Error('xAI edit_image returned no image URL');
     return url;
   }
 
-  /**
-   * Generates a high-quality comic book cover image using the story prompt and optional style/character guidelines.
-   *
-   * @param options - The cover generation options.
-   * @param options.prompt - The main text description or title of the comic story.
-   * @param options.style - Optional style guides (expects globalStylePrompt).
-   * @param options.characterBible - Optional character reference data to ensure visual consistency.
-   * @returns A promise that resolves to a Buffer containing the generated PNG/JPEG image bytes.
-   * @throws {Error} If the XAI_API_KEY is not set, the generation request fails, or the image download fails/times out.
-   */
   async generateCover(options: {
     prompt: string;
     style?: unknown;
     characterBible?: unknown;
   }): Promise<Buffer> {
-    if (!this.apiKey) {
+    if (!this.apiKey)
       throw new Error('XAI_API_KEY environment variable is not set');
-    }
 
     const styleDesc = options.style
       ? `Style: ${(options.style as Record<string, unknown>)?.globalStylePrompt || ''}`
@@ -135,7 +119,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       : '';
     const fullPrompt = `Comic book cover for story: ${options.prompt}. ${styleDesc} ${characterDesc}. Professional comic cover, bold title, vibrant colors, dynamic composition.`;
 
-    const response = await this.fetchWithTimeout(this.generateEndpoint, {
+    const response = await fetchWithTimeout(this.generateEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -155,55 +139,36 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
         `xAI cover generation failed (${response.status}): ${body}`
       );
     }
-
     const json = (await response.json()) as XaiImageResponse;
     const imageUrl = json.data[0]?.url;
     if (!imageUrl)
       throw new Error('xAI cover generation returned no image URL');
 
-    // Fetch image and convert to buffer
-    const imageResponse = await this.fetchWithTimeout(imageUrl, {});
+    const imageResponse = await fetchWithTimeout(imageUrl, {});
     if (!imageResponse.ok)
       throw new Error('Failed to fetch generated cover image');
     return Buffer.from(await imageResponse.arrayBuffer());
   }
 
-  /**
-   * Generates a style preview image containing a simple representative object using the style prompt.
-   *
-   * @param stylePrompt - The style prompt or description defining the art style.
-   * @param options - Optional presets and mood board files.
-   * @param options.preset - The style preset name (e.g., 'Retro', 'Manga') to inject.
-   * @param options.moodBoardImages - Array of storage URLs or names from the project mood board.
-   * @returns A promise that resolves to a Buffer containing the preview image bytes.
-   * @throws {Error} If the XAI_API_KEY is not set, the preview request fails, or the image download fails/times out.
-   */
   async generatePreview(
     stylePrompt: string,
     options?: { preset?: string; moodBoardImages?: string[] }
   ): Promise<Buffer> {
-    if (!this.apiKey) {
+    if (!this.apiKey)
       throw new Error('XAI_API_KEY environment variable is not set');
-    }
 
-    // Incorporate the chosen preset as a style guide and acknowledge any
-    // mood board references the caller supplied. The image API does not
-    // currently accept reference images directly, so we describe their
-    // count in the prompt to bias the generation.
     const presetSegment = options?.preset
       ? ` Style preset: ${options.preset}.`
       : '';
     const moodBoardSegment =
       options?.moodBoardImages && options.moodBoardImages.length > 0
-        ? ` Inspired by ${options.moodBoardImages.length} mood board reference${
-            options.moodBoardImages.length === 1 ? '' : 's'
-          }.`
+        ? ` Inspired by ${options.moodBoardImages.length} mood board reference${options.moodBoardImages.length === 1 ? '' : 's'}.`
         : '';
     const fullPrompt =
       `Quick style preview: ${stylePrompt}.${presetSegment}${moodBoardSegment} ` +
       `Simple comic object on neutral background, clean lines, flat colors.`;
 
-    const response = await this.fetchWithTimeout(this.generateEndpoint, {
+    const response = await fetchWithTimeout(this.generateEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -223,47 +188,15 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
         `xAI preview generation failed (${response.status}): ${body}`
       );
     }
-
     const json = (await response.json()) as XaiImageResponse;
     const imageUrl = json.data[0]?.url;
-    if (!imageUrl) {
+    if (!imageUrl)
       throw new Error('xAI preview generation returned no image URL');
-    }
 
-    const imageResponse = await this.fetchWithTimeout(imageUrl, {});
+    const imageResponse = await fetchWithTimeout(imageUrl, {});
     if (!imageResponse.ok)
       throw new Error('Failed to fetch generated preview image');
     return Buffer.from(await imageResponse.arrayBuffer());
-  }
-
-  private async fetchWithTimeout(
-    url: string,
-    options: RequestInit,
-    timeoutMs = 15000
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      return response;
-    } catch (err) {
-      if (
-        (err instanceof DOMException && err.name === 'AbortError') ||
-        (err &&
-          typeof err === 'object' &&
-          'name' in err &&
-          (err as { name: string }).name === 'AbortError')
-      ) {
-        throw new Error(`Request to ${url} timed out after ${timeoutMs}ms`);
-      }
-      throw err;
-    } finally {
-      clearTimeout(id);
-    }
   }
 
   private buildComicPrompt(basePrompt: string, modifiers?: string): string {

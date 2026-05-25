@@ -1,11 +1,12 @@
-import { Panel, PanelJSON } from './Panel.js';
+import { Panel } from './Panel.js';
 import {
   ComicProjectId,
   ComicTitle,
   PanelCount,
   CharacterBible,
 } from '../value-objects/index.js';
-import { ValidationError } from '../errors/ValidationError.js';
+import type { ComicProjectJSON } from './ComicProjectSerializer.js';
+import { ComicProjectSerializer } from './ComicProjectSerializer.js';
 
 export interface ComicProjectProps {
   prompt: ComicTitle;
@@ -28,27 +29,7 @@ export interface ComicProjectProps {
   lastReviewSubmittedAt?: string | null;
 }
 
-export interface ComicProjectJSON {
-  id: string;
-  prompt: string;
-  panelCount: number;
-  panels?: unknown[];
-  characterBible?: unknown;
-  genres?: string[];
-  tones?: string[];
-  styleReferences?: {
-    globalStylePrompt: string;
-    moodBoardPreset: string;
-    moodBoardImages: string[];
-    artDirectionNotes?: string;
-  } | null;
-  coverImageUrl?: string | null;
-  selectedLayout?: string | null;
-  layoutOptions?: string[] | null;
-  status: string;
-  createdAt: string;
-  lastReviewSubmittedAt?: string | null;
-}
+export type { ComicProjectJSON } from './ComicProjectSerializer.js';
 
 export class ComicProject {
   private prompt: ComicTitle;
@@ -97,51 +78,39 @@ export class ComicProject {
   getId(): ComicProjectId {
     return this.id;
   }
-
   getPrompt(): ComicTitle {
     return this.prompt;
   }
-
   setPrompt(prompt: ComicTitle): void {
     this.prompt = prompt;
   }
-
   getPanelCount(): PanelCount {
     return this.panelCount;
   }
-
   setPanelCount(count: PanelCount): void {
     this.panelCount = count;
   }
-
   getPanels(): Panel[] {
     return [...this.panels];
   }
-
   setPanels(panels: Panel[]): void {
     this.panels = [...panels];
   }
-
   getCharacterBible(): CharacterBible | null {
     return this.characterBible;
   }
-
   setCharacterBible(bible: CharacterBible | null): void {
     this.characterBible = bible;
   }
-
   getGenres(): string[] {
     return [...this.genres];
   }
-
   setGenres(genres: string[]): void {
     this.genres = [...genres];
   }
-
   getTones(): string[] {
     return [...this.tones];
   }
-
   setTones(tones: string[]): void {
     this.tones = [...tones];
   }
@@ -169,33 +138,25 @@ export class ComicProject {
     } | null
   ): void {
     this.styleReferences = refs
-      ? {
-          ...refs,
-          moodBoardImages: [...refs.moodBoardImages],
-        }
+      ? { ...refs, moodBoardImages: [...refs.moodBoardImages] }
       : null;
   }
 
   getCoverImageUrl(): string | null {
     return this.coverImageUrl;
   }
-
   setCoverImageUrl(url: string | null): void {
     this.coverImageUrl = url;
   }
-
   getSelectedLayout(): string | null {
     return this.selectedLayout;
   }
-
   setSelectedLayout(layout: string | null): void {
     this.selectedLayout = layout;
   }
-
   getLayoutOptions(): string[] | null {
     return this.layoutOptions ? [...this.layoutOptions] : null;
   }
-
   setLayoutOptions(options: string[] | null): void {
     this.layoutOptions = options ? [...options] : null;
   }
@@ -225,12 +186,7 @@ export class ComicProject {
     this.lastReviewSubmittedAt = date;
   }
 
-  /**
-   * Serializes the project to a plain JSON object with primitive values.
-   * Used at layer boundaries (e.g., API responses, workflow state persistence).
-   * Value objects are unwrapped to primitives; entities are recursively serialized.
-   */
-  toJSON() {
+  toJSON(): ComicProjectJSON {
     return {
       id: this.id.getValue(),
       prompt: this.prompt.getValue(),
@@ -256,61 +212,7 @@ export class ComicProject {
     };
   }
 
-  /**
-   * Deserializes a plain JSON object back into a ComicProject entity.
-   * Reconstructs all value objects and validates their contracts.
-   * Throws ValidationError if any field fails to construct.
-   * Used to recover typed entities from persistent or serialized state.
-   */
   static fromJSON(json: ComicProjectJSON): ComicProject {
-    const idResult = ComicProjectId.create(json.id);
-    if (!idResult.success) {
-      throw new ValidationError(
-        `ComicProject.fromJSON id: ${idResult.error?.message}`
-      );
-    }
-
-    const promptResult = ComicTitle.create(json.prompt);
-    if (!promptResult.success) {
-      throw new ValidationError(
-        `ComicProject.fromJSON prompt: ${promptResult.error?.message}`
-      );
-    }
-
-    const panelCountResult = PanelCount.create(json.panelCount);
-    if (!panelCountResult.success) {
-      throw new ValidationError(
-        `ComicProject.fromJSON panelCount: ${panelCountResult.error?.message}`
-      );
-    }
-
-    let characterBible: CharacterBible | null = null;
-    if (json.characterBible) {
-      const charBibleResult = CharacterBible.create(json.characterBible);
-      if (!charBibleResult.success) {
-        throw new ValidationError(
-          `ComicProject.fromJSON characterBible: ${charBibleResult.error?.message}`
-        );
-      }
-      characterBible = charBibleResult.value!;
-    }
-
-    return new ComicProject(idResult.value!, {
-      prompt: promptResult.value!,
-      panelCount: panelCountResult.value!,
-      panels: (json.panels || []).map((p) => Panel.fromJSON(p as PanelJSON)),
-      characterBible,
-      genres: Array.isArray(json.genres) ? json.genres : [],
-      tones: Array.isArray(json.tones) ? json.tones : [],
-      styleReferences: json.styleReferences || null,
-      coverImageUrl: json.coverImageUrl || null,
-      selectedLayout: json.selectedLayout || null,
-      layoutOptions: Array.isArray(json.layoutOptions)
-        ? json.layoutOptions
-        : null,
-      status: json.status || 'pending_creation',
-      createdAt: json.createdAt || new Date().toISOString(),
-      lastReviewSubmittedAt: json.lastReviewSubmittedAt || null,
-    });
+    return ComicProjectSerializer.fromJSON(json);
   }
 }
