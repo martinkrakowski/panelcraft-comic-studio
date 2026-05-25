@@ -103,7 +103,8 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       id: row.id,
       prompt: row.prompt,
       panelCount: row.panel_count,
-      panels: [],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      panels: ((row as any).panels as ComicProjectJSON['panels']) || [],
       characterBible: row.character_bible
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (row.character_bible as any)
@@ -154,6 +155,11 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       // FK to auth.users and NOT NULL are dropped temporarily in migration
       // 20260525160702_make_user_id_nullable.sql — re-add once auth is live.
       user_id: null as unknown as string,
-    };
+      // panels column added in migration 20260525164758_add_panels_column.sql.
+      // Cast through unknown because generated Database types haven't been
+      // regenerated yet; safe because the column accepts jsonb.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      panels: (json.panels ?? []) as any,
+    } as ProjectRow;
   }
 }
