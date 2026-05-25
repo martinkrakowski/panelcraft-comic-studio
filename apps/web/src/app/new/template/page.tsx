@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
+import { AppCanvasCenter } from '@panelcraft/ui';
 
 const containerVariants = {
   hidden: {},
@@ -27,11 +28,7 @@ const itemVariants = {
  */
 export default function Page() {
   return (
-    <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
-      {/* Ambient orbs */}
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
-
+    <AppCanvasCenter className="flex-col">
       {/* Back button */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}
@@ -91,6 +88,6 @@ export default function Page() {
           </p>
         </motion.div>
       </motion.div>
-    </div>
+    </AppCanvasCenter>
   );
 }

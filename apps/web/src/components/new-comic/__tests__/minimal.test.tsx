@@ -71,6 +71,18 @@ vi.mock('@panelcraft/ui', () => ({
   ),
   SelectionChip: ({ label }: any) => <div>{label}</div>,
   LayoutPreview: ({ layout }: any) => <div>{layout?.name}</div>,
+  AppCanvasCenter: ({ children, className }: any) => (
+    <div data-testid="app-canvas-center" className={className}>
+      {children}
+    </div>
+  ),
+  AppCanvasTwoPane: ({ sidebar, topStrip, children, clearHeader }: any) => (
+    <div data-testid="app-canvas-two-pane" data-clear-header={String(clearHeader)}>
+      {sidebar}
+      {topStrip}
+      {children}
+    </div>
+  ),
 }));
 
 vi.mock('../NewComicWizard.module.css', () => ({

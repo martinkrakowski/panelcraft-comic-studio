@@ -49,6 +49,18 @@ vi.mock('@panelcraft/ui', () => ({
   LayoutPreview: ({ layout }: any) => (
     <div data-testid="layout-preview">{layout?.name}</div>
   ),
+  AppCanvasCenter: ({ children, className }: any) => (
+    <div data-testid="app-canvas-center" className={className}>
+      {children}
+    </div>
+  ),
+  AppCanvasTwoPane: ({ sidebar, topStrip, children, clearHeader }: any) => (
+    <div data-testid="app-canvas-two-pane" data-clear-header={String(clearHeader)}>
+      <div data-testid="sidebar-slot">{sidebar}</div>
+      <div data-testid="topstrip-slot">{topStrip}</div>
+      <div data-testid="children-slot">{children}</div>
+    </div>
+  ),
 }));
 
 vi.mock('framer-motion', () => ({
@@ -150,6 +162,11 @@ describe('NewComicWizard Phase 1 Smoke Tests', () => {
         screen.getByPlaceholderText(/futuristic detective/i)
       ).toBeInTheDocument();
     });
+
+    // Exercises the topStrip slot regression net (C1 / N3)
+    const topstrip = screen.getByTestId('topstrip-slot');
+    expect(topstrip).toBeInTheDocument();
+    expect(topstrip.textContent).toMatch(/back to onboarding/i);
   }, 5000);
 
   it('hydrates state from IndexedDB on mount', async () => {

@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
-import { useToast } from '@panelcraft/ui';
+import { useToast, AppCanvasTwoPane } from '@panelcraft/ui';
 import { NewComicWizardSidebar } from './NewComicWizardSidebar';
 import { useObjectUrls, useWizardPersistence } from '../../lib/hooks';
 import {
@@ -171,139 +171,134 @@ export function NewComicWizard() {
   const moodBoardObjectUrls = useObjectUrls(moodBoardImageBlobs);
 
   return (
-    <div className="fixed inset-0 bg-slate-950 flex gap-[var(--panelcraft-gutter-space)] overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
-
-      <NewComicWizardSidebar
-        activeStep={activeStep}
-        genres={genres}
-        tones={tones}
-        panelCount={panelCount}
-        preferredLayoutId={preferredLayoutId}
-        setPreferredLayoutId={setPreferredLayoutId}
-        setValue={setValue}
-        saveToIndexedDB={saveToIndexedDB}
-        register={register}
-        fields={fields}
-        characters={characters}
-        moodBoardPreset={moodBoardPreset}
-      />
-
-      {/* mt-16 only on steps 0–2 to clear the WizardSidebar's chrome; from
-          step 3 onward the sidebar is hidden so no top spacing is needed. */}
-      <div
-        className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative ${activeStep < 3 ? 'mt-16' : ''}`}
-      >
-        <div className="flex-shrink-0 px-4 pt-4 relative z-10">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to onboarding
-          </button>
-        </div>
-
-        <WizardStepIndicator activeStep={activeStep} />
-
-        <div className="flex-1 overflow-y-auto">
-          {activeStep === 0 && (
-            <div className="px-4 pb-8 flex justify-center">
-              <img
-                src="/tell-your-story.jpg"
-                alt="Tell your story"
-                className="rounded-lg"
-                style={{ maxWidth: '784px', width: '100%', maxHeight: '100%' }}
-              />
-            </div>
-          )}
-
-          <div
-            className={`${styles.container} relative z-10 mx-auto max-w-2xl px-4`}
-            style={{ paddingBottom: '8rem' }}
-          >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeStep}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full"
-              >
-                {activeStep === 0 && (
-                  <StoryPromptStep
-                    register={register}
-                    errors={errors}
-                    watchPrompt={prompt}
-                    watchGenres={genres}
-                    watchTones={tones}
-                    setValue={setValue}
-                    isAnalyzing={isAnalyzing}
-                    handleAnalyzePrompt={handleAnalyzePrompt}
-                    saveToIndexedDB={saveToIndexedDB}
-                  />
-                )}
-                {activeStep === 1 && (
-                  <CharacterBibleStep
-                    register={register}
-                    errors={errors}
-                    fields={fields}
-                    append={append}
-                    remove={remove}
-                    handleCharacterImageUpload={handleCharacterImageUpload}
-                    saveToIndexedDB={saveToIndexedDB}
-                  />
-                )}
-                {activeStep === 2 && (
-                  <StyleReferencesStep
-                    register={register}
-                    errors={errors}
-                    watchMoodBoardPreset={moodBoardPreset}
-                    setValue={setValue}
-                    handleMoodBoardUpload={handleMoodBoardUpload}
-                    moodBoardObjectUrls={moodBoardObjectUrls}
-                    saveToIndexedDB={saveToIndexedDB}
-                  />
-                )}
-                {activeStep === 3 && (
-                  <ReviewSubmitStep
-                    watchPrompt={prompt}
-                    watchPanelCount={panelCount}
-                    watchGenres={genres}
-                    watchTones={tones}
-                    watchCharacters={characters}
-                    watchMoodBoardPreset={moodBoardPreset}
-                    watchGlobalStylePrompt={watch('globalStylePrompt')}
-                    setActiveStep={setActiveStep}
-                    isSubmitting={isSubmitting}
-                    handleSubmit={handleSubmit}
-                    onSubmit={onSubmit}
-                  />
-                )}
-                {activeStep === 4 && (
-                  <LayoutChooserStep
-                    isPolling={isPolling}
-                    projectStatus={projectStatus}
-                    coverUrl={coverUrl}
-                    layoutOptions={layoutOptions}
-                    handleLayoutSelect={handleLayoutSelect}
-                    onRetry={handleRetry}
-                  />
-                )}
-              </motion.div>
-            </AnimatePresence>
+    <AppCanvasTwoPane
+      sidebar={
+        <NewComicWizardSidebar
+          activeStep={activeStep}
+          genres={genres}
+          tones={tones}
+          panelCount={panelCount}
+          preferredLayoutId={preferredLayoutId}
+          setPreferredLayoutId={setPreferredLayoutId}
+          setValue={setValue}
+          saveToIndexedDB={saveToIndexedDB}
+          register={register}
+          fields={fields}
+          characters={characters}
+          moodBoardPreset={moodBoardPreset}
+        />
+      }
+      clearHeader={activeStep < 3}
+      topStrip={
+        <>
+          <div className="flex-shrink-0 px-4 pt-4">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to onboarding
+            </button>
           </div>
 
-          <WizardNavButtons
-            activeStep={activeStep}
-            onBack={handleBackStep}
-            onNext={handleNextStep}
+          <WizardStepIndicator activeStep={activeStep} />
+        </>
+      }
+    >
+      {activeStep === 0 && (
+        <div className="px-4 pb-8 flex justify-center">
+          <img
+            src="/tell-your-story.jpg"
+            alt="Tell your story"
+            className="rounded-lg"
+            style={{ maxWidth: '784px', width: '100%', maxHeight: '100%' }}
           />
         </div>
+      )}
+
+      <div
+        className={`${styles.container} mx-auto max-w-2xl px-4`}
+        style={{ paddingBottom: '8rem' }}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeStep}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="w-full"
+          >
+            {activeStep === 0 && (
+              <StoryPromptStep
+                register={register}
+                errors={errors}
+                watchPrompt={prompt}
+                watchGenres={genres}
+                watchTones={tones}
+                setValue={setValue}
+                isAnalyzing={isAnalyzing}
+                handleAnalyzePrompt={handleAnalyzePrompt}
+                saveToIndexedDB={saveToIndexedDB}
+              />
+            )}
+            {activeStep === 1 && (
+              <CharacterBibleStep
+                register={register}
+                errors={errors}
+                fields={fields}
+                append={append}
+                remove={remove}
+                handleCharacterImageUpload={handleCharacterImageUpload}
+                saveToIndexedDB={saveToIndexedDB}
+              />
+            )}
+            {activeStep === 2 && (
+              <StyleReferencesStep
+                register={register}
+                errors={errors}
+                watchMoodBoardPreset={moodBoardPreset}
+                setValue={setValue}
+                handleMoodBoardUpload={handleMoodBoardUpload}
+                moodBoardObjectUrls={moodBoardObjectUrls}
+                saveToIndexedDB={saveToIndexedDB}
+              />
+            )}
+            {activeStep === 3 && (
+              <ReviewSubmitStep
+                watchPrompt={prompt}
+                watchPanelCount={panelCount}
+                watchGenres={genres}
+                watchTones={tones}
+                watchCharacters={characters}
+                watchMoodBoardPreset={moodBoardPreset}
+                watchGlobalStylePrompt={watch('globalStylePrompt')}
+                setActiveStep={setActiveStep}
+                isSubmitting={isSubmitting}
+                handleSubmit={handleSubmit}
+                onSubmit={onSubmit}
+              />
+            )}
+            {activeStep === 4 && (
+              <LayoutChooserStep
+                isPolling={isPolling}
+                projectStatus={projectStatus}
+                coverUrl={coverUrl}
+                layoutOptions={layoutOptions}
+                handleLayoutSelect={handleLayoutSelect}
+                onRetry={handleRetry}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
-    </div>
+
+      <WizardNavButtons
+        activeStep={activeStep}
+        onBack={handleBackStep}
+        onNext={handleNextStep}
+      />
+    </AppCanvasTwoPane>
   );
 }

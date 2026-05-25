@@ -4,7 +4,7 @@ import React, { startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lightbulb, LayoutTemplate, FolderOpen } from 'lucide-react';
-import type { NoSemanticState } from '@panelcraft/ui';
+import { AppCanvasCenter } from '@panelcraft/ui';
 import styles from './OnboardingScreen.module.css';
 
 type StartingMethod = 'brainstorm' | 'template' | 'load-existing';
@@ -24,10 +24,10 @@ interface TileConfig {
   accent: TileAccent;
 }
 
-/** @example <OnboardingScreen /> */
-type OnboardingScreenProps = NoSemanticState<
-  React.HTMLAttributes<HTMLDivElement>
->;
+/** Props for OnboardingScreen. Only className is forwarded (to the centered canvas inner). */
+interface OnboardingScreenProps {
+  className?: string;
+}
 
 const TILES: TileConfig[] = [
   {
@@ -79,12 +79,11 @@ const itemVariants = {
  * Clicking a tile triggers `handleTileClick` which navigates via `router` to `ROUTE_MAP` based on the selected `StartingMethod`.
  *
  * @component
- * @param props - Component props extending HTMLDivElement attributes via `OnboardingScreenProps`.
+ * @param props.className - Optional className forwarded to the inner centered container.
  * @returns An animated onboarding screen JSX.Element with method selection tiles.
  */
 export function OnboardingScreen({
   className,
-  ...props
 }: OnboardingScreenProps) {
   const router = useRouter();
 
@@ -95,14 +94,7 @@ export function OnboardingScreen({
   }
 
   return (
-    <div
-      className={`fixed inset-0 bg-slate-950 flex items-center justify-center overflow-hidden ${className || ''}`}
-      {...props}
-    >
-      {/* Ambient orbs */}
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
-
+    <AppCanvasCenter className={className}>
       <motion.div
         className={`${styles.container} relative z-10`}
         variants={containerVariants}
@@ -182,6 +174,6 @@ export function OnboardingScreen({
           })}
         </div>
       </motion.div>
-    </div>
+    </AppCanvasCenter>
   );
 }
