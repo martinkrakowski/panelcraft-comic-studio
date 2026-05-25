@@ -1,19 +1,56 @@
 import { Worker, Job, Queue } from 'bullmq';
 import { Command } from '@langchain/langgraph';
-import type { LangGraphOrchestrationAdapter } from '@panelcraft/comic-generation';
+import type {
+  LangGraphOrchestrationAdapter,
+  ImageGenerationPort,
+} from '@panelcraft/comic-generation';
 import type { RelationalDbPort } from '@panelcraft/comic-generation';
-import { ComicProject } from '@panelcraft/comic-project-management';
+import {
+  ComicProject,
+  PanelStatus,
+} from '@panelcraft/comic-project-management';
 import type { LoggerPort } from '@panelcraft/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface ComicJobData {
   projectId: string;
   selectedLayout?: string;
+  panelIndex?: number;
   feedback?: {
     approved: boolean;
     comment?: string;
     regenerationHint?: string;
   };
+}
+
+interface CharacterBibleEntry {
+  name?: string;
+  visual?: string;
+  consistency?: string;
+}
+
+/**
+ * Build the prompt modifiers passed to imageGenPort.generatePanel.
+ * Mirrors `buildCharacterStyleModifiers` inside the graph node so that
+ * out-of-graph regeneration produces visually consistent panels.
+ */
+function buildStyleModifiers(project: ComicProject): string | undefined {
+  const json = project.toJSON();
+  const parts: string[] = [];
+  if (json.styleReferences?.globalStylePrompt) {
+    parts.push(json.styleReferences.globalStylePrompt);
+  }
+  const bible = json.characterBible as
+    | { characters?: CharacterBibleEntry[] }
+    | null
+    | undefined;
+  if (bible?.characters?.length) {
+    const charDesc = bible.characters
+      .map((c) => `${c.name}: ${c.visual}. ${c.consistency}`)
+      .join('. ');
+    parts.push(`Character consistency — ${charDesc}`);
+  }
+  return parts.length ? parts.join('. ') : undefined;
 }
 
 /**
@@ -43,7 +80,8 @@ export function initComicWorker(
   projectRepo: RelationalDbPort,
   queue: Queue,
   logger: LoggerPort,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  imageGenPort: ImageGenerationPort
 ) {
   const graph = langGraphAdapter.getGraph();
 
@@ -218,6 +256,112 @@ export function initComicWorker(
             );
           }
           await projectRepo.save(updatedProject);
+        } else if (job.name === 'regenerate-panel') {
+          // Regeneration of a single panel after the project has already
+          // completed (or while it's mid-review). We bypass LangGraph
+          // entirely here — the graph's HITL loop assumes sequential
+          // generation, and re-entering it for a one-off panel rework
+          // would require resetting the checkpoint. A direct call to
+          // imageGenPort is simpler and matches what the graph node does.
+          const { panelIndex } = job.data;
+          if (typeof panelIndex !== 'number') {
+            throw new Error('[Worker] regenerate-panel job missing panelIndex');
+          }
+          const panels = project.getPanels();
+          const targetPanel = panels[panelIndex];
+          if (!targetPanel) {
+            throw new Error(
+              `[Worker] Panel ${panelIndex} not found on project ${projectId}`
+            );
+          }
+          const prompt = targetPanel.getPrompt()?.trim();
+          if (!prompt) {
+            throw new Error(
+              `[Worker] Panel ${panelIndex} has no prompt; cannot regenerate`
+            );
+          }
+
+          logger.info(
+            `[Worker] Regenerating panel ${panelIndex} for project ${projectId}`
+          );
+
+          const styleModifiers = buildStyleModifiers(project);
+          let referenceImageUrls: string[] | undefined;
+          const coverPath = project.getCoverImageUrl();
+          if (coverPath && !/^https?:\/\//i.test(coverPath)) {
+            try {
+              const { data: signedUrlData } = await supabase.storage
+                .from('comics')
+                .createSignedUrl(coverPath, 3600);
+              if (signedUrlData?.signedUrl) {
+                referenceImageUrls = [signedUrlData.signedUrl];
+              }
+            } catch (err) {
+              logger.warn(
+                `[Worker] Failed to sign cover for regen reference: ${err instanceof Error ? err.message : String(err)}`
+              );
+            }
+          }
+
+          const remoteUrl = await imageGenPort.generatePanel({
+            prompt,
+            panelNumber: panelIndex + 1,
+            styleModifiers,
+            referenceImageUrls,
+          });
+
+          // Persist the regenerated image to Supabase so the URL doesn't
+          // expire and CORS-dependent features (PNG export) keep working.
+          const storagePath = `comics/${projectId}/panels/${panelIndex}.webp`;
+          let stagedPath = remoteUrl;
+          try {
+            const imageResponse = await fetch(remoteUrl);
+            if (!imageResponse.ok) {
+              throw new Error(
+                `Failed to fetch regenerated panel from CDN: HTTP ${imageResponse.status}`
+              );
+            }
+            const buffer = Buffer.from(await imageResponse.arrayBuffer());
+            const { error: uploadError } = await supabase.storage
+              .from('comics')
+              .upload(storagePath, buffer, {
+                contentType: 'image/webp',
+                upsert: true,
+              });
+            if (uploadError) throw uploadError;
+            stagedPath = storagePath;
+          } catch (err) {
+            logger.warn(
+              `[Worker] Regenerated panel ${panelIndex} stage-to-Supabase failed; ` +
+                `falling back to remote URL: ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
+
+          targetPanel.setGeneratedImageUrl(stagedPath);
+          const completedStatus = PanelStatus.create('completed');
+          if (!completedStatus.success || !completedStatus.value) {
+            throw new Error('Failed to construct completed PanelStatus');
+          }
+          targetPanel.setStatus(completedStatus.value);
+          project.setPanels(panels);
+
+          const rawPanelCount = project.getPanelCount();
+          const panelCountValue =
+            typeof rawPanelCount === 'number'
+              ? rawPanelCount
+              : rawPanelCount.getValue();
+          const completedCount = panels.filter(
+            (p) => p.getStatus().getValue() === 'completed'
+          ).length;
+          project.setStatus(
+            completedCount >= panelCountValue ? 'completed' : 'pending_review'
+          );
+          await projectRepo.save(project);
+
+          logger.info(
+            `[Worker] Panel ${panelIndex} regenerated; project status set to ` +
+              `${project.getStatus()}`
+          );
         }
       } catch (error) {
         logger.error(

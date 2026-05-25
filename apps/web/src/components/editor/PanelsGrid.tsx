@@ -1,7 +1,13 @@
 'use client';
 
-import { Card, CardHeader, CardTitle, CardContent } from '@panelcraft/ui';
-import { Image as ImageIcon } from 'lucide-react';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+} from '@panelcraft/ui';
+import { Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { getPanelStatusLabel } from '../../lib/panel-status';
 import { ImageWithFallback } from './ImageWithFallback';
 
@@ -15,9 +21,22 @@ interface GridPanel {
 
 interface PanelsGridProps {
   panels: GridPanel[];
+  /**
+   * When provided, each panel renders a Regenerate action that calls this
+   * with the panel index. The button is disabled while
+   * `regeneratingPanelIndex` matches that panel's index, and hidden when no
+   * handler is supplied (e.g., mid-HITL where users review via the
+   * top-level review card instead).
+   */
+  onRegenerate?: (panelIndex: number) => void | Promise<void>;
+  regeneratingPanelIndex?: number | null;
 }
 
-export function PanelsGrid({ panels }: PanelsGridProps) {
+export function PanelsGrid({
+  panels,
+  onRegenerate,
+  regeneratingPanelIndex,
+}: PanelsGridProps) {
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
@@ -65,6 +84,28 @@ export function PanelsGrid({ panels }: PanelsGridProps) {
                   </p>
                 ) : (
                   <div className="h-4 w-3/4 bg-slate-800 rounded animate-pulse" />
+                )}
+
+                {onRegenerate && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => onRegenerate(panel.index)}
+                    disabled={
+                      regeneratingPanelIndex === panel.index ||
+                      panel.status === 'pending' ||
+                      panel.status === 'generating'
+                    }
+                    className="w-full text-xs flex items-center justify-center gap-1.5 border border-slate-800"
+                  >
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${regeneratingPanelIndex === panel.index ? 'animate-spin' : ''}`}
+                    />
+                    {regeneratingPanelIndex === panel.index ||
+                    panel.status === 'pending'
+                      ? 'Regenerating…'
+                      : 'Regenerate'}
+                  </Button>
                 )}
               </CardContent>
             </Card>

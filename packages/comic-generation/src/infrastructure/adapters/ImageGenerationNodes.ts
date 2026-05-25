@@ -192,17 +192,47 @@ export async function generatePanel(
     }
   }
 
-  const imageUrl = await deps.imageGenPort.generatePanel({
+  const remoteImageUrl = await deps.imageGenPort.generatePanel({
     prompt,
     panelNumber: panelIndex + 1,
     styleModifiers,
     referenceImageUrls,
   });
 
+  // Stage the generated panel in Supabase Storage so we own its URL forever
+  // (xAI returns short-lived signed URLs) and so the page exporter can read
+  // pixels back from canvas — Supabase serves CORS headers, the xAI CDN
+  // doesn't. Errors here surface as panel regenerations rather than data loss.
+  const projectId = state.project.id;
+  const storagePath = `comics/${projectId}/panels/${panelIndex}.webp`;
+  let stagedPath = remoteImageUrl;
+  try {
+    const imageResponse = await fetch(remoteImageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(
+        `Failed to fetch generated panel from CDN: HTTP ${imageResponse.status}`
+      );
+    }
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const { error: uploadError } = await deps.supabase.storage
+      .from('comics')
+      .upload(storagePath, imageBuffer, {
+        contentType: 'image/webp',
+        upsert: true,
+      });
+    if (uploadError) throw uploadError;
+    stagedPath = storagePath;
+  } catch (err) {
+    deps.logger.warn(
+      `Panel ${panelIndex} stage-to-Supabase failed; falling back to remote URL: ` +
+        `${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
   const updatedPanels = [...panels];
   updatedPanels[panelIndex] = {
     ...(panel as PanelJSON),
-    generatedImageUrl: imageUrl,
+    generatedImageUrl: stagedPath,
     status: 'generated',
   };
 

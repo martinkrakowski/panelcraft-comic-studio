@@ -16,7 +16,7 @@ import {
   useToast,
   Skeleton,
 } from '@panelcraft/ui';
-import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, BookOpen } from 'lucide-react';
 import { EditorSidebar } from './EditorSidebar';
 import { HITLReviewPanel } from './HITLReviewPanel';
 import { PanelsGrid } from './PanelsGrid';
@@ -31,6 +31,9 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
     useProject(projectId);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [selectingLayout, setSelectingLayout] = useState(false);
+  const [regeneratingPanelIndex, setRegeneratingPanelIndex] = useState<
+    number | null
+  >(null);
 
   const onSelectLayout = async (layout: string) => {
     setSelectingLayout(true);
@@ -58,6 +61,28 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
       resolver: zodResolver(submitReviewSchema),
       defaultValues: { approved: true, comment: '' },
     });
+
+  const onRegeneratePanel = async (panelIndex: number) => {
+    if (regeneratingPanelIndex !== null) return;
+    setRegeneratingPanelIndex(panelIndex);
+    try {
+      await api.regeneratePanel(projectId, panelIndex);
+      toast({
+        variant: 'success',
+        title: 'Regenerating panel',
+        description: `Panel ${panelIndex + 1} is being re-rendered.`,
+      });
+      await refreshSilent();
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Regeneration failed',
+        description: err instanceof Error ? err.message : 'An error occurred.',
+      });
+    } finally {
+      setRegeneratingPanelIndex(null);
+    }
+  };
 
   const onSubmitReview = async (data: SubmitReviewFormValues) => {
     setSubmittingReview(true);
@@ -162,6 +187,15 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
             <span>AI generating story & images...</span>
           </div>
         )}
+        {project.status === 'completed' && (
+          <Link
+            href={`/projects/${project.id}/view`}
+            className={`${buttonVariants({ size: 'sm' })} bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1.5`}
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            View comic page
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space,1.5rem)] items-start">
@@ -211,7 +245,16 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
               submittingReview={submittingReview}
             />
           )}
-          <PanelsGrid panels={project.panels} />
+          <PanelsGrid
+            panels={project.panels}
+            // Only expose per-panel regenerate once the comic is done — while
+            // a panel is mid-HITL the user reviews via the top card, and
+            // letting them double-trigger generation would race the worker.
+            onRegenerate={
+              project.status === 'completed' ? onRegeneratePanel : undefined
+            }
+            regeneratingPanelIndex={regeneratingPanelIndex}
+          />
         </div>
       </div>
     </div>

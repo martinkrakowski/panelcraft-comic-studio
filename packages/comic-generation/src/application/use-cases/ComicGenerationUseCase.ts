@@ -7,6 +7,7 @@ import { createProject } from '../handlers/createProjectHandler.js';
 import {
   submitReview,
   enqueueResumeComic,
+  regeneratePanel,
 } from '../handlers/submitReviewHandler.js';
 import { updateProjectPaths } from '../handlers/updateProjectPathsHandler.js';
 
@@ -100,6 +101,14 @@ export class ComicGenerationUseCase implements RestControllerPort {
   ): Promise<void> {
     return enqueueResumeComic(projectId, selectedLayout, {
       taskQueue: this.taskQueue,
+    });
+  }
+
+  async regeneratePanel(projectId: string, panelIndex: number): Promise<void> {
+    return regeneratePanel(projectId, panelIndex, {
+      projectRepo: this.projectRepo,
+      taskQueue: this.taskQueue,
+      logger: this.logger,
     });
   }
 
