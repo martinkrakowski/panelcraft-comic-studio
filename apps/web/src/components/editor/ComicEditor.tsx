@@ -67,9 +67,9 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-6 w-32" />
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <Skeleton className="h-96 lg:col-span-1 rounded-xl" />
-          <div className="lg:col-span-3 space-y-6">
+        <div className="flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space,1.5rem)] items-start">
+          <Skeleton className="h-96 w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 rounded-xl" />
+          <div className="flex-1 space-y-6">
             <Skeleton className="h-40 w-full rounded-xl" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[1, 2].map((i) => (
@@ -137,7 +137,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+      <div className="flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space,1.5rem)] items-start">
         <EditorSidebar
           completedPanelCount={completedPanelCount}
           panelCount={project.panelCount}
@@ -145,7 +145,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           characterBible={project.characterBible}
         />
 
-        <div className="lg:col-span-3 space-y-6">
+        <div className="flex-1 space-y-6">
           {activeReviewPanel && (
             <HITLReviewPanel
               activeReviewPanel={activeReviewPanel}

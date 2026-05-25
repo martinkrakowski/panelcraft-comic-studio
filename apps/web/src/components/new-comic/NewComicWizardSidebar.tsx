@@ -47,7 +47,7 @@ export function NewComicWizardSidebar({
   if (activeStep >= 3) return null;
 
   return (
-    <WizardSidebar className="pt-20">
+    <WizardSidebar variant="flex" className="pt-20">
       {/* Step 0: Genres, Tones, Panel Count, Layouts */}
       {activeStep === 0 && (
         <>

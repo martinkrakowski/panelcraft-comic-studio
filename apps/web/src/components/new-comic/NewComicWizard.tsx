@@ -159,7 +159,7 @@ export function NewComicWizard() {
   const moodBoardObjectUrls = useObjectUrls(moodBoardImageBlobs);
 
   return (
-    <div className="fixed inset-0 bg-slate-950 flex overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950 flex gap-[var(--panelcraft-gutter-space)] overflow-hidden">
       <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
 
@@ -179,7 +179,7 @@ export function NewComicWizard() {
       />
 
       <div
-        className={`flex-1 flex flex-col overflow-hidden ${activeStep < 3 ? 'ml-64' : ''}`}
+        className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative ${activeStep < 3 ? 'mt-16' : ''}`}
       >
         <div className="flex-shrink-0 px-4 pt-4 relative z-10">
           <button
