@@ -8,6 +8,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 interface ComicJobData {
   projectId: string;
   selectedLayout?: string;
+  feedback?: {
+    approved: boolean;
+    comment?: string;
+    regenerationHint?: string;
+  };
 }
 
 export function initComicWorker(
@@ -110,17 +115,17 @@ export function initComicWorker(
           // panels, the selected layout, and the panel index to resume from.
           const dbProject = await projectRepo.load(projectId);
           if (!dbProject) throw new Error(`Project ${projectId} not found`);
-          const projectJson = dbProject.toJSON();
+          const dbProjectJson = dbProject.toJSON();
           const layoutToUse =
-            selectedLayout || projectJson.selectedLayout || undefined;
-          const nextPanelIndex = (projectJson.panels || []).filter(
+            selectedLayout || dbProjectJson.selectedLayout || undefined;
+          const nextPanelIndex = (dbProjectJson.panels || []).filter(
             (p) => p.status === 'generated' || p.status === 'completed'
           ).length;
 
           try {
             await graph.invoke(
               {
-                project: projectJson,
+                project: dbProjectJson,
                 selectedLayout: layoutToUse,
                 currentPanelIndex: nextPanelIndex,
                 lastFeedback: feedback ?? null,

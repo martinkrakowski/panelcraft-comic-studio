@@ -78,7 +78,6 @@ Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown
   // Panels may not exist when loading from a repository that doesn't persist
   // them (e.g. SupabaseProjectRepository). Synthesize the panel array from
   // panelCount in that case so subsequent nodes have something to operate on.
-  const existingPanels = state.project.panels || [];
   const promptStrings = panelPrompts as string[];
   const updatedPanels: PanelJSON[] = Array.from(
     { length: panelCount },
