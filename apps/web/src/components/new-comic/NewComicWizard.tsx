@@ -27,6 +27,7 @@ import {
 } from './steps';
 import { WizardStepIndicator } from './WizardStepIndicator';
 import { WizardNavButtons } from './WizardNavButtons';
+import { WizardStepContent } from './WizardStepContent';
 import { useWizardStepNavigation } from './hooks/useWizardStepNavigation';
 import { useImageUploads } from './hooks/useImageUploads';
 import { useProjectCreation } from './hooks/useProjectCreation';
@@ -206,93 +207,32 @@ export function NewComicWizard() {
         </>
       }
     >
-      {activeStep === 0 && (
-        <div className="px-4 pb-8 flex justify-center">
-          <img
-            src="/tell-your-story.jpg"
-            alt="Tell your story"
-            className="rounded-lg"
-            style={{ maxWidth: '784px', width: '100%', maxHeight: '100%' }}
-          />
-        </div>
-      )}
-
-      <div
-        className={`${styles.container} mx-auto max-w-2xl px-4`}
-        style={{ paddingBottom: '8rem' }}
-      >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeStep}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-            className="w-full"
-          >
-            {activeStep === 0 && (
-              <StoryPromptStep
-                register={register}
-                errors={errors}
-                watchPrompt={prompt}
-                watchGenres={genres}
-                watchTones={tones}
-                setValue={setValue}
-                isAnalyzing={isAnalyzing}
-                handleAnalyzePrompt={handleAnalyzePrompt}
-                saveToIndexedDB={saveToIndexedDB}
-              />
-            )}
-            {activeStep === 1 && (
-              <CharacterBibleStep
-                register={register}
-                errors={errors}
-                fields={fields}
-                append={append}
-                remove={remove}
-                handleCharacterImageUpload={handleCharacterImageUpload}
-                saveToIndexedDB={saveToIndexedDB}
-              />
-            )}
-            {activeStep === 2 && (
-              <StyleReferencesStep
-                register={register}
-                errors={errors}
-                watchMoodBoardPreset={moodBoardPreset}
-                setValue={setValue}
-                handleMoodBoardUpload={handleMoodBoardUpload}
-                moodBoardObjectUrls={moodBoardObjectUrls}
-                saveToIndexedDB={saveToIndexedDB}
-              />
-            )}
-            {activeStep === 3 && (
-              <ReviewSubmitStep
-                watchPrompt={prompt}
-                watchPanelCount={panelCount}
-                watchGenres={genres}
-                watchTones={tones}
-                watchCharacters={characters}
-                watchMoodBoardPreset={moodBoardPreset}
-                watchGlobalStylePrompt={watch('globalStylePrompt')}
-                setActiveStep={setActiveStep}
-                isSubmitting={isSubmitting}
-                handleSubmit={handleSubmit}
-                onSubmit={onSubmit}
-              />
-            )}
-            {activeStep === 4 && (
-              <LayoutChooserStep
-                isPolling={isPolling}
-                projectStatus={projectStatus}
-                coverUrl={coverUrl}
-                layoutOptions={layoutOptions}
-                handleLayoutSelect={handleLayoutSelect}
-                onRetry={handleRetry}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      <WizardStepContent
+        activeStep={activeStep}
+        form={{
+          register,
+          handleSubmit,
+          watch,
+          setValue,
+          formState: { errors },
+        } as any}   // temporary until full UseFormReturn is passed
+        fields={fields}
+        append={append}
+        remove={remove}
+        isAnalyzing={isAnalyzing}
+        handleAnalyzePrompt={handleAnalyzePrompt}
+        handleCharacterImageUpload={handleCharacterImageUpload}
+        handleMoodBoardUpload={handleMoodBoardUpload}
+        isSubmitting={isSubmitting}
+        setActiveStep={setActiveStep}
+        isPolling={isPolling}
+        projectStatus={projectStatus}
+        coverUrl={coverUrl}
+        layoutOptions={layoutOptions}
+        handleLayoutSelect={handleLayoutSelect}
+        handleRetry={handleRetry}
+        saveToIndexedDB={saveToIndexedDB}
+      />
 
       <WizardNavButtons
         activeStep={activeStep}
