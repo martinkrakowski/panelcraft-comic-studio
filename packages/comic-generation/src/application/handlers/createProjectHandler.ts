@@ -13,11 +13,9 @@ import {
 import { randomUUID } from 'node:crypto';
 import { ValidationError } from '@panelcraft/shared';
 import type { RelationalDbPort } from '../ports/out/relational-db.out-port.js';
-import type { JobQueuePort } from '../ports/out/job-queue.out-port.js';
 
 interface CreateProjectDeps {
   projectRepo: RelationalDbPort;
-  taskQueue: JobQueuePort;
 }
 
 export async function createProject(
@@ -120,16 +118,6 @@ export async function createProject(
   });
 
   await deps.projectRepo.save(project);
-
-  await deps.taskQueue.add(
-    'start-comic',
-    { projectId },
-    {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 2000 },
-      removeOnComplete: true,
-    }
-  );
 
   return projectId;
 }

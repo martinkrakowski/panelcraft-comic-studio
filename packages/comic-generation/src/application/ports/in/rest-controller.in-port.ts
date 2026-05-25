@@ -59,6 +59,12 @@ export interface RestControllerPort {
   }): Promise<string>;
 
   /**
+   * Queues the comic generation workflow for a previously-created project.
+   * Call after createProject + any required file uploads have succeeded.
+   */
+  startComicGeneration(projectId: string): Promise<void>;
+
+  /**
    * Retrieves the current project status and panel list.
    * Throws NotFoundError if project does not exist.
    */
