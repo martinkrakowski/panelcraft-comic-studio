@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,7 +22,7 @@ import { PanelsGrid } from './PanelsGrid';
 import { ProjectStatusStrip } from './ProjectStatusStrip';
 import { useEditorActions } from './hooks/useEditorActions';
 import { EditorLoadingState, EditorErrorState } from './EditorStates';
-import { LayoutChooserCard } from './LayoutChooserCard';
+import { EditPanelDialog } from './panel-edit/EditPanelDialog';
 
 interface ComicEditorProps {
   projectId: string;
@@ -58,6 +59,13 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
     resetForm: reset,
   });
 
+  // The Edit dialog stores the panel index it's targeting; the actual panel
+  // payload is looked up from `project.panels` at render time so it stays
+  // fresh as polling updates the project.
+  const [editingPanelIndex, setEditingPanelIndex] = useState<number | null>(
+    null
+  );
+
   if (loading) {
     return <EditorLoadingState />;
   }
@@ -89,6 +97,15 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           panelCount={project.panelCount}
           progressPercent={progressPercent}
           characterBible={project.characterBible}
+          layoutOptions={project.layoutOptions}
+          selectingLayout={selectingLayout}
+          selectedLayout={project.selectedLayout}
+          onSelectLayout={onSelectLayout}
+          prompt={project.prompt}
+          coverImageUrl={project.coverImageUrl}
+          genres={project.genres}
+          tones={project.tones}
+          styleReferences={project.styleReferences}
         />
       }
       topStrip={
@@ -140,15 +157,6 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           consistent internal spacing. Matches the padding used in the
           loading skeleton for a seamless loaded transition. */}
       <div className="px-4 pb-8 space-y-6">
-        {!project.selectedLayout &&
-          project.layoutOptions &&
-          project.layoutOptions.length > 0 && (
-            <LayoutChooserCard
-              layoutOptions={project.layoutOptions}
-              selectingLayout={selectingLayout}
-              onSelectLayout={onSelectLayout}
-            />
-          )}
         {activeReviewPanel && (
           <HITLReviewPanel
             activeReviewPanel={activeReviewPanel}
@@ -167,9 +175,29 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           onRegenerate={
             project.status === 'completed' ? onRegeneratePanel : undefined
           }
+          onEdit={
+            project.status === 'completed' ? setEditingPanelIndex : undefined
+          }
           regeneratingPanelIndex={regeneratingPanelIndex}
         />
       </div>
+
+      <EditPanelDialog
+        open={editingPanelIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingPanelIndex(null);
+        }}
+        panel={
+          editingPanelIndex !== null
+            ? (project.panels.find((p) => p.index === editingPanelIndex) ??
+              null)
+            : null
+        }
+        onRegenerate={(panelIndex, feedback) =>
+          onRegeneratePanel(panelIndex, feedback || undefined)
+        }
+        submitting={regeneratingPanelIndex !== null}
+      />
     </AppCanvasTwoPane>
   );
 }

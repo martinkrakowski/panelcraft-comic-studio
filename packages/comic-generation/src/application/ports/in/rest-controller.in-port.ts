@@ -106,7 +106,13 @@ export interface RestControllerPort {
   /**
    * Marks a single panel as pending and enqueues a regeneration job. Allowed
    * once the project is `completed` or `pending_review` so the user can
-   * iterate on individual frames after the HITL flow has finished.
+   * iterate on individual frames after the HITL flow has finished. Optional
+   * `feedback` is forwarded to the worker, which appends it to the panel
+   * prompt for this regeneration only (not persisted on the panel).
    */
-  regeneratePanel(projectId: string, panelIndex: number): Promise<void>;
+  regeneratePanel(
+    projectId: string,
+    panelIndex: number,
+    feedback?: string
+  ): Promise<void>;
 }

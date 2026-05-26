@@ -104,8 +104,12 @@ export class ComicGenerationUseCase implements RestControllerPort {
     });
   }
 
-  async regeneratePanel(projectId: string, panelIndex: number): Promise<void> {
-    return regeneratePanel(projectId, panelIndex, {
+  async regeneratePanel(
+    projectId: string,
+    panelIndex: number,
+    feedback?: string
+  ): Promise<void> {
+    return regeneratePanel(projectId, panelIndex, feedback, {
       projectRepo: this.projectRepo,
       taskQueue: this.taskQueue,
       logger: this.logger,

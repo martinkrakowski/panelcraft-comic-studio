@@ -152,15 +152,22 @@ export const api = {
   /**
    * Regenerate a single completed panel. The project transitions to
    * `processing` while the worker runs and back to its prior terminal state
-   * once the new image is staged.
+   * once the new image is staged. Optional `feedback` is appended to the
+   * panel prompt for this regeneration only — it is not persisted on the
+   * panel, so subsequent regens revert to the original direction unless new
+   * feedback is supplied.
    */
   async regeneratePanel(
     id: string,
-    panelIndex: number
+    panelIndex: number,
+    feedback?: string
   ): Promise<{ message: string }> {
+    const body = feedback?.trim()
+      ? JSON.stringify({ feedback: feedback.trim() })
+      : undefined;
     return request<{ message: string }>(
       `/api/projects/${id}/panels/${panelIndex}/regenerate`,
-      { method: 'POST' }
+      { method: 'POST', body }
     );
   },
 };
