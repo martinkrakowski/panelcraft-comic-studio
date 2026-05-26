@@ -53,22 +53,27 @@ export function OnboardingScreen({ className }: OnboardingScreenProps) {
         initial="hidden"
         animate="visible"
       >
-        {/* Hero card */}
+        {/* Hero card — wrapper hosts the revolving border via three layers:
+            wrapper (padding = border thickness), rotating gradient beam,
+            and an inner content shield holding the actual hero image + copy. */}
         <motion.div
           variants={itemVariants}
           className={`${styles.heroContainer} mb-6`}
         >
-          <img
-            src="/onboarding-hero.jpg"
-            alt="Cosmic surfer"
-            className={styles.heroImg}
-          />
-          <div className={styles.heroOverlay} />
-          <div className="absolute bottom-0 left-0 p-5">
-            <p className={styles.heroHeading}>Start your comic journey.</p>
-            <p className={styles.heroSubheading}>
-              Choose how you'd like to begin your story.
-            </p>
+          <div className={styles.heroBorderGradient} aria-hidden />
+          <div className={styles.heroInner}>
+            <img
+              src="/onboarding-hero.jpg"
+              alt="Cosmic surfer"
+              className={styles.heroImg}
+            />
+            <div className={styles.heroOverlay} />
+            <div className="absolute bottom-0 left-0 p-5">
+              <p className={styles.heroHeading}>Start your comic journey.</p>
+              <p className={styles.heroSubheading}>
+                Choose how you'd like to begin your story.
+              </p>
+            </div>
           </div>
         </motion.div>
 
