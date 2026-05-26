@@ -40,8 +40,10 @@ take a story concept and break it into visually compelling panel descriptions th
 Desired Panel Count: ${panelCount}
 
 Create exactly ${panelCount} short, vivid visual descriptions for each panel of the comic.
-Each description should be 1-2 sentences, focusing on visual elements, composition, characters, and mood.
+Each description should be 1-2 sentences focused on visual elements, composition, characters, and mood.
 Make them cinematic and action-oriented where appropriate.
+
+Where a single short line of dialog naturally advances the panel's beat, attribute it to the speaker in-line and follow it with a parenthetical noting it should render as a speech bubble next to that character. Use dialog sparingly; prefer silent visual beats otherwise. Escape inner double quotes so the JSON still parses.
 
 Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown or extra formatting:
 ["Panel 1: ...", "Panel 2: ...", ...]`;

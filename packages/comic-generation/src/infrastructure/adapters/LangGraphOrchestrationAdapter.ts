@@ -15,6 +15,7 @@ import {
   generateCover,
   suggestLayouts,
   layoutInterrupt,
+  restructureForLayout,
   generatePanel,
   hitlReview,
   finalizeComic,
@@ -62,6 +63,9 @@ export class LangGraphOrchestrationAdapter {
       .addNode('layoutInterrupt', (s: ComicGraphStateType) =>
         layoutInterrupt(s, d)
       )
+      .addNode('restructureForLayout', (s: ComicGraphStateType) =>
+        restructureForLayout(s, d)
+      )
       .addNode('generatePanel', (s: ComicGraphStateType) => generatePanel(s, d))
       .addNode('hitlReview', (s: ComicGraphStateType) => hitlReview(s, d))
       .addNode('finalizeComic', (s: ComicGraphStateType) =>
@@ -73,7 +77,12 @@ export class LangGraphOrchestrationAdapter {
     workflow.addEdge('buildCharacterBible', 'generateCover');
     workflow.addEdge('generateCover', 'suggestLayouts');
     workflow.addEdge('suggestLayouts', 'layoutInterrupt');
-    workflow.addEdge('layoutInterrupt', 'generatePanel');
+    // After the user picks a layout, reconcile panel count with the
+    // implied count from the label (e.g. "3-panel grid" → 3) before
+    // generating images. The wizard slider is only an initial hint;
+    // the layout choice is the source of truth.
+    workflow.addEdge('layoutInterrupt', 'restructureForLayout');
+    workflow.addEdge('restructureForLayout', 'generatePanel');
     workflow.addEdge('generatePanel', 'hitlReview');
     // hitlReview either:
     //  - finalizes the comic if all panels are reviewed,

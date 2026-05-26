@@ -1,7 +1,8 @@
 import React from 'react';
 import Image from 'next/image';
-import { Layers, Check, XCircle } from 'lucide-react';
+import { Check, XCircle } from 'lucide-react';
 import { Button } from '@panelcraft/ui';
+import { LayoutOptionTile } from '../../comic-page/LayoutOptionTile';
 import styles from '../NewComicWizard.module.css';
 
 export interface LayoutChooserStepProps {
@@ -76,17 +77,11 @@ export function LayoutChooserStep({
           )}
           <div className="grid grid-cols-2 gap-3">
             {layoutOptions.map((layout) => (
-              <button
-                type="button"
+              <LayoutOptionTile
                 key={layout}
-                onClick={() => handleLayoutSelect(layout)}
-                className="bg-slate-900/30 border border-slate-700 rounded-lg p-4 hover:border-violet-500 transition-colors text-left"
-              >
-                <div className="bg-slate-800 rounded h-24 mb-2 flex items-center justify-center">
-                  <Layers className="h-6 w-6 text-slate-500" />
-                </div>
-                <p className="text-xs text-slate-300 font-medium">{layout}</p>
-              </button>
+                label={layout}
+                onSelect={handleLayoutSelect}
+              />
             ))}
           </div>
         </div>
