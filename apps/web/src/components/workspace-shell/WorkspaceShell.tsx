@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sparkles, Plus, Home, Film, CheckCircle } from 'lucide-react';
-import { Button, buttonVariants } from '@panelcraft/ui';
+import { buttonVariants } from '@panelcraft/ui';
 
 interface WorkspaceShellProps {
   children: React.ReactNode;

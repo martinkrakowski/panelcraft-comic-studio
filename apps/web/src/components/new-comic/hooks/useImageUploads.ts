@@ -2,14 +2,11 @@ import { useToast } from '@panelcraft/ui';
 import type { UseFormSetValue } from 'react-hook-form';
 import { compressImageToWebP } from '../../../lib/compressImage';
 import type { WizardFormValues } from '../../../lib/validation/wizard-schemas';
+import type { WizardPersistedState } from '../../../lib/hooks';
 
-type SaveToIndexedDB = (overrides?: {
-  referenceImageBlobs?: Record<string, Blob>;
-  moodBoardImageBlobs?: Blob[];
-  preferredLayoutId?: string | null;
-  projectId?: string | null;
-  activeStep?: number;
-}) => Promise<void>;
+type SaveToIndexedDB = (
+  overrides?: Partial<WizardPersistedState>
+) => Promise<void>;
 
 interface UseImageUploadsProps {
   referenceImageBlobs: Record<string, Blob>;

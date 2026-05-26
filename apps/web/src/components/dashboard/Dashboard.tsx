@@ -13,7 +13,6 @@ import {
   ProjectStatusBadge,
   Button,
   buttonVariants,
-  Progress,
   Skeleton,
 } from '@panelcraft/ui';
 import {
@@ -44,7 +43,7 @@ export function Dashboard() {
         day: 'numeric',
         year: 'numeric',
       });
-    } catch (_) {
+    } catch {
       return 'Unknown Date';
     }
   };

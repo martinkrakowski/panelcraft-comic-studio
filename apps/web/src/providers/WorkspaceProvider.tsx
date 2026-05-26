@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useProjects } from '../lib/hooks/useProjects';
-import { ProjectSummaryDTO } from '@panelcraft/types';
 
 type UseProjectsResult = ReturnType<typeof useProjects>;
 

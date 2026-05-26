@@ -1,27 +1,28 @@
 import { useState } from 'react';
 import { useToast } from '@panelcraft/ui';
-import type { UseFormTrigger, UseFormSetValue } from 'react-hook-form';
+import type {
+  UseFormTrigger,
+  UseFormSetValue,
+  UseFormGetValues,
+} from 'react-hook-form';
 import api from '../../../lib/api';
 import { GENRE_OPTIONS, TONE_OPTIONS } from '../../../lib/wizard-constants';
 import {
   promptOnlySchema,
   type WizardFormValues,
 } from '../../../lib/validation/wizard-schemas';
+import type { WizardPersistedState } from '../../../lib/hooks';
 
-type SaveToIndexedDB = (overrides?: {
-  referenceImageBlobs?: Record<string, Blob>;
-  moodBoardImageBlobs?: Blob[];
-  preferredLayoutId?: string | null;
-  projectId?: string | null;
-  activeStep?: number;
-}) => Promise<void>;
+type SaveToIndexedDB = (
+  overrides?: Partial<WizardPersistedState>
+) => Promise<void>;
 
 interface UseWizardStepNavigationProps {
   activeStep: number;
   setActiveStep: React.Dispatch<React.SetStateAction<number>>;
   trigger: UseFormTrigger<WizardFormValues>;
   setValue: UseFormSetValue<WizardFormValues>;
-  prompt: string;
+  getValues: UseFormGetValues<WizardFormValues>;
   saveToIndexedDB: SaveToIndexedDB;
 }
 
@@ -30,7 +31,7 @@ export function useWizardStepNavigation({
   setActiveStep,
   trigger,
   setValue,
-  prompt,
+  getValues,
   saveToIndexedDB,
 }: UseWizardStepNavigationProps) {
   const { toast } = useToast();
@@ -63,6 +64,7 @@ export function useWizardStepNavigation({
   const handleBackStep = () => setActiveStep((prev) => Math.max(prev - 1, 0));
 
   const handleAnalyzePrompt = async () => {
+    const prompt = getValues('prompt');
     try {
       promptOnlySchema.parse({ prompt });
     } catch (err) {

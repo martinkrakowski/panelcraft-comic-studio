@@ -40,7 +40,7 @@ vi.mock('@panelcraft/ui', () => ({
   WizardSidebar: ({ children, ...props }: any) => (
     <div {...props}>{children}</div>
   ),
-  CollapsibleSection: ({ children, title, defaultOpen, ...props }: any) => (
+  CollapsibleSection: ({ children, title, defaultOpen: _defaultOpen, ...props }: any) => (
     <div {...props}>
       <h3>{title}</h3>
       {children}
@@ -48,6 +48,18 @@ vi.mock('@panelcraft/ui', () => ({
   ),
   LayoutPreview: ({ layout }: any) => (
     <div data-testid="layout-preview">{layout?.name}</div>
+  ),
+  AppCanvasCenter: ({ children, className }: any) => (
+    <div data-testid="app-canvas-center" className={className}>
+      {children}
+    </div>
+  ),
+  AppCanvasTwoPane: ({ sidebar, topStrip, children, clearHeader }: any) => (
+    <div data-testid="app-canvas-two-pane" data-clear-header={String(clearHeader)}>
+      <div data-testid="sidebar-slot">{sidebar}</div>
+      <div data-testid="topstrip-slot">{topStrip}</div>
+      <div data-testid="children-slot">{children}</div>
+    </div>
   ),
 }));
 
@@ -150,6 +162,11 @@ describe('NewComicWizard Phase 1 Smoke Tests', () => {
         screen.getByPlaceholderText(/futuristic detective/i)
       ).toBeInTheDocument();
     });
+
+    // Exercises the topStrip slot regression net (C1 / N3)
+    const topstrip = screen.getByTestId('topstrip-slot');
+    expect(topstrip).toBeInTheDocument();
+    expect(topstrip.textContent).toMatch(/back to onboarding/i);
   }, 5000);
 
   it('hydrates state from IndexedDB on mount', async () => {
@@ -427,5 +444,69 @@ describe('NewComicWizard Phase 1 Smoke Tests', () => {
     await waitFor(() => {
       expect(setWizardState).toHaveBeenCalled();
     });
+  }, 5000);
+
+  // Regression net for the useWizardForm/useWizardPersistence wiring: a no-arg
+  // saveToIndexedDB() call (e.g. on input blur) must NOT clobber hydrated
+  // blobs / preferredLayoutId / projectId. Earlier this hook was constructed
+  // with hardcoded empties, so every blur silently wiped them.
+  it('preserves hydrated blobs/ids when saving form mutations with no overrides', async () => {
+    const hydratedBlob = new Blob(['ref'], { type: 'image/webp' });
+    const savedState = {
+      wizardStateVersion: 1,
+      step: 0,
+      formValues: {
+        prompt: 'Initial prompt',
+        panelCount: 4,
+        genres: ['Fantasy'],
+        tones: ['Epic'],
+        characters: [
+          {
+            name: 'John',
+            role: 'Hero',
+            visual: 'Tall character description',
+            consistency: 'Yes consistency notes',
+            referenceImageKey: 'char-0-existing',
+          },
+        ],
+        globalStylePrompt: 'Noir style description is long enough',
+        moodBoardPreset: 'preset-1',
+        artDirectionNotes: '',
+      },
+      referenceImageBlobs: { 'char-0-existing': hydratedBlob },
+      moodBoardImageBlobs: [new Blob(['mood'], { type: 'image/webp' })],
+      preferredLayoutId: 'layout-existing',
+      projectId: 'project-existing',
+    };
+    (getWizardState as any).mockResolvedValue(savedState);
+
+    render(<NewComicWizard />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const textarea =
+      await screen.findByPlaceholderText(/futuristic detective/i);
+
+    // Triggers a no-arg saveToIndexedDB() via the prompt blur handler.
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'Edited prompt text' } });
+    });
+    await act(async () => {
+      fireEvent.blur(textarea);
+    });
+
+    await waitFor(() => {
+      expect(setWizardState).toHaveBeenCalled();
+    });
+
+    const lastCall = (setWizardState as any).mock.calls.at(-1)?.[0];
+    expect(lastCall).toBeDefined();
+    expect(lastCall.referenceImageBlobs).toEqual({
+      'char-0-existing': hydratedBlob,
+    });
+    expect(lastCall.moodBoardImageBlobs).toHaveLength(1);
+    expect(lastCall.preferredLayoutId).toBe('layout-existing');
+    expect(lastCall.projectId).toBe('project-existing');
   }, 5000);
 });

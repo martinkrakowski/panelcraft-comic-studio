@@ -21,5 +21,8 @@ export * from './components/modules/toast';
 // Sections
 export * from './components/sections';
 
+// Layout (full-viewport app canvases — centered or two-pane with sidebar)
+export * from './components/layout';
+
 // Controllers
 export * from './components/controllers/useToast';

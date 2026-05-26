@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import api from '../api';
-import { CreateProjectInput } from '@panelcraft/types';
 
 /**
  * Custom React hook providing project-creation action state for the wizard flow.
