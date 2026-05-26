@@ -26,6 +26,15 @@ interface ComicEditorProps {
   projectId: string;
 }
 
+/**
+ * Project editor view for an existing comic. Renders the two-pane canvas
+ * with the editor sidebar, status strip, optional layout chooser, HITL
+ * review form for in-progress panels, and the generated panels grid.
+ * Polling and per-panel regeneration are delegated to `useEditorActions`.
+ *
+ * @param props.projectId - ID of the project to load and edit.
+ * @returns The editor canvas, or a loading/error state while the project resolves.
+ */
 export function ComicEditor({ projectId }: ComicEditorProps) {
   const { project, loading, error, refreshSilent } = useProject(projectId);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { AppCanvasTwoPane } from '@panelcraft/ui';
 import { NewComicWizardSidebar } from './NewComicWizardSidebar';
@@ -13,7 +14,16 @@ import { useImageUploads } from './hooks/useImageUploads';
 import { useProjectCreation } from './hooks/useProjectCreation';
 import { useWizardForm } from './hooks/useWizardForm';
 
+/**
+ * Multi-step comic creation wizard. Drives the user through story prompt,
+ * character bible, style references, review/submit, and layout selection,
+ * persisting partial state to IndexedDB so the flow survives reloads.
+ * Mounted by the `/new/brainstorm` route.
+ *
+ * @returns The two-pane wizard canvas with sidebar, step content, and nav.
+ */
 export function NewComicWizard() {
+  const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -117,7 +127,7 @@ export function NewComicWizard() {
           <div className="flex-shrink-0 px-4 pt-4">
             <button
               type="button"
-              onClick={() => window.history.back()}
+              onClick={() => router.push('/new')}
               className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
