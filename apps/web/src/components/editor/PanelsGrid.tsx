@@ -157,13 +157,19 @@ export function PanelsGrid({
                 )}
 
                 {onRegenerate && (
-                  <div className="flex items-center gap-2">
+                  // `flex-wrap` + `min-w-[8rem]` lets the two actions sit
+                  // side-by-side in wide cells but stack into single-column
+                  // rows when the parent grid cell is narrow (e.g. inset
+                  // panels in splash layouts) so the label never gets cut
+                  // off. `basis-0 grow` plays the same equal-share role as
+                  // the old `flex-1` once they're on one row.
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
                       variant="secondary"
                       onClick={() => onRegenerate(panel.index)}
                       disabled={isBusy}
-                      className="flex-1 text-xs flex items-center justify-center gap-1.5 border border-slate-800"
+                      className="basis-0 grow min-w-[8rem] text-xs flex items-center justify-center gap-1.5 border border-slate-800"
                     >
                       <RefreshCw
                         className={`h-3.5 w-3.5 ${isBusy ? 'animate-spin' : ''}`}
@@ -176,7 +182,7 @@ export function PanelsGrid({
                         variant="secondary"
                         onClick={() => onEdit(panel.index)}
                         disabled={isBusy}
-                        className="flex-1 text-xs flex items-center justify-center gap-1.5 border border-slate-800"
+                        className="basis-0 grow min-w-[8rem] text-xs flex items-center justify-center gap-1.5 border border-slate-800"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         Edit panel
