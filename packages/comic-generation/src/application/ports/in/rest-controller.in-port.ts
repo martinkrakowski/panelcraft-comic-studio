@@ -14,7 +14,12 @@ export interface ProjectData {
     | 'pending_review'
     | 'pending_layout'
     | 'completed'
-    | 'failed';
+    | 'failed'
+    // Post-completion extend pipeline (see `panelReconfigureHandler.ts`):
+    // `extending` is the in-flight phase while the worker generates a new
+    // panel; `pending_review_extend` is the HITL pause between additions.
+    | 'extending'
+    | 'pending_review_extend';
   createdAt: string;
   panels?: Array<{
     id: string;

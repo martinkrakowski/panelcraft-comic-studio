@@ -20,6 +20,18 @@ export interface LayoutChooserStepProps {
   preferredLayoutId?: string | null;
 }
 
+/**
+ * Wizard Step 4. Drives the brainstorm-result surface: while `isPolling` (or
+ * `projectStatus` is null) renders the generating-cover loader; on `failed`
+ * surfaces a retry CTA wired to `onRetry`; on `pending_layout` either auto-
+ * applies the user's pre-pick (when `preferredLayoutId` is set — the parent
+ * hook fires `handleLayoutSelect` for us, we just show "Applying layout…")
+ * or renders the AI-suggested `layoutOptions` tiles that the user picks
+ * from manually via `handleLayoutSelect`. Any other status shows the
+ * "Project Created!" success screen before the parent navigates away.
+ *
+ * @returns The active step body for the brainstorm/layout-pick phase.
+ */
 export function LayoutChooserStep({
   isPolling,
   projectStatus,

@@ -15,7 +15,7 @@ import {
   StyleSection,
   type SidebarStyleReferences,
 } from './sidebar/StyleSection';
-import type { PanelDTO } from '@panelcraft/types';
+import type { PanelDTO, ProjectStatus } from '@panelcraft/types';
 
 interface EditorSidebarProps {
   // Workflow status
@@ -23,7 +23,7 @@ interface EditorSidebarProps {
   panelCount: number;
   progressPercent: number;
   panels: PanelDTO[];
-  status?: string;
+  status?: ProjectStatus;
 
   // Layout chooser (conditional — only when pending_layout)
   layoutOptions?: string[] | null;

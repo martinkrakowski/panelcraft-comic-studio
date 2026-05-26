@@ -138,6 +138,21 @@ export class ComicGenerationUseCase implements RestControllerPort {
     });
   }
 
+  /**
+   * Add empty pending panels to a `completed` project and enqueue the
+   * worker that fills them one-by-one with HITL pauses between rounds.
+   * Bypasses LangGraph because the graph thread has already terminated.
+   *
+   * @param projectId - UUID of the project to extend.
+   * @param targetPanelCount - New total panel count; must exceed the
+   *   current count.
+   * @param selectedLayout - Layout template id to persist alongside the
+   *   addition (the new layout the user picked).
+   * @throws NotFoundError if the project doesn't exist.
+   * @throws ValidationError if the project isn't `completed`, the target
+   *   count is not strictly greater than the current count, or the new
+   *   count is outside the supported range.
+   */
   async extendPanels(
     projectId: string,
     targetPanelCount: number,
@@ -150,6 +165,22 @@ export class ComicGenerationUseCase implements RestControllerPort {
     });
   }
 
+  /**
+   * Drop panels from a `completed` project, keeping only the indices the
+   * user picked (preserving their order). Metadata-only — no regeneration,
+   * no job enqueue. Status stays `completed`.
+   *
+   * @param projectId - UUID of the project to shrink.
+   * @param keepIndices - Indices of panels to retain. Must be unique
+   *   integers in `[0, currentPanelCount)`. The resulting order matches
+   *   the order of indices supplied.
+   * @param selectedLayout - Layout template id to persist (the lower-count
+   *   layout the user picked).
+   * @throws NotFoundError if the project doesn't exist.
+   * @throws ValidationError if the project isn't `completed`, any index is
+   *   out of range / non-integer / duplicated, or the keep-set isn't
+   *   strictly smaller than the current panel count.
+   */
   async shrinkPanels(
     projectId: string,
     keepIndices: number[],

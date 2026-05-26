@@ -1,4 +1,5 @@
 import { defineEventHandler, readBody, setResponseStatus } from 'h3';
+import { NotFoundError, ValidationError } from '@panelcraft/shared';
 import { ok, fail } from '../../../utils/envelope.js';
 import { parseBody } from '../../../utils/validation.js';
 import { SelectLayoutSchema, ParamIdSchema } from '../../../utils/schemas.js';
@@ -28,6 +29,18 @@ export default defineEventHandler(async (event) => {
     setResponseStatus(event, 200);
     return ok({ id, selectedLayout });
   } catch (error) {
+    // Map domain errors to the right HTTP status before falling back to 500.
+    // `errorToHttpStatus` in @panelcraft/shared knows the same instanceof
+    // rules but doesn't carry our envelope `code` taxonomy — inline so each
+    // case ships a stable, caller-friendly code.
+    if (error instanceof NotFoundError) {
+      setResponseStatus(event, 404);
+      return fail('LAYOUT_NOT_FOUND', error.message);
+    }
+    if (error instanceof ValidationError) {
+      setResponseStatus(event, 400);
+      return fail('INVALID_LAYOUT', error.message);
+    }
     setResponseStatus(event, 500);
     return fail(
       'LAYOUT_UPDATE_FAILED',

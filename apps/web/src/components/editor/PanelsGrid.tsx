@@ -47,6 +47,24 @@ interface PanelsGridProps {
   regeneratingPanelIndex?: number | null;
 }
 
+/**
+ * Editor view of the comic's panels. Renders each panel as a card with
+ * status badge, image preview, prompt, and per-tile Regenerate / Edit
+ * actions. When `selectedLayout` matches a catalog template the grid uses
+ * the template's columns/rows/cellPlacements so a layout swap visibly
+ * rearranges the panels in place; otherwise falls back to a 2-column flow.
+ *
+ * @param props.panels - Panels to render in array order.
+ * @param props.selectedLayout - Layout template id or legacy free-form
+ *   string; template-id matches drive the rich grid placement.
+ * @param props.onRegenerate - When provided, each card renders a Regenerate
+ *   button wired to this callback. Hidden during mid-HITL review.
+ * @param props.onEdit - Pairs with `onRegenerate`; renders an Edit button
+ *   that opens the feedback dialog for the targeted panel.
+ * @param props.regeneratingPanelIndex - Panel currently mid-regeneration;
+ *   drives the per-tile busy indicator and disables both actions on it.
+ * @returns A `<div>` containing the panels grid.
+ */
 export function PanelsGrid({
   panels,
   selectedLayout,
@@ -91,7 +109,7 @@ export function PanelsGrid({
         }
         style={gridStyle}
       >
-        {panels.map((panel) => {
+        {panels.map((panel, panelIdx) => {
           const label = getPanelStatusLabel(panel.status);
           // Mid-work signal: panel is queued, mid-generation, or being
           // regenerated via the per-tile button. Drives the animated
@@ -102,8 +120,10 @@ export function PanelsGrid({
             panel.status === 'pending' ||
             panel.status === 'generating';
 
+          // Use the map index for cell placement (O(1)) — `panels.indexOf`
+          // was both O(n²) overall and unsafe if two panel refs ever match.
           const cellPlacement = useLayoutGrid
-            ? layout!.cellPlacements?.[panels.indexOf(panel)]
+            ? layout!.cellPlacements?.[panelIdx]
             : undefined;
           return (
             <Card

@@ -425,9 +425,14 @@ export function initComicWorker(
               `[Worker] Filling continuation prompts for ${needsPrompts.length} ` +
                 `extension panel(s) on project ${projectId}`
             );
+            // Use the panel's ORIGINAL position (1-based) when labeling so
+            // the LLM sees "Panel 1, Panel 3, …" if a middle slot is empty —
+            // labeling by the filtered-array index would silently renumber
+            // and misrepresent story order.
             const completedPrompts = panels
-              .filter((p) => p.getPrompt().trim().length > 0)
-              .map((p, idx) => `Panel ${idx + 1}: ${p.getPrompt()}`)
+              .map((panel, idx) => ({ panel, idx }))
+              .filter(({ panel }) => panel.getPrompt().trim().length > 0)
+              .map(({ panel, idx }) => `Panel ${idx + 1}: ${panel.getPrompt()}`)
               .join('\n');
             const storyPrompt = project.getPrompt().getValue();
             const systemPrompt =

@@ -82,6 +82,10 @@ export async function extendPanels(
     );
   }
 
+  // Snapshot the prior layout choice so we can roll back if the queue add
+  // fails after we've already saved the EXTENDING mutation.
+  const priorLayout = project.getSelectedLayout();
+
   // Append placeholder panels with empty prompts. The worker fills the
   // prompts in on first invocation so the LLM sees the freshest project
   // state (e.g. recent character bible edits).
@@ -107,15 +111,41 @@ export async function extendPanels(
   project.setStatus(EXTENDING_STATUS);
   await deps.projectRepo.save(project);
 
-  await deps.taskQueue.add(
-    'extend-next-panel',
-    { projectId },
-    {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 2000 },
-      removeOnComplete: true,
+  // If enqueue fails, revert the project so it isn't stranded in EXTENDING
+  // with extra pending panels and no worker job to process them. The
+  // pre-extend state is the authoritative recovery point — drop the new
+  // slots, restore the prior panel count, restore the prior layout, and
+  // flip status back to `completed`.
+  try {
+    await deps.taskQueue.add(
+      'extend-next-panel',
+      { projectId },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+      }
+    );
+  } catch (enqueueErr) {
+    const priorPanelCount = PanelCount.create(currentCount);
+    if (priorPanelCount.success && priorPanelCount.value) {
+      project.setPanels(currentPanels);
+      project.setPanelCount(priorPanelCount.value);
+      project.setSelectedLayout(priorLayout);
+      project.setStatus('completed');
+      try {
+        await deps.projectRepo.save(project);
+      } catch (rollbackErr) {
+        deps.logger.error(
+          `[extendPanels] Rollback save failed for project ${projectId}: ` +
+            (rollbackErr instanceof Error
+              ? rollbackErr.message
+              : String(rollbackErr))
+        );
+      }
     }
-  );
+    throw enqueueErr;
+  }
   deps.logger.info(
     `[extendPanels] Enqueued extend-next-panel for project ${projectId} ` +
       `(${currentCount} → ${targetPanelCount})`
@@ -157,8 +187,17 @@ export async function shrinkPanels(
   }
 
   const currentPanels = project.getPanels();
-  // Validate every index points to a real panel before mutating anything.
+  // Validate shape before range: a non-integer or duplicate index would
+  // silently produce wrong panels (NaN row, or the same panel twice) after
+  // `currentPanels[i]` lookups, so reject those up front.
   for (const idx of keepIndices) {
+    if (!Number.isInteger(idx)) {
+      throw new ValidationError(
+        `keepIndices contains non-integer value ${idx}`,
+        'keepIndices',
+        idx
+      );
+    }
     if (idx < 0 || idx >= currentPanels.length) {
       throw new ValidationError(
         `keepIndices contains out-of-range index ${idx} ` +
@@ -167,6 +206,13 @@ export async function shrinkPanels(
         idx
       );
     }
+  }
+  if (new Set(keepIndices).size !== keepIndices.length) {
+    throw new ValidationError(
+      `keepIndices must not contain duplicates`,
+      'keepIndices',
+      keepIndices
+    );
   }
   if (keepIndices.length >= currentPanels.length) {
     throw new ValidationError(

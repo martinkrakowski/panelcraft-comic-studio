@@ -5,6 +5,7 @@ import {
   setResponseStatus,
 } from 'h3';
 import { z } from 'zod';
+import { NotFoundError, ValidationError } from '@panelcraft/shared';
 import { ok, fail } from '../../../../utils/envelope.js';
 import { parseParams, parseBody } from '../../../../utils/validation.js';
 import { ExtendPanelsSchema } from '../../../../utils/schemas.js';
@@ -36,6 +37,17 @@ export default defineEventHandler(async (event) => {
     setResponseStatus(event, 202);
     return ok({ message: 'Panel extension queued.', targetPanelCount });
   } catch (error) {
+    // Domain → HTTP mapping. extendPanels rejects with NotFoundError when
+    // the project is missing and ValidationError on guards (target ≤ current
+    // count, status !== completed, panel count out of range).
+    if (error instanceof NotFoundError) {
+      setResponseStatus(event, 404);
+      return fail('PROJECT_NOT_FOUND', error.message);
+    }
+    if (error instanceof ValidationError) {
+      setResponseStatus(event, 400);
+      return fail('INVALID_EXTEND_REQUEST', error.message);
+    }
     setResponseStatus(event, 500);
     return fail(
       'PANEL_EXTEND_FAILED',
