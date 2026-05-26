@@ -2,7 +2,6 @@
 
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
 import {
   wizardFormSchema,
   type WizardFormValues,
@@ -19,18 +18,26 @@ import { useToast } from '@panelcraft/ui';
 interface UseWizardFormArgs {
   activeStep: number;
   setActiveStep: (step: number) => void;
+  referenceImageBlobs: Record<string, Blob>;
   setReferenceImageBlobs: (blobs: Record<string, Blob>) => void;
+  moodBoardImageBlobs: Blob[];
   setMoodBoardImageBlobs: (blobs: Blob[]) => void;
+  preferredLayoutId: string | null;
   setPreferredLayoutId: (id: string | null) => void;
+  projectId: string | null;
   setProjectId: (id: string | null) => void;
 }
 
 export function useWizardForm({
   activeStep,
   setActiveStep,
+  referenceImageBlobs,
   setReferenceImageBlobs,
+  moodBoardImageBlobs,
   setMoodBoardImageBlobs,
+  preferredLayoutId,
   setPreferredLayoutId,
+  projectId,
   setProjectId,
 }: UseWizardFormArgs) {
   const { toast } = useToast();
@@ -65,10 +72,10 @@ export function useWizardForm({
 
   const { save: saveStateToDB } = useWizardPersistence({
     activeStep,
-    referenceImageBlobs: {}, // Note: these are managed outside for now to avoid circular deps
-    moodBoardImageBlobs: [],
-    preferredLayoutId: null,
-    projectId: null,
+    referenceImageBlobs,
+    moodBoardImageBlobs,
+    preferredLayoutId,
+    projectId,
   });
 
   const saveToIndexedDB = async (overrides?: Partial<WizardPersistedState>) => {

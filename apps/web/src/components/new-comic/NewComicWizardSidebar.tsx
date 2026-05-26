@@ -1,7 +1,6 @@
 import React from 'react';
 import { WizardSidebar } from '@panelcraft/ui';
 import type {
-  UseFormRegister,
   UseFormSetValue,
   FieldArrayWithId,
 } from 'react-hook-form';
@@ -20,7 +19,6 @@ export interface NewComicWizardSidebarProps {
   setPreferredLayoutId: (id: string | null) => void;
   setValue: UseFormSetValue<WizardFormValues>;
   saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
-  register: UseFormRegister<WizardFormValues>;
   fields: FieldArrayWithId<WizardFormValues, 'characters', 'id'>[];
   characters: WizardFormValues['characters'];
   moodBoardPreset: string;
@@ -39,7 +37,6 @@ export function NewComicWizardSidebar(props: NewComicWizardSidebarProps) {
     setPreferredLayoutId,
     setValue,
     saveToIndexedDB,
-    register,
     fields,
     characters,
     moodBoardPreset,

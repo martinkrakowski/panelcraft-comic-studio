@@ -3,17 +3,13 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@panelcraft/ui';
 import type { UseFormWatch } from 'react-hook-form';
 import { useCreateProject } from '../../../lib/hooks/useCreateProject';
-import { usePolling } from '../../../lib/hooks';
+import { usePolling, type WizardPersistedState } from '../../../lib/hooks';
 import { clearWizardState } from '../../../lib/indexedDB';
 import type { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 
-type SaveToIndexedDB = (overrides?: {
-  referenceImageBlobs?: Record<string, Blob>;
-  moodBoardImageBlobs?: Blob[];
-  preferredLayoutId?: string | null;
-  projectId?: string | null;
-  activeStep?: number;
-}) => Promise<void>;
+type SaveToIndexedDB = (
+  overrides?: Partial<WizardPersistedState>
+) => Promise<void>;
 
 interface UseProjectCreationProps {
   projectId: string | null;

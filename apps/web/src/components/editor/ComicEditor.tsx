@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useProject } from '../../lib/hooks/useProject';
-import api from '../../lib/api';
 import {
   submitReviewSchema,
   type SubmitReviewFormValues,
@@ -13,10 +11,9 @@ import {
 import {
   ProjectStatusBadge,
   buttonVariants,
-  useToast,
   AppCanvasTwoPane,
 } from '@panelcraft/ui';
-import { ArrowLeft, AlertCircle, BookOpen } from 'lucide-react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
 import { EditorSidebar } from './EditorSidebar';
 import { HITLReviewPanel } from './HITLReviewPanel';
 import { PanelsGrid } from './PanelsGrid';
@@ -30,7 +27,6 @@ interface ComicEditorProps {
 }
 
 export function ComicEditor({ projectId }: ComicEditorProps) {
-  const { toast } = useToast();
   const { project, loading, error, refreshSilent } = useProject(projectId);
 
   const { register, handleSubmit, setValue, reset } =

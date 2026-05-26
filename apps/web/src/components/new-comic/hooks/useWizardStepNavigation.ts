@@ -7,14 +7,11 @@ import {
   promptOnlySchema,
   type WizardFormValues,
 } from '../../../lib/validation/wizard-schemas';
+import type { WizardPersistedState } from '../../../lib/hooks';
 
-type SaveToIndexedDB = (overrides?: {
-  referenceImageBlobs?: Record<string, Blob>;
-  moodBoardImageBlobs?: Blob[];
-  preferredLayoutId?: string | null;
-  projectId?: string | null;
-  activeStep?: number;
-}) => Promise<void>;
+type SaveToIndexedDB = (
+  overrides?: Partial<WizardPersistedState>
+) => Promise<void>;
 
 interface UseWizardStepNavigationProps {
   activeStep: number;

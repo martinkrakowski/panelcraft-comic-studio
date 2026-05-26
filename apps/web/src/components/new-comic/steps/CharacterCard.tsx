@@ -82,6 +82,11 @@ export function CharacterCard({
             onBlur={() => saveToIndexedDB()}
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white"
           />
+          {errors.characters?.[index]?.role && (
+            <p className="text-xs text-red-400">
+              {errors.characters[index]?.role?.message}
+            </p>
+          )}
         </div>
       </div>
 

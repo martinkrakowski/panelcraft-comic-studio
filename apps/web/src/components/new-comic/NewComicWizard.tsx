@@ -40,9 +40,13 @@ export function NewComicWizard() {
   } = useWizardForm({
     activeStep,
     setActiveStep,
+    referenceImageBlobs,
     setReferenceImageBlobs,
+    moodBoardImageBlobs,
     setMoodBoardImageBlobs,
+    preferredLayoutId,
     setPreferredLayoutId,
+    projectId,
     setProjectId,
   });
 
@@ -104,7 +108,6 @@ export function NewComicWizard() {
           setPreferredLayoutId={setPreferredLayoutId}
           setValue={setValue}
           saveToIndexedDB={saveToIndexedDB}
-          register={register}
           fields={fields}
           characters={characters}
           moodBoardPreset={moodBoardPreset}
