@@ -9,6 +9,10 @@ import {
   enqueueResumeComic,
   regeneratePanel,
 } from '../handlers/submitReviewHandler.js';
+import {
+  extendPanels,
+  shrinkPanels,
+} from '../handlers/panelReconfigureHandler.js';
 import { updateProjectPaths } from '../handlers/updateProjectPathsHandler.js';
 
 /**
@@ -95,6 +99,24 @@ export class ComicGenerationUseCase implements RestControllerPort {
     await this.projectRepo.save(project);
   }
 
+  /**
+   * Update the persisted layout choice without affecting workflow state. Used
+   * for after-the-fact layout swaps on `completed` / `pending_review` projects
+   * where the new layout only changes how existing panels are arranged on the
+   * composed page — no resume job, no panel regeneration. Status is preserved.
+   */
+  async updateSelectedLayout(
+    projectId: string,
+    selectedLayout: string
+  ): Promise<void> {
+    const project = await this.projectRepo.load(projectId);
+    if (!project) {
+      throw new NotFoundError(`Project ${projectId} not found`, projectId);
+    }
+    project.setSelectedLayout(selectedLayout);
+    await this.projectRepo.save(project);
+  }
+
   async enqueueResumeComic(
     projectId: string,
     selectedLayout: string
@@ -112,6 +134,29 @@ export class ComicGenerationUseCase implements RestControllerPort {
     return regeneratePanel(projectId, panelIndex, feedback, {
       projectRepo: this.projectRepo,
       taskQueue: this.taskQueue,
+      logger: this.logger,
+    });
+  }
+
+  async extendPanels(
+    projectId: string,
+    targetPanelCount: number,
+    selectedLayout: string
+  ): Promise<void> {
+    return extendPanels(projectId, targetPanelCount, selectedLayout, {
+      projectRepo: this.projectRepo,
+      taskQueue: this.taskQueue,
+      logger: this.logger,
+    });
+  }
+
+  async shrinkPanels(
+    projectId: string,
+    keepIndices: number[],
+    selectedLayout: string
+  ): Promise<void> {
+    return shrinkPanels(projectId, keepIndices, selectedLayout, {
+      projectRepo: this.projectRepo,
       logger: this.logger,
     });
   }

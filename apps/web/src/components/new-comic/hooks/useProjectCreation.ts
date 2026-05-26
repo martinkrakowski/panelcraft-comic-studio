@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@panelcraft/ui';
 import type { UseFormWatch } from 'react-hook-form';
@@ -21,6 +21,12 @@ interface UseProjectCreationProps {
   watch: UseFormWatch<WizardFormValues>;
   setActiveStep: React.Dispatch<React.SetStateAction<number>>;
   saveToIndexedDB: SaveToIndexedDB;
+  /**
+   * Layout template ID picked in Step 0's Recommended Layouts sidebar.
+   * When set, the wizard auto-confirms this layout as soon as the project
+   * reaches `pending_layout`, skipping the manual Step 4 chooser UI.
+   */
+  preferredLayoutId: string | null;
 }
 
 export function useProjectCreation({
@@ -33,6 +39,7 @@ export function useProjectCreation({
   watch,
   setActiveStep,
   saveToIndexedDB,
+  preferredLayoutId,
 }: UseProjectCreationProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -45,6 +52,10 @@ export function useProjectCreation({
   const [projectStatus, setProjectStatus] = useState<string | null>(null);
   const [layoutOptions, setLayoutOptions] = useState<string[]>([]);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  // Guards the auto-confirm path so a slow poll doesn't kick a second
+  // selectLayout request while the first is still in flight or after
+  // navigation has begun.
+  const autoConfirmedRef = useRef(false);
 
   const onSubmit = async () => {
     try {
@@ -98,6 +109,21 @@ export function useProjectCreation({
     }
   };
 
+  const handleLayoutSelect = async (layout: string) => {
+    if (!projectId) return;
+    try {
+      await selectLayout(projectId, layout);
+      await clearWizardState();
+      router.push(`/projects/${projectId}`);
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Layout selection failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  };
+
   usePolling(
     async () => {
       if (!projectId) return;
@@ -112,6 +138,14 @@ export function useProjectCreation({
             setLayoutOptions(data.data.project.layoutOptions || []);
             setCoverUrl(data.data.project.coverImageUrl || null);
             setIsPolling(false);
+            // If Step 0 pre-picked a recommended layout, skip the manual
+            // chooser and confirm it for the user. The catalog ID is stored
+            // verbatim as `selectedLayout` so render-time lookup can pull
+            // the rich panel-rect template back out.
+            if (preferredLayoutId && !autoConfirmedRef.current) {
+              autoConfirmedRef.current = true;
+              handleLayoutSelect(preferredLayoutId);
+            }
           } else if (data.data.project.status === 'failed') {
             setIsPolling(false);
             toast({
@@ -143,21 +177,6 @@ export function useProjectCreation({
       immediateFirstCall: true,
     }
   );
-
-  const handleLayoutSelect = async (layout: string) => {
-    if (!projectId) return;
-    try {
-      await selectLayout(projectId, layout);
-      await clearWizardState();
-      router.push(`/projects/${projectId}`);
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Layout selection failed',
-        description: err instanceof Error ? err.message : 'Unknown error',
-      });
-    }
-  };
 
   const handleRetry = useCallback(async () => {
     setProjectId(null);

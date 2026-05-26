@@ -3,7 +3,9 @@ import { Command } from '@langchain/langgraph';
 import type {
   LangGraphOrchestrationAdapter,
   ImageGenerationPort,
+  LLMClientPort,
 } from '@panelcraft/comic-generation';
+import { PENDING_REVIEW_EXTEND_STATUS } from '@panelcraft/comic-generation';
 import type { RelationalDbPort } from '@panelcraft/comic-generation';
 import {
   ComicProject,
@@ -87,7 +89,8 @@ export function initComicWorker(
   queue: Queue,
   logger: LoggerPort,
   supabase: SupabaseClient,
-  imageGenPort: ImageGenerationPort
+  imageGenPort: ImageGenerationPort,
+  llmClient: LLMClientPort
 ) {
   const graph = langGraphAdapter.getGraph();
 
@@ -380,6 +383,185 @@ export function initComicWorker(
             `[Worker] Panel ${panelIndex} regenerated; project status set to ` +
               `${project.getStatus()}`
           );
+        } else if (job.name === 'extend-next-panel') {
+          // Out-of-graph extend pipeline. The project was a completed comic
+          // until the user picked a higher-count layout in HITL; we walk
+          // through the freshly-added pending slots one at a time, pausing
+          // for HITL review on each (status `pending_review_extend`). The
+          // LangGraph thread isn't touched — it has already finalized for
+          // the original generation.
+          const { regenFeedback } = job.data;
+          const panels = project.getPanels();
+          const nextPendingIndex = panels.findIndex(
+            (p) => p.getStatus().getValue() === 'pending'
+          );
+          if (nextPendingIndex === -1) {
+            project.setStatus('completed');
+            await projectRepo.save(project);
+            logger.info(
+              `[Worker] extend-next-panel found no pending panels for project ${projectId}; ` +
+                `marking complete.`
+            );
+            return;
+          }
+          const targetPanel = panels[nextPendingIndex]!;
+
+          // Lazy prompt fill: when the user just kicked off an extend round
+          // every new slot has an empty prompt. Generate the continuation
+          // descriptions for them all in one LLM call using the already-
+          // approved panels (and any earlier extend-mode approvals) as the
+          // anchor context. Subsequent extend-next-panel runs (after the
+          // user approves/rejects each panel) reuse the cached prompts.
+          const needsPrompts = panels
+            .map((p, idx) => ({ idx, p }))
+            .filter(
+              ({ p }) =>
+                p.getStatus().getValue() === 'pending' && !p.getPrompt().trim()
+            )
+            .map(({ idx }) => idx);
+
+          if (needsPrompts.length > 0) {
+            logger.info(
+              `[Worker] Filling continuation prompts for ${needsPrompts.length} ` +
+                `extension panel(s) on project ${projectId}`
+            );
+            const completedPrompts = panels
+              .filter((p) => p.getPrompt().trim().length > 0)
+              .map((p, idx) => `Panel ${idx + 1}: ${p.getPrompt()}`)
+              .join('\n');
+            const storyPrompt = project.getPrompt().getValue();
+            const systemPrompt =
+              'You are an expert comic writer extending an existing storyboard. ' +
+              'You write new panel descriptions that continue the narrative cleanly ' +
+              'from the panels already approved by the user.';
+            const userPrompt = `Story Concept: "${storyPrompt}"
+
+Existing approved panel descriptions:
+${completedPrompts}
+
+Write exactly ${needsPrompts.length} new short visual panel description(s) that continue the story from where the existing panels left off. Each description should be 1-2 sentences, cinematic, focused on visuals and composition. Every new panel MUST include at least one speech bubble, thought bubble, or narration caption (write the line in double quotes and follow with a parenthetical of the bubble type, e.g. (speech bubble from Mira, tail pointing to her)). Keep continuity with the existing characters, mood, and tone.
+
+Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with no markdown or extra formatting.`;
+            let llmResponse: unknown;
+            try {
+              llmResponse = await llmClient.call(systemPrompt, userPrompt);
+            } catch (err) {
+              throw new Error(
+                `[Worker] LLM call failed while generating extend prompts: ` +
+                  (err instanceof Error ? err.message : String(err))
+              );
+            }
+            if (!Array.isArray(llmResponse)) {
+              throw new Error(
+                `[Worker] Expected LLM to return an array of prompts, got ` +
+                  typeof llmResponse
+              );
+            }
+            const generatedPrompts = llmResponse as unknown[];
+            if (generatedPrompts.length !== needsPrompts.length) {
+              throw new Error(
+                `[Worker] LLM returned ${generatedPrompts.length} prompts, ` +
+                  `expected ${needsPrompts.length}`
+              );
+            }
+            needsPrompts.forEach((panelIdx, i) => {
+              const prompt = generatedPrompts[i];
+              if (typeof prompt !== 'string' || !prompt.trim()) {
+                throw new Error(
+                  `[Worker] LLM returned non-string prompt at position ${i}`
+                );
+              }
+              panels[panelIdx]!.setPrompt(prompt);
+            });
+            project.setPanels(panels);
+            await projectRepo.save(project);
+          }
+
+          // Now generate the image for the targeted panel. Mirrors the
+          // regenerate-panel pipeline (mask of styleModifiers, optional
+          // cover reference, Supabase staging) so visual continuity carries
+          // over without diverging from the original tooling.
+          const basePrompt = targetPanel.getPrompt().trim();
+          if (!basePrompt) {
+            throw new Error(
+              `[Worker] Panel ${nextPendingIndex} still has no prompt after ` +
+                `continuation fill — aborting.`
+            );
+          }
+          const feedbackText =
+            typeof regenFeedback === 'string' && regenFeedback.trim().length > 0
+              ? regenFeedback.trim()
+              : null;
+          const imagePrompt = feedbackText
+            ? `${basePrompt}\n\nReviewer feedback for this regeneration: ${feedbackText}`
+            : basePrompt;
+
+          const styleModifiers = buildStyleModifiers(project);
+          let referenceImageUrls: string[] | undefined;
+          const coverPath = project.getCoverImageUrl();
+          if (coverPath && !/^https?:\/\//i.test(coverPath)) {
+            try {
+              const { data: signedUrlData } = await supabase.storage
+                .from('comics')
+                .createSignedUrl(coverPath, 3600);
+              if (signedUrlData?.signedUrl) {
+                referenceImageUrls = [signedUrlData.signedUrl];
+              }
+            } catch (err) {
+              logger.warn(
+                `[Worker] Failed to sign cover for extend reference: ` +
+                  (err instanceof Error ? err.message : String(err))
+              );
+            }
+          }
+
+          const remoteUrl = await imageGenPort.generatePanel({
+            prompt: imagePrompt,
+            panelNumber: nextPendingIndex + 1,
+            styleModifiers,
+            referenceImageUrls,
+          });
+
+          const storagePath = `comics/${projectId}/panels/${nextPendingIndex}.webp`;
+          let stagedPath = remoteUrl;
+          try {
+            const imageResponse = await fetch(remoteUrl);
+            if (!imageResponse.ok) {
+              throw new Error(
+                `Failed to fetch extend panel from CDN: HTTP ${imageResponse.status}`
+              );
+            }
+            const buffer = Buffer.from(await imageResponse.arrayBuffer());
+            const { error: uploadError } = await supabase.storage
+              .from('comics')
+              .upload(storagePath, buffer, {
+                contentType: 'image/webp',
+                upsert: true,
+              });
+            if (uploadError) throw uploadError;
+            stagedPath = storagePath;
+          } catch (err) {
+            logger.warn(
+              `[Worker] Extend panel ${nextPendingIndex} stage-to-Supabase failed; ` +
+                `falling back to remote URL: ` +
+                (err instanceof Error ? err.message : String(err))
+            );
+          }
+
+          targetPanel.setGeneratedImageUrl(stagedPath);
+          const generatedStatus = PanelStatus.create('generated');
+          if (!generatedStatus.success || !generatedStatus.value) {
+            throw new Error('Failed to construct generated PanelStatus');
+          }
+          targetPanel.setStatus(generatedStatus.value);
+          project.setPanels(panels);
+          project.setStatus(PENDING_REVIEW_EXTEND_STATUS);
+          await projectRepo.save(project);
+
+          logger.info(
+            `[Worker] Extend panel ${nextPendingIndex} generated; project ${projectId} ` +
+              `paused for HITL review.`
+          );
         }
       } catch (error) {
         logger.error(
@@ -410,6 +592,23 @@ export function initComicWorker(
                       target.setStatus(failedStatus.value);
                       project.setPanels(panels);
                     }
+                  }
+                }
+                project.setStatus('completed');
+              } else if (job.name === 'extend-next-panel') {
+                // Extend pipeline failed. Mark the first pending extend
+                // panel as failed so it doesn't block subsequent rounds,
+                // and revert the project to its prior settled state so the
+                // user can retry the extend from the layout chooser.
+                const panels = project.getPanels();
+                const firstPending = panels.findIndex(
+                  (p) => p.getStatus().getValue() === 'pending'
+                );
+                if (firstPending !== -1) {
+                  const failedStatus = PanelStatus.create('failed');
+                  if (failedStatus.success && failedStatus.value) {
+                    panels[firstPending]!.setStatus(failedStatus.value);
+                    project.setPanels(panels);
                   }
                 }
                 project.setStatus('completed');

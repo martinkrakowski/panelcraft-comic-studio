@@ -9,6 +9,7 @@ import {
 } from '@panelcraft/ui';
 import { Image as ImageIcon, RefreshCw, Pencil } from 'lucide-react';
 import { getPanelStatusLabel } from '../../lib/panel-status';
+import { resolveComicPageLayout } from '../../lib/comic-page-layouts';
 import { ImageWithFallback } from './ImageWithFallback';
 
 interface GridPanel {
@@ -21,6 +22,14 @@ interface GridPanel {
 
 interface PanelsGridProps {
   panels: GridPanel[];
+  /**
+   * Persisted layout choice. When set to a known template ID,
+   * `resolveComicPageLayout` produces a real grid config (columns + rows +
+   * per-cell placements) so the editor preview matches the composed page
+   * the user will see on `/view`. Without it the grid falls back to a
+   * 2-column flow.
+   */
+  selectedLayout?: string | null;
   /**
    * When provided, each panel renders a Regenerate action that calls this
    * with the panel index. The button is disabled while
@@ -40,16 +49,48 @@ interface PanelsGridProps {
 
 export function PanelsGrid({
   panels,
+  selectedLayout,
   onRegenerate,
   onEdit,
   regeneratingPanelIndex,
 }: PanelsGridProps) {
+  // Drive the editor grid from the persisted layout when one is set: lets
+  // the user see a layout swap (PATCH /layout) visibly rearrange their
+  // panels in place, instead of needing to jump to /view to confirm the
+  // change took effect. Falls back to the prior 2-column flow when no
+  // layout is selected yet (e.g., mid-HITL on a fresh project).
+  const layout = selectedLayout
+    ? resolveComicPageLayout(selectedLayout, panels.length)
+    : null;
+  const useLayoutGrid = Boolean(layout?.cellPlacements?.length);
+  const gridStyle = useLayoutGrid
+    ? {
+        gridTemplateColumns: layout!.columns,
+        gridTemplateRows: layout!.rows,
+        aspectRatio: layout!.aspectRatio,
+      }
+    : undefined;
+
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-        Comic Panels
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+          Comic Panels
+        </h3>
+        {useLayoutGrid && layout && (
+          <span className="text-[10px] uppercase tracking-widest text-slate-500">
+            Layout: {layout.label}
+          </span>
+        )}
+      </div>
+      <div
+        className={
+          useLayoutGrid
+            ? 'grid gap-4 mx-auto w-full max-w-2xl'
+            : 'grid grid-cols-1 md:grid-cols-2 gap-6'
+        }
+        style={gridStyle}
+      >
         {panels.map((panel) => {
           const label = getPanelStatusLabel(panel.status);
           // Mid-work signal: panel is queued, mid-generation, or being
@@ -61,6 +102,9 @@ export function PanelsGrid({
             panel.status === 'pending' ||
             panel.status === 'generating';
 
+          const cellPlacement = useLayoutGrid
+            ? layout!.cellPlacements?.[panels.indexOf(panel)]
+            : undefined;
           return (
             <Card
               key={panel.id}
@@ -69,6 +113,7 @@ export function PanelsGrid({
                   ? 'border-transparent animate-panel-busy'
                   : 'border-slate-700/60 hover:border-indigo-400/60'
               }`}
+              style={cellPlacement ? { gridArea: cellPlacement } : undefined}
             >
               <CardHeader className="p-4 border-b border-slate-800/30 flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-sm font-bold text-white">

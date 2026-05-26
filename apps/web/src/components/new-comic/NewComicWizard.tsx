@@ -97,6 +97,7 @@ export function NewComicWizard() {
     watch,
     setActiveStep,
     saveToIndexedDB,
+    preferredLayoutId,
   });
 
   const moodBoardObjectUrls = useObjectUrls(moodBoardImageBlobs);
@@ -151,6 +152,7 @@ export function NewComicWizard() {
         handleRetry={handleRetry}
         saveToIndexedDB={saveToIndexedDB}
         onSubmit={onSubmit}
+        preferredLayoutId={preferredLayoutId}
       />
     </AppCanvasTwoPane>
   );

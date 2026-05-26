@@ -12,6 +12,12 @@ export interface LayoutChooserStepProps {
   layoutOptions: string[];
   handleLayoutSelect: (layout: string) => Promise<void>;
   onRetry: () => void;
+  /**
+   * Set when Step 0's Recommended Layouts picked a template — the wizard
+   * auto-confirms it on the user's behalf, so we hide the chooser grid and
+   * show a "Applying layout…" affordance instead of the layout tiles.
+   */
+  preferredLayoutId?: string | null;
 }
 
 export function LayoutChooserStep({
@@ -21,6 +27,7 @@ export function LayoutChooserStep({
   layoutOptions,
   handleLayoutSelect,
   onRetry,
+  preferredLayoutId,
 }: LayoutChooserStepProps) {
   return (
     <div className="space-y-6 text-center">
@@ -59,6 +66,15 @@ export function LayoutChooserStep({
           >
             Try Again
           </Button>
+        </div>
+      ) : projectStatus === 'pending_layout' && preferredLayoutId ? (
+        // Step 0 already picked a layout — useProjectCreation auto-fires the
+        // selectLayout request on this state transition, so we keep the
+        // loader running rather than re-showing the chooser tiles the user
+        // never asked to see.
+        <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4">
+          <Check className="h-8 w-8 text-green-500" />
+          <p className="text-slate-400">Applying your selected layout…</p>
         </div>
       ) : projectStatus === 'pending_layout' ? (
         <div className="space-y-6">

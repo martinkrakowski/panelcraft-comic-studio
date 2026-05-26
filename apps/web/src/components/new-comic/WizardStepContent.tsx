@@ -45,6 +45,7 @@ interface WizardStepContentProps {
   handleRetry: () => void;
   saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
   onSubmit: () => Promise<void>;
+  preferredLayoutId: string | null;
 }
 
 /**
@@ -82,6 +83,7 @@ export function WizardStepContent(props: WizardStepContentProps) {
     handleRetry,
     saveToIndexedDB,
     onSubmit,
+    preferredLayoutId,
   } = props;
 
   return (
@@ -102,7 +104,11 @@ export function WizardStepContent(props: WizardStepContentProps) {
                   src="/tell-your-story.jpg"
                   alt="Tell your story"
                   className="rounded-lg"
-                  style={{ maxWidth: '784px', width: '100%', maxHeight: '100%' }}
+                  style={{
+                    maxWidth: '784px',
+                    width: '100%',
+                    maxHeight: '100%',
+                  }}
                 />
               </div>
               <StoryPromptStep
@@ -155,6 +161,7 @@ export function WizardStepContent(props: WizardStepContentProps) {
               layoutOptions={layoutOptions}
               handleLayoutSelect={handleLayoutSelect}
               onRetry={handleRetry}
+              preferredLayoutId={preferredLayoutId}
             />
           )}
         </motion.div>

@@ -27,7 +27,12 @@ export type ProjectStatus =
   | 'pending_layout'
   | 'pending_review'
   | 'completed'
-  | 'failed';
+  | 'failed'
+  // Post-completion extend pipeline. `extending` is the in-flight phase
+  // while the worker generates a freshly-added panel; `pending_review_extend`
+  // is the HITL pause between extension panels.
+  | 'extending'
+  | 'pending_review_extend';
 
 export interface PanelDTO {
   id: string;

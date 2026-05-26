@@ -91,6 +91,16 @@ export interface RestControllerPort {
   selectLayout(projectId: string, selectedLayout: string): Promise<void>;
 
   /**
+   * Persist a new layout choice without touching workflow state. Used for
+   * post-generation layout swaps where the layout only affects rendering of
+   * existing panels (no resume job, no regeneration).
+   */
+  updateSelectedLayout(
+    projectId: string,
+    selectedLayout: string
+  ): Promise<void>;
+
+  /**
    * Enqueues a resume-comic job with the selected layout.
    */
   enqueueResumeComic(projectId: string, selectedLayout: string): Promise<void>;
@@ -114,5 +124,27 @@ export interface RestControllerPort {
     projectId: string,
     panelIndex: number,
     feedback?: string
+  ): Promise<void>;
+
+  /**
+   * Add empty panel slots to a completed project and kick off the worker
+   * that fills them in one-by-one, pausing for HITL review on each new
+   * panel. Bypasses the LangGraph workflow (which has already terminated
+   * for the original generation).
+   */
+  extendPanels(
+    projectId: string,
+    targetPanelCount: number,
+    selectedLayout: string
+  ): Promise<void>;
+
+  /**
+   * Drop panels from a completed project, keeping only the indices the user
+   * picked. Metadata-only operation — no regeneration, no jobs enqueued.
+   */
+  shrinkPanels(
+    projectId: string,
+    keepIndices: number[],
+    selectedLayout: string
   ): Promise<void>;
 }

@@ -105,6 +105,59 @@ export const api = {
   },
 
   /**
+   * Swap the persisted layout choice without re-running generation. Used in
+   * the HITL editor to re-arrange existing panels under a different layout
+   * template — project status is preserved.
+   */
+  async updateLayout(id: string, layout: string): Promise<void> {
+    return request<void>(`/api/projects/${id}/layout`, {
+      method: 'PATCH',
+      body: JSON.stringify({ selectedLayout: layout }),
+    });
+  },
+
+  /**
+   * Add empty panel slots to a completed project and kick off the worker
+   * that fills them in one-by-one with HITL pauses. Returns 202; the UI
+   * should poll until the worker produces the first new panel in the
+   * `pending_review_extend` status.
+   */
+  async extendPanels(
+    id: string,
+    targetPanelCount: number,
+    layout: string
+  ): Promise<{ message: string; targetPanelCount: number }> {
+    return request<{ message: string; targetPanelCount: number }>(
+      `/api/projects/${id}/panels/extend`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          targetPanelCount,
+          selectedLayout: layout,
+        }),
+      }
+    );
+  },
+
+  /**
+   * Drop panels from a completed project, keeping only the supplied indices
+   * (preserving order). Pure metadata update — no regeneration.
+   */
+  async shrinkPanels(
+    id: string,
+    keepIndices: number[],
+    layout: string
+  ): Promise<void> {
+    return request<void>(`/api/projects/${id}/panels/shrink`, {
+      method: 'POST',
+      body: JSON.stringify({
+        keepIndices,
+        selectedLayout: layout,
+      }),
+    });
+  },
+
+  /**
    * Retrieves latest project status.
    *
    * @param id - Project UUID
