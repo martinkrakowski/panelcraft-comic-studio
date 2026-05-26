@@ -1,7 +1,5 @@
 'use client';
 
-// @ts-nocheck
-
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
@@ -15,7 +13,7 @@ import {
   clearWizardState,
   IndexedDBQuotaExceededError,
 } from '../../../lib/indexedDB';
-import { useWizardPersistence } from '../../../lib/hooks';
+import { useWizardPersistence, type WizardPersistedState } from '../../../lib/hooks';
 import { useToast } from '@panelcraft/ui';
 
 interface UseWizardFormArgs {
@@ -73,9 +71,7 @@ export function useWizardForm({
     projectId: null,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const saveToIndexedDB = async (overrides?: any) => {
+  const saveToIndexedDB = async (overrides?: Partial<WizardPersistedState>) => {
     if (typeof window === 'undefined') return;
     try {
       await saveStateToDB(form.watch(), overrides);

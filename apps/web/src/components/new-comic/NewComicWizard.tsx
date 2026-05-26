@@ -1,30 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useToast, AppCanvasTwoPane } from '@panelcraft/ui';
+import { AppCanvasTwoPane } from '@panelcraft/ui';
 import { NewComicWizardSidebar } from './NewComicWizardSidebar';
-import { useObjectUrls, useWizardPersistence } from '../../lib/hooks';
-import {
-  getWizardState,
-  clearWizardState,
-  IndexedDBQuotaExceededError,
-} from '../../lib/indexedDB';
-import {
-  wizardFormSchema,
-  type WizardFormValues,
-} from '../../lib/validation/wizard-schemas';
-import { getDefaultWizardValues } from '../../lib/wizard-constants';
-import {
-  StoryPromptStep,
-  CharacterBibleStep,
-  StyleReferencesStep,
-  ReviewSubmitStep,
-  LayoutChooserStep,
-} from './steps';
+import { useObjectUrls } from '../../lib/hooks';
 import { WizardStepIndicator } from './WizardStepIndicator';
 import { WizardNavButtons } from './WizardNavButtons';
 import { WizardStepContent } from './WizardStepContent';
@@ -32,10 +12,8 @@ import { useWizardStepNavigation } from './hooks/useWizardStepNavigation';
 import { useImageUploads } from './hooks/useImageUploads';
 import { useProjectCreation } from './hooks/useProjectCreation';
 import { useWizardForm } from './hooks/useWizardForm';
-import styles from './NewComicWizard.module.css';
 
 export function NewComicWizard() {
-  const { toast } = useToast();
   const [activeStep, setActiveStep] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -69,6 +47,7 @@ export function NewComicWizard() {
   });
 
   const { register, handleSubmit, watch, setValue, trigger, formState: { errors } } = form;
+  const globalStylePrompt = watch('globalStylePrompt') || '';
 
   const { handleNextStep, handleBackStep, handleAnalyzePrompt, isAnalyzing } =
     useWizardStepNavigation({
@@ -149,7 +128,38 @@ export function NewComicWizard() {
         </>
       }
     >
-      <WizardStepContent />
+      <WizardStepContent
+        activeStep={activeStep}
+        register={register}
+        handleSubmit={handleSubmit}
+        setValue={setValue}
+        errors={errors}
+        fields={fields}
+        append={append}
+        remove={remove}
+        prompt={prompt}
+        genres={genres}
+        tones={tones}
+        panelCount={panelCount}
+        characters={characters}
+        moodBoardPreset={moodBoardPreset}
+        moodBoardObjectUrls={moodBoardObjectUrls}
+        isAnalyzing={isAnalyzing}
+        handleAnalyzePrompt={handleAnalyzePrompt}
+        handleCharacterImageUpload={handleCharacterImageUpload}
+        handleMoodBoardUpload={handleMoodBoardUpload}
+        isSubmitting={isSubmitting}
+        setActiveStep={setActiveStep}
+        isPolling={isPolling}
+        projectStatus={projectStatus}
+        coverUrl={coverUrl}
+        layoutOptions={layoutOptions}
+        handleLayoutSelect={handleLayoutSelect}
+        handleRetry={handleRetry}
+        saveToIndexedDB={saveToIndexedDB}
+        globalStylePrompt={globalStylePrompt}
+        onSubmit={onSubmit}
+      />
 
       <WizardNavButtons
         activeStep={activeStep}

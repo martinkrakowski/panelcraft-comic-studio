@@ -1,19 +1,22 @@
 'use client';
 
-// @ts-nocheck
-
-import { Trash2 } from 'lucide-react';
+import { Trash2, ImagePlus } from 'lucide-react';
+import { Textarea } from '@panelcraft/ui';
+import type {
+  UseFormRegister,
+  FieldErrors,
+  FieldArrayWithId,
+} from 'react-hook-form';
+import type { WizardFormValues } from '../../../lib/validation/wizard-schemas';
+import type { WizardPersistedState } from '../../../lib/hooks';
 
 interface CharacterCardProps {
-  field: { id: string };
+  field: FieldArrayWithId<WizardFormValues, 'characters', 'id'>;
   index: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  register: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  errors: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleCharacterImageUpload: (index: number, file: File) => void;
-  saveToIndexedDB: () => void;
+  register: UseFormRegister<WizardFormValues>;
+  errors: FieldErrors<WizardFormValues>;
+  handleCharacterImageUpload: (index: number, file: File) => Promise<void>;
+  saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
   onRemove: (index: number) => void;
 }
 
@@ -82,36 +85,66 @@ export function CharacterCard({
         </div>
       </div>
 
-      {/* Visual description and traits would go here - truncated for brevity in this initial extraction */}
       <div>
-        <label className="text-[10px] text-slate-400 uppercase">Visual Description</label>
-        <textarea
-          {...register(`characters.${index}.visualDescription`)}
+        <label
+          htmlFor={`character-visual-${index}`}
+          className="text-[10px] text-slate-400 uppercase"
+        >
+          Visual Description
+        </label>
+        <Textarea
+          id={`character-visual-${index}`}
+          {...register(`characters.${index}.visual`)}
           onBlur={() => saveToIndexedDB()}
-          className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white h-20"
+          placeholder="Mid-40s, sharp jaw, dark trench coat..."
+          className="h-20 resize-none bg-slate-800 border border-slate-700 text-white text-sm"
         />
+        {errors.characters?.[index]?.visual && (
+          <p className="text-xs text-red-400">
+            {errors.characters[index]?.visual?.message}
+          </p>
+        )}
       </div>
 
-      {/* Image upload placeholder */}
       <div>
-        <button
-          type="button"
-          onClick={() => {
-            // In real implementation, trigger file input
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            input.onchange = (e: any) => {
-              const file = e.target.files?.[0];
-              if (file) handleCharacterImageUpload(index, file);
-            };
-            input.click();
-          }}
-          className="text-xs px-3 py-1 border border-dashed border-slate-600 rounded hover:bg-slate-800"
+        <label
+          htmlFor={`character-consistency-${index}`}
+          className="text-[10px] text-slate-400 uppercase"
         >
+          Consistency Notes
+        </label>
+        <Textarea
+          id={`character-consistency-${index}`}
+          {...register(`characters.${index}.consistency`)}
+          onBlur={() => saveToIndexedDB()}
+          placeholder="Always wears red scarf, scar over left eye, never smiles..."
+          className="h-20 resize-none bg-slate-800 border border-slate-700 text-white text-sm"
+        />
+        {errors.characters?.[index]?.consistency && (
+          <p className="text-xs text-red-400">
+            {errors.characters[index]?.consistency?.message}
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <input
+          type="file"
+          id={`char-image-${index}`}
+          accept="image/*"
+          className="hidden"
+          onChange={(e) =>
+            e.target.files?.[0] &&
+            handleCharacterImageUpload(index, e.target.files[0])
+          }
+        />
+        <label
+          htmlFor={`char-image-${index}`}
+          className="flex items-center gap-2 text-xs text-slate-400 hover:text-white cursor-pointer"
+        >
+          <ImagePlus className="h-4 w-4" />
           Upload Reference Image
-        </button>
+        </label>
       </div>
     </div>
   );
