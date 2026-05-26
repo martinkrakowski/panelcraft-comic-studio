@@ -337,9 +337,11 @@ export async function generatePanel(
     ...(panel as PanelJSON),
     generatedImageUrl: stagedPath,
     status: 'generated',
-    // Explicit re-assertion for static analysis / future-proofing (fields are in spread)
-    dialogue: (panel as any).dialogue,
-    captions: (panel as any).captions,
+    // Explicit preservation for regen safety (fields are part of the spread + PanelJSON now)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    dialogue: (panel as PanelJSON & { dialogue?: unknown }).dialogue as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    captions: (panel as PanelJSON & { captions?: unknown }).captions as any,
   };
 
   return {
