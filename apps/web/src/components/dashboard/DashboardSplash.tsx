@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button, buttonVariants } from '@panelcraft/ui';
 import { LayoutGrid, Sparkles } from 'lucide-react';
+import { useEffectOnce, useUnmountEffect } from '../../lib/hooks';
 import styles from './DashboardSplash.module.css';
 
 /**
@@ -23,24 +24,30 @@ let hasShownThisSession = false;
  */
 export function DashboardSplash() {
   const [visible, setVisible] = useState(false);
+  // Refs let the always-on Escape handler read current visibility without
+  // re-registering: re-binding on every `visible` toggle would need a raw
+  // useEffect with cleanup, which the no-restricted-syntax rule disallows.
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
 
-  useEffect(() => {
+  useEffectOnce(() => {
+    onKeyRef.current = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && visibleRef.current) setVisible(false);
+    };
+    window.addEventListener('keydown', onKeyRef.current);
+
     if (hasShownThisSession) return;
     const entries = performance.getEntriesByType('navigation');
     const navEntry = entries[0] as PerformanceNavigationTiming | undefined;
     if (navEntry?.type !== 'reload') return;
     hasShownThisSession = true;
     setVisible(true);
-  }, []);
+  });
 
-  useEffect(() => {
-    if (!visible) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setVisible(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [visible]);
+  useUnmountEffect(() => {
+    window.removeEventListener('keydown', onKeyRef.current);
+  });
 
   if (!visible) return null;
 

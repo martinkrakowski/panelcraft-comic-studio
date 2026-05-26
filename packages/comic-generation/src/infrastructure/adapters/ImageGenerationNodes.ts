@@ -6,6 +6,7 @@ import {
 import type { ComicGraphStateType } from '../types/ComicGraphState.js';
 import type { HITLFeedbackData } from '../../domain/value-objects/HITLFeedback.vo.js';
 import type { WorkflowDeps, CharacterBibleData } from './ComicWorkflowTypes.js';
+import { structureStory } from './StoryStructureNodes.js';
 
 function buildCharacterStyleModifiers(
   state: ComicGraphStateType
@@ -90,21 +91,48 @@ export async function generateCover(
   }
 }
 
+// Each label must lead with `<n>-panel` so inferPanelCountFromLayout()
+// can read the implied count back out, and must keep the tokens that
+// resolveComicPageLayout() matches on (e.g. "2x2", "splash"/"inset",
+// "large"/"thumbnail", "2-column", "horizontal", "1x3"). Counts are
+// capped at PanelCount's wizard limit (4) so the selection won't be
+// rejected when re-structuring.
+const LAYOUT_SUGGESTIONS = [
+  '3-panel grid (1x3)',
+  '4-panel 2-column strip',
+  '3-panel splash with insets',
+  '4-panel 2x2 grid',
+  '4-panel large + 3 thumbnails',
+  '4-panel horizontal strip',
+];
+
 export async function suggestLayouts(
   state: ComicGraphStateType,
   deps: WorkflowDeps
 ): Promise<ComicGraphStateType> {
   deps.logger.info('Generating layout options');
-  const layouts = [
-    '3-panel grid (1x3)',
-    '2-column vertical strip',
-    'Full-page splash with 2 insets',
-    '4-panel 2x2 grid',
-    '1 large panel + 3 thumbnails',
-    'Horizontal 6-panel strip',
-  ].slice(0, 4 + Math.floor(Math.random() * 3));
+  const layouts = LAYOUT_SUGGESTIONS.slice(
+    0,
+    4 + Math.floor(Math.random() * 3)
+  );
 
   return { ...state, layoutOptions: layouts };
+}
+
+/**
+ * Parse the implied panel count from a layout label like "3-panel grid (1x3)".
+ * Returns `fallback` when the label has no `<n>-panel` token (e.g. legacy
+ * labels or test fixtures).
+ */
+export function inferPanelCountFromLayout(
+  label: string | null | undefined,
+  fallback: number
+): number {
+  if (!label) return fallback;
+  const match = label.match(/(\d+)\s*-?\s*panel/i);
+  if (!match) return fallback;
+  const parsed = parseInt(match[1], 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 export async function layoutInterrupt(
@@ -150,6 +178,40 @@ export async function layoutInterrupt(
   }) as { selectedLayout: string };
 
   return { ...state, selectedLayout: selection.selectedLayout };
+}
+
+/**
+ * Reconcile panel count with the user's layout pick.
+ *
+ * The wizard's panelCount slider is a hint, but the layout chosen on the
+ * brainstorm view is authoritative — picking "3-panel grid (1x3)" must
+ * produce 3 panels even if the slider said 4. When the implied count
+ * differs from `project.panelCount`, we update the count and re-run
+ * structureStory so the LLM re-paces the beats to the new length.
+ */
+export async function restructureForLayout(
+  state: ComicGraphStateType,
+  deps: WorkflowDeps
+): Promise<ComicGraphStateType> {
+  const inferred = inferPanelCountFromLayout(
+    state.selectedLayout,
+    state.project.panelCount
+  );
+
+  if (inferred === state.project.panelCount) {
+    return state;
+  }
+
+  deps.logger.info(
+    `Restructuring panels for selected layout "${state.selectedLayout}": ${state.project.panelCount} → ${inferred}`
+  );
+
+  const adjusted: ComicGraphStateType = {
+    ...state,
+    project: { ...state.project, panelCount: inferred },
+  };
+
+  return structureStory(adjusted, deps);
 }
 
 export async function generatePanel(

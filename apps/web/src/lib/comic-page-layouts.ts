@@ -28,6 +28,24 @@ export interface ComicPageGridConfig {
 }
 
 /**
+ * Parse the implied panel count from a layout label like
+ * "3-panel grid (1x3)". Returns `fallback` when the label has no
+ * `<n>-panel` token. Mirrors the backend helper in
+ * `packages/comic-generation/.../ImageGenerationNodes.ts` so the
+ * brainstorm preview shows the same cell count the workflow will use.
+ */
+export function inferPanelCountFromLayout(
+  label: string | null | undefined,
+  fallback: number
+): number {
+  if (!label) return fallback;
+  const match = label.match(/(\d+)\s*-?\s*panel/i);
+  if (!match) return fallback;
+  const parsed = parseInt(match[1], 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
  * Match a free-form layout string to a known template. Returns a sensible
  * default if no template matches the label exactly.
  */
