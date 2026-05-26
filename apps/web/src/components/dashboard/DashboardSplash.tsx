@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from '@panelcraft/ui';
+import Link from 'next/link';
+import { Button, buttonVariants } from '@panelcraft/ui';
+import { Sparkles } from 'lucide-react';
 
 /**
  * Splash overlay shown only when the user **reloads** the dashboard via the
@@ -48,14 +50,25 @@ export function DashboardSplash() {
         >
           <source src="/varo-ai-logo.webm" type="video/webm" />
         </video>
-        <Button
-          type="button"
-          onClick={() => setVisible(false)}
-          size="lg"
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-10"
-        >
-          Begin
-        </Button>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+          <Button
+            type="button"
+            onClick={() => setVisible(false)}
+            size="lg"
+            variant="outline"
+            className="w-full sm:w-auto border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800 hover:text-white"
+          >
+            View All Comics
+          </Button>
+          <Link
+            href="/new"
+            scroll={false}
+            className={`${buttonVariants({ size: 'lg' })} w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-2`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Create New Comic
+          </Link>
+        </div>
       </div>
     </div>
   );
