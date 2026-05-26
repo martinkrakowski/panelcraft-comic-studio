@@ -1,0 +1,43 @@
+# VCS
+.git
+.gitignore
+
+# Node / build artifacts (rebuilt inside the image)
+node_modules
+**/node_modules
+.next
+**/.next
+.output
+**/.output
+dist
+**/dist
+**/tsconfig.tsbuildinfo
+coverage
+**/coverage
+
+# Yarn 4 caches (releases/ and plugins/ stay; cache/unplugged regenerate)
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+.yarn/build-state.yml
+
+# Local dev state
+.env
+.env.*
+!.env.example
+.turbo
+**/.turbo
+.vscode
+.idea
+*.log
+.DS_Store
+
+# Docs & planning (not needed in the image)
+docs
+.architecture
+.agents
+.claude
+.husky
+
+# CI
+.github

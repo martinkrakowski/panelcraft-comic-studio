@@ -25,6 +25,7 @@ jobs:
             --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
             --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+            --build-arg CORS_ORIGIN=https://varoai.martinkrakowski.com \
             -f Dockerfile -t varo-ai-panelcraft:prod .
 
       - name: Save Image to tar.gz
