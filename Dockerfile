@@ -15,9 +15,10 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
 
-# Manifests + yarn config first for cacheable install layer
+# Manifests + yarn config first for cacheable install layer.
+# Yarn 4 is fetched by corepack from package.json's `packageManager` field —
+# no `.yarn/releases/` is committed in this repo, so nothing to copy from there.
 COPY package.json yarn.lock .yarnrc.yml ./
-COPY .yarn ./.yarn
 COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY packages/shared/package.json ./packages/shared/
