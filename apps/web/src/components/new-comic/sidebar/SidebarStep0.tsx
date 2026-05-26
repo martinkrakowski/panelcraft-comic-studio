@@ -98,7 +98,7 @@ export function SidebarStep0({
             type="range"
             min={1}
             max={4}
-            value={panelCount}
+            value={panelCount ?? 4}
             onChange={(e) => {
               const next = parseInt(e.target.value, 10);
               setValue('panelCount', next);
