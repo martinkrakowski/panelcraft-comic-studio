@@ -1,9 +1,20 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Download, Share2, AlertCircle } from 'lucide-react';
-import { buttonVariants, Button, Skeleton, useToast } from '@panelcraft/ui';
+import {
+  buttonVariants,
+  Button,
+  Carousel,
+  CarouselDots,
+  CarouselNext,
+  CarouselPrev,
+  CarouselSlide,
+  CarouselViewport,
+  Skeleton,
+  useToast,
+} from '@panelcraft/ui';
 import { useProject } from '../../lib/hooks/useProject';
 import { resolveComicPageLayout } from '../../lib/comic-page-layouts';
 import { ImageWithFallback } from '../editor/ImageWithFallback';
@@ -260,38 +271,118 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-3xl">
-        <div
-          ref={pageRef}
-          className="grid gap-2 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-2xl shadow-black/40"
-          style={{
-            gridTemplateColumns: layout.columns,
-            gridTemplateRows: layout.rows,
-            aspectRatio: layout.aspectRatio,
-          }}
+      {project.coverImageUrl ? (
+        <Carousel
+          ariaLabel="Comic preview"
+          className="mx-auto w-full max-w-3xl"
         >
-          {renderablePanels.map((panel, idx) => (
-            <div
-              key={panel.id}
-              className="relative overflow-hidden rounded-md border-2 border-slate-900 bg-black"
-              style={
-                layout.cellPlacements?.[idx]
-                  ? { gridArea: layout.cellPlacements[idx] }
-                  : undefined
-              }
-            >
-              <ImageWithFallback
-                src={panel.imageUrl as string}
-                alt={`Panel ${panel.index + 1}`}
-                className="w-full h-full object-cover"
-                // Older projects still reference the xAI CDN (no CORS).
-                // Only request CORS for hosts that we know serve it (our
-                // Supabase signed URLs) — otherwise the image is blocked.
-                crossOrigin={isCorsCapableHost(panel.imageUrl)}
+          <CarouselViewport>
+            <CarouselSlide label="Cover">
+              <CoverSlide
+                src={project.coverImageUrl}
+                prompt={project.prompt}
+                corsCapable={isCorsCapableHost(project.coverImageUrl)}
               />
-            </div>
-          ))}
+            </CarouselSlide>
+            <CarouselSlide label="Composed page">
+              <ComposedPage
+                pageRef={pageRef}
+                layout={layout}
+                panels={renderablePanels}
+              />
+            </CarouselSlide>
+          </CarouselViewport>
+          <div className="flex items-center justify-between pt-4">
+            <CarouselPrev />
+            <CarouselDots />
+            <CarouselNext />
+          </div>
+        </Carousel>
+      ) : (
+        <div className="mx-auto w-full max-w-3xl">
+          <ComposedPage
+            pageRef={pageRef}
+            layout={layout}
+            panels={renderablePanels}
+          />
         </div>
+      )}
+    </div>
+  );
+}
+
+interface ComposedPageProps {
+  pageRef: RefObject<HTMLDivElement | null>;
+  layout: ReturnType<typeof resolveComicPageLayout>;
+  panels: Array<{ id: string; imageUrl: string | null; index: number }>;
+}
+
+/**
+ * Composed CSS-grid page. Always rendered as a static DOM subtree so that
+ * `html-to-image` can capture it regardless of carousel state — no animation
+ * primitives wrap it (see plan D3).
+ */
+function ComposedPage({ pageRef, layout, panels }: ComposedPageProps) {
+  return (
+    <div
+      ref={pageRef}
+      className="grid gap-2 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-2xl shadow-black/40"
+      style={{
+        gridTemplateColumns: layout.columns,
+        gridTemplateRows: layout.rows,
+        aspectRatio: layout.aspectRatio,
+      }}
+    >
+      {panels.map((panel, idx) => (
+        <div
+          key={panel.id}
+          className="relative overflow-hidden rounded-md border-2 border-slate-900 bg-black"
+          style={
+            layout.cellPlacements?.[idx]
+              ? { gridArea: layout.cellPlacements[idx] }
+              : undefined
+          }
+        >
+          <ImageWithFallback
+            src={panel.imageUrl as string}
+            alt={`Panel ${panel.index + 1}`}
+            className="w-full h-full object-cover"
+            // Older projects still reference the xAI CDN (no CORS).
+            // Only request CORS for hosts that we know serve it (our
+            // Supabase signed URLs) — otherwise the image is blocked.
+            crossOrigin={isCorsCapableHost(panel.imageUrl)}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface CoverSlideProps {
+  src: string;
+  prompt: string;
+  corsCapable: boolean;
+}
+
+/**
+ * Book-cover style first slide. xAI returns 1:1 covers; `object-contain`
+ * inside a `aspect-[2/3]` frame letterboxes gracefully if a future generator
+ * returns a non-square image.
+ */
+function CoverSlide({ src, prompt, corsCapable }: CoverSlideProps) {
+  return (
+    <div className="relative w-full aspect-[2/3] overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-2xl shadow-black/40">
+      <ImageWithFallback
+        src={src}
+        alt="Comic cover"
+        className="absolute inset-0 w-full h-full object-contain"
+        crossOrigin={corsCapable}
+      />
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-5 sm:p-6">
+        <p className="text-white text-sm sm:text-base font-medium line-clamp-3 drop-shadow-md">
+          {prompt}
+        </p>
+        <p className="mt-2 text-xs text-slate-300/80">Open page →</p>
       </div>
     </div>
   );
