@@ -1,0 +1,87 @@
+name: Deploy to Production VPS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          docker-images: false
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+            -f Dockerfile -t varo-ai-panelcraft:prod .
+
+      - name: Save Image to tar.gz
+        run: |
+          docker save varo-ai-panelcraft:prod | gzip > varo-ai-panelcraft.tar.gz
+
+      - name: Transfer tar.gz to VPS via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "varo-ai-panelcraft.tar.gz"
+          target: "/opt/varo-ai-panelcraft/"
+          overwrite: true
+
+      - name: Execute Deployment Commands on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: XAI_API_KEY,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,LANGCHAIN_TRACING_V2,LANGCHAIN_API_KEY,LANGCHAIN_PROJECT,LANGCHAIN_ENDPOINT,REDIS_HOST,REDIS_PORT,CORS_ORIGIN,NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY
+          script: "cd /opt/varo-ai-panelcraft\n\
+            cat <<EOF > .env\n\
+            NODE_ENV=\"production\"\n\
+            XAI_API_KEY=\"$XAI_API_KEY\"\n\
+            SUPABASE_URL=\"$SUPABASE_URL\"\n\
+            SUPABASE_ANON_KEY=\"$SUPABASE_ANON_KEY\"\n\
+            SUPABASE_SERVICE_ROLE_KEY=\"$SUPABASE_SERVICE_ROLE_KEY\"\n\
+            LANGCHAIN_TRACING_V2=\"$LANGCHAIN_TRACING_V2\"\n\
+            LANGCHAIN_API_KEY=\"$LANGCHAIN_API_KEY\"\n\
+            LANGCHAIN_PROJECT=\"$LANGCHAIN_PROJECT\"\n\
+            LANGCHAIN_ENDPOINT=\"$LANGCHAIN_ENDPOINT\"\n\
+            REDIS_HOST=\"$REDIS_HOST\"\n\
+            REDIS_PORT=\"$REDIS_PORT\"\n\
+            CORS_ORIGIN=\"$CORS_ORIGIN\"\n\
+            NEXT_PUBLIC_API_URL=\"$NEXT_PUBLIC_API_URL\"\n\
+            NEXT_PUBLIC_SUPABASE_URL=\"$NEXT_PUBLIC_SUPABASE_URL\"\n\
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$NEXT_PUBLIC_SUPABASE_ANON_KEY\"\n\
+            EOF\n\
+            docker compose down\n\
+            docker rmi varo-ai-panelcraft:prod || true\n\
+            docker load < varo-ai-panelcraft.tar.gz\n\
+            docker compose up -d\n\
+            rm varo-ai-panelcraft.tar.gz\n\
+            docker system prune -a -f --volumes"
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LANGCHAIN_TRACING_V2: ${{ secrets.LANGCHAIN_TRACING_V2 }}
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
+          LANGCHAIN_PROJECT: ${{ secrets.LANGCHAIN_PROJECT }}
+          LANGCHAIN_ENDPOINT: ${{ secrets.LANGCHAIN_ENDPOINT }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
