@@ -183,10 +183,13 @@ describe('NewComicWizard Phase 1 Smoke Tests', () => {
       ).toBeInTheDocument();
     });
 
-    // Exercises the topStrip slot regression net (C1 / N3)
+    // Exercises the topStrip slot regression net (C1 / N3). The escape-to-
+    // onboarding affordance was unified into the footer's Back button, so
+    // the topStrip now only carries the step indicator.
     const topstrip = screen.getByTestId('topstrip-slot');
     expect(topstrip).toBeInTheDocument();
-    expect(topstrip.textContent).toMatch(/back to onboarding/i);
+    const footer = screen.getByTestId('footer-slot');
+    expect(footer.textContent).toMatch(/back/i);
   }, 5000);
 
   it('hydrates state from IndexedDB on mount', async () => {

@@ -1,10 +1,15 @@
 'use client';
 
-import { ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button, ContentPanelFooter } from '@panelcraft/ui';
 
 interface WizardNavButtonsProps {
   activeStep: number;
+  /**
+   * Single back affordance. The parent decides destination: at step 0 it
+   * should exit the wizard (e.g. back to `/new` onboarding), at step > 0
+   * it decrements the wizard step.
+   */
   onBack: () => void;
   onNext: () => void;
 }
@@ -12,11 +17,10 @@ interface WizardNavButtonsProps {
 /**
  * Pinned footer for wizard step navigation. Renders inside the
  * `<AppCanvasTwoPane footer>` slot. Returns null on terminal steps where
- * neither Back nor Next applies, so the footer area collapses cleanly.
+ * navigation no longer applies, so the footer area collapses cleanly.
  *
- * Layout: Back on the left, Next on the right (platform-standard). Empty
- * spacer keeps the surviving button anchored to its edge when only one of
- * the two is shown.
+ * Layout: Back on the left (always shown — contextual destination),
+ * Next on the right (hidden on the final step).
  */
 export function WizardNavButtons({
   activeStep,
@@ -25,24 +29,18 @@ export function WizardNavButtons({
 }: WizardNavButtonsProps) {
   if (activeStep >= 4) return null;
 
-  const showBack = activeStep > 0;
   const showNext = activeStep < 3;
-
-  if (!showBack && !showNext) return null;
 
   return (
     <ContentPanelFooter>
-      {showBack ? (
-        <Button
-          type="button"
-          onClick={onBack}
-          className="bg-slate-800 hover:bg-slate-700 text-white"
-        >
-          Back
-        </Button>
-      ) : (
-        <span aria-hidden />
-      )}
+      <Button
+        type="button"
+        onClick={onBack}
+        className="bg-slate-800 hover:bg-slate-700 text-white inline-flex items-center"
+      >
+        <ChevronLeft className="h-4 w-4 mr-2" />
+        Back
+      </Button>
       {showNext ? (
         <Button
           type="button"
