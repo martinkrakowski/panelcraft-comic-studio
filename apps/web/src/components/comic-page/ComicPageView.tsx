@@ -18,6 +18,7 @@ import {
 import { useProject } from '../../lib/hooks/useProject';
 import { resolveComicPageLayout } from '../../lib/comic-page-layouts';
 import { ImageWithFallback } from '../editor/ImageWithFallback';
+import type { PanelDTO } from '@panelcraft/types';
 
 interface ComicPageViewProps {
   projectId: string;
@@ -81,6 +82,15 @@ function waitForImage(img: HTMLImageElement): Promise<void> {
   });
 }
 
+/**
+ * ComicPageView component displays a read-only preview of a finished comic book,
+ * including a cover slide (if available) and the fully composed panel layout.
+ * It also supports exporting the page as a PNG or sharing the link.
+ *
+ * @param props - The component props.
+ * @param props.projectId - The ID of the project to view.
+ * @returns A React element representing the comic page viewer.
+ */
 export function ComicPageView({ projectId }: ComicPageViewProps) {
   const { toast } = useToast();
   const { project, loading, error } = useProject(projectId);
@@ -207,7 +217,9 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
 
   // The view is meaningful once every panel has an image; until then,
   // direct the user back to the editor where the HITL flow lives.
-  const renderablePanels = project.panels.filter((p) => !!p.imageUrl);
+  const renderablePanels = project.panels.filter(
+    (p): p is PanelDTO & { imageUrl: string } => Boolean(p.imageUrl)
+  );
   if (renderablePanels.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
@@ -314,7 +326,7 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
 interface ComposedPageProps {
   pageRef: RefObject<HTMLDivElement | null>;
   layout: ReturnType<typeof resolveComicPageLayout>;
-  panels: Array<{ id: string; imageUrl: string | null; index: number }>;
+  panels: Array<PanelDTO & { imageUrl: string }>;
 }
 
 /**
@@ -344,7 +356,7 @@ function ComposedPage({ pageRef, layout, panels }: ComposedPageProps) {
           }
         >
           <ImageWithFallback
-            src={panel.imageUrl as string}
+            src={panel.imageUrl}
             alt={`Panel ${panel.index + 1}`}
             className="w-full h-full object-cover"
             // Older projects still reference the xAI CDN (no CORS).

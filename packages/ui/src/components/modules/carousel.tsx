@@ -15,8 +15,8 @@ type CarouselContextValue = {
   api: CarouselApi;
   selectedIndex: number;
   slideCount: number;
-  scrollPrev: () => void;
-  scrollNext: () => void;
+  scrollPrev: (_event?: React.MouseEvent) => void;
+  scrollNext: (_event?: React.MouseEvent) => void;
   scrollTo: (index: number) => void;
   canScrollPrev: boolean;
   canScrollNext: boolean;
@@ -69,7 +69,17 @@ interface CarouselProps extends React.HTMLAttributes<HTMLDivElement> {
  * </Carousel>
  */
 const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
-  ({ options, ariaLabel = 'Carousel', className, children, ...props }, ref) => {
+  (
+    {
+      options,
+      ariaLabel = 'Carousel',
+      className,
+      children,
+      onKeyDown: consumerOnKeyDown,
+      ...props
+    },
+    ref
+  ) => {
     const [emblaRef, emblaApi] = useEmblaCarousel({
       loop: false,
       ...options,
@@ -114,11 +124,11 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     }, [selectedIndex, slideCount, emblaApi]);
 
     const scrollPrev = React.useCallback(
-      () => emblaApi?.scrollPrev(),
+      (_event?: React.MouseEvent) => emblaApi?.scrollPrev(),
       [emblaApi]
     );
     const scrollNext = React.useCallback(
-      () => emblaApi?.scrollNext(),
+      (_event?: React.MouseEvent) => emblaApi?.scrollNext(),
       [emblaApi]
     );
     const scrollTo = React.useCallback(
@@ -176,6 +186,11 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
       ]
     );
 
+    const mergedOnKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      onKeyDown(e);
+      consumerOnKeyDown?.(e);
+    };
+
     return (
       <CarouselContext.Provider value={contextValue}>
         <div
@@ -183,7 +198,7 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
           role="region"
           aria-roledescription="carousel"
           aria-label={ariaLabel}
-          onKeyDown={onKeyDown}
+          onKeyDown={mergedOnKeyDown}
           className={cn('relative outline-none', className)}
           {...props}
         >
@@ -268,14 +283,20 @@ type CarouselNavButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 const CarouselPrev = React.forwardRef<
   HTMLButtonElement,
   CarouselNavButtonProps
->(({ className, ...props }, ref) => {
+>(({ className, onClick: consumerOnClick, ...props }, ref) => {
   const { scrollPrev, canScrollPrev } = useCarousel();
+
+  const composedOnClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    consumerOnClick?.(event);
+    scrollPrev(event);
+  };
+
   return (
     <button
       ref={ref}
       type="button"
       aria-label="Previous slide"
-      onClick={scrollPrev}
+      onClick={composedOnClick}
       disabled={!canScrollPrev}
       className={cn(
         'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 backdrop-blur transition hover:bg-slate-800 hover:text-white disabled:pointer-events-none disabled:opacity-40',
@@ -293,14 +314,20 @@ CarouselPrev.displayName = 'CarouselPrev';
 const CarouselNext = React.forwardRef<
   HTMLButtonElement,
   CarouselNavButtonProps
->(({ className, ...props }, ref) => {
+>(({ className, onClick: consumerOnClick, ...props }, ref) => {
   const { scrollNext, canScrollNext } = useCarousel();
+
+  const composedOnClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    consumerOnClick?.(event);
+    scrollNext(event);
+  };
+
   return (
     <button
       ref={ref}
       type="button"
       aria-label="Next slide"
-      onClick={scrollNext}
+      onClick={composedOnClick}
       disabled={!canScrollNext}
       className={cn(
         'inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-300 backdrop-blur transition hover:bg-slate-800 hover:text-white disabled:pointer-events-none disabled:opacity-40',
