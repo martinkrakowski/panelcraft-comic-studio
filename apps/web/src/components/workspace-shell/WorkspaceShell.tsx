@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, Film, CheckCircle } from 'lucide-react';
+import Image from 'next/image';
+import { Sparkles } from 'lucide-react';
 
 interface WorkspaceShellProps {
   children: React.ReactNode;
@@ -25,35 +26,30 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
 
       {/* Header Shell */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md transition-all duration-300">
-        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-8">
-            <Link
-              href="/"
-              scroll={false}
-              className="flex items-center space-x-3 group"
-            >
-              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-300">
-                <Film className="h-5 w-5 text-white animate-pulse" />
-                <div className="absolute -inset-0.5 bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 rounded-xl blur opacity-30 group-hover:opacity-60 transition-opacity duration-300 pointer-events-none" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent group-hover:text-indigo-400 transition-colors duration-300">
-                  PanelCraft
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider leading-none">
-                  Comic Studio
-                </span>
-              </div>
-            </Link>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {/* Topbar Meta */}
-            <div className="hidden sm:flex items-center px-3 py-1.5 rounded-full border border-slate-800 bg-slate-900/50 backdrop-blur-sm text-xs font-semibold text-slate-400 space-x-1.5 shadow-sm">
-              <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Adobe Firefly Demo</span>
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center">
+          <Link
+            href="/"
+            scroll={false}
+            className="flex items-center space-x-3 group"
+          >
+            <div className="flex items-center justify-center w-10 h-10">
+              <Image
+                src="/varo-ai.svg"
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10"
+              />
             </div>
-          </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent group-hover:text-indigo-400 transition-colors duration-300">
+                Varo AI
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider leading-none">
+                PanelCraft
+              </span>
+            </div>
+          </Link>
         </div>
       </header>
 
