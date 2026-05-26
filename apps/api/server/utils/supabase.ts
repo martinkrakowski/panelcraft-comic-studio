@@ -121,3 +121,26 @@ export async function getSignedUrl(
   }
   return data.signedUrl;
 }
+
+/**
+ * Convert a Supabase Storage path stored on a project (e.g.
+ * `comics/<id>/covers/front.webp`) to a freshly-signed short-lived URL the
+ * frontend can render. Returns the original value unchanged if it's already
+ * an http(s) URL, or null if signing fails — callers should treat null as
+ * "no image available" rather than propagating the failure.
+ */
+export async function toSignedUrlIfPath(
+  value: string | null | undefined,
+  bucket = 'comics'
+): Promise<string | null> {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  try {
+    return await getSignedUrl(bucket, value);
+  } catch (err) {
+    logger.warn(
+      `Failed to sign storage path ${value}: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return null;
+  }
+}

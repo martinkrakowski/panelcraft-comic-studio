@@ -104,6 +104,12 @@ export interface ProjectSummaryDTO {
   panelCount: number;
   status: ProjectStatus;
   createdAt: string;
+  /**
+   * Short-lived signed URL to the cover image, when one exists. The list
+   * endpoint signs these in parallel; failed signs surface as `null` so the
+   * dashboard can render a placeholder rather than break the row.
+   */
+  coverImageUrl?: string | null;
 }
 
 export interface ProjectListResponse {

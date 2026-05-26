@@ -132,6 +132,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
         <ContentPanelFooter>
           <Link
             href="/"
+            scroll={false}
             className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -140,6 +141,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           {project.status === 'completed' ? (
             <Link
               href={`/projects/${project.id}/view`}
+              scroll={false}
               className={`${buttonVariants({ size: 'sm' })} bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1.5`}
             >
               <BookOpen className="h-4 w-4" />

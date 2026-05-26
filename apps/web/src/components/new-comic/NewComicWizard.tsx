@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 import { AppCanvasTwoPane } from '@panelcraft/ui';
 import { NewComicWizardSidebar } from './NewComicWizardSidebar';
 import { useObjectUrls } from '../../lib/hooks';
@@ -116,26 +115,13 @@ export function NewComicWizard() {
         />
       }
       clearHeader={activeStep < 3}
-      topStrip={
-        <>
-          <div className="flex-shrink-0 px-4 pt-4">
-            <button
-              type="button"
-              onClick={() => router.push('/new')}
-              className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to onboarding
-            </button>
-          </div>
-
-          <WizardStepIndicator activeStep={activeStep} />
-        </>
-      }
+      topStrip={<WizardStepIndicator activeStep={activeStep} />}
       footer={
         <WizardNavButtons
           activeStep={activeStep}
-          onBack={handleBackStep}
+          // Contextual back: exit to onboarding at step 0, otherwise
+          // decrement the wizard step.
+          onBack={activeStep === 0 ? () => router.push('/new') : handleBackStep}
           onNext={handleNextStep}
         />
       }

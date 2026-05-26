@@ -25,7 +25,15 @@ const itemVariants = {
  *
  * @returns A motion button tile.
  */
-export function OnboardingTile({ id, label, badgeLabel, Icon, accent, onSelect, index }: OnboardingTileProps) {
+export function OnboardingTile({
+  id,
+  label,
+  badgeLabel,
+  Icon,
+  accent,
+  onSelect,
+  index,
+}: OnboardingTileProps) {
   const { r, g, b } = accent;
 
   return (
@@ -42,7 +50,7 @@ export function OnboardingTile({ id, label, badgeLabel, Icon, accent, onSelect, 
         } as React.CSSProperties
       }
       className={[
-        'flex flex-col items-center justify-center gap-2 p-3 text-center',
+        'w-full flex flex-col items-center justify-center gap-2 p-3 text-center',
         'hover:scale-[1.02] active:scale-[0.98] transition-transform',
       ].join(' ')}
       whileTap={{ scale: 0.96 }}
