@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@panelcraft/ui';
+import { ConfirmDialog } from '@panelcraft/ui';
 import { Trash2 } from 'lucide-react';
 
 interface DeleteProjectDialogProps {
@@ -45,39 +37,26 @@ export function DeleteProjectDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Delete this comic?</DialogTitle>
-          <DialogDescription>
-            <span className="block mb-2 italic text-slate-300">
-              &ldquo;{promptPreview || 'Untitled comic'}&rdquo;
-            </span>
-            This permanently removes the project, all generated panel images,
-            the cover, mood-board uploads, and workflow state. There is no undo.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={deleting}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={deleting}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Trash2 className="h-4 w-4" />
-            {deleting ? 'Deleting…' : 'Delete'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      contentClassName="max-w-md"
+      title="Delete this comic?"
+      description={
+        <>
+          <span className="block mb-2 italic text-slate-300">
+            &ldquo;{promptPreview || 'Untitled comic'}&rdquo;
+          </span>
+          This permanently removes the project, all generated panel images, the
+          cover, mood-board uploads, and workflow state. There is no undo.
+        </>
+      }
+      confirmLabel="Delete"
+      busyLabel="Deleting…"
+      busy={deleting}
+      confirmVariant="destructive"
+      confirmIcon={<Trash2 className="h-4 w-4" />}
+      onConfirm={handleConfirm}
+    />
   );
 }
