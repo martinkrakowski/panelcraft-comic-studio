@@ -28,6 +28,15 @@ interface UseWizardFormArgs {
   setProjectId: (id: string | null) => void;
 }
 
+/**
+ * Wires the wizard's react-hook-form instance, hydrates default values from
+ * IndexedDB, exposes the `characters` field array, and returns a
+ * `saveToIndexedDB` helper that persists form + image-blob state through
+ * `useWizardPersistence`. Caller owns the image-blob / id state so the
+ * persistence layer can read live values on each save.
+ *
+ * @returns `{ form, fields, append, remove, saveToIndexedDB }`
+ */
 export function useWizardForm({
   activeStep,
   setActiveStep,

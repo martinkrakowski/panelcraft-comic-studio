@@ -17,6 +17,14 @@ const itemVariants = {
   },
 };
 
+/**
+ * One tile in the onboarding starting-method grid. Reads its label, badge,
+ * icon, and accent RGB from `TileConfig` (see `onboarding-tiles.ts`) and
+ * fires `onSelect(id)` on click. Stagger animation timing is controlled by
+ * the parent's `containerVariants` via the passed `index`.
+ *
+ * @returns A motion button tile.
+ */
 export function OnboardingTile({ id, label, badgeLabel, Icon, accent, onSelect, index }: OnboardingTileProps) {
   const { r, g, b } = accent;
 

@@ -61,7 +61,7 @@ export function EditorErrorState({ message }: { message?: string }) {
         <div className="w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 pt-20" />
       }
     >
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="h-full flex items-center justify-center p-6">
         <Alert variant="destructive" className="max-w-md">
           <AlertCircle className="h-5 w-5" />
           <AlertTitle>Failed to Load Project</AlertTitle>

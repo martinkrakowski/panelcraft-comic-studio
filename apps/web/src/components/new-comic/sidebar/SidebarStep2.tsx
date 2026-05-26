@@ -12,6 +12,12 @@ interface SidebarStep2Props {
   saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
 }
 
+/**
+ * Sidebar contents for wizard step 2: a style-preset picker that mirrors
+ * the moodBoardPreset form field and persists each change to IndexedDB.
+ *
+ * @returns The style-preset grid section.
+ */
 export function SidebarStep2({ control, setValue, saveToIndexedDB }: SidebarStep2Props) {
   const moodBoardPreset = useWatch({ control, name: 'moodBoardPreset' });
 

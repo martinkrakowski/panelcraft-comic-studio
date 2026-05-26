@@ -20,6 +20,14 @@ interface CharacterCardProps {
   onRemove: (index: number) => void;
 }
 
+/**
+ * Single character entry in the CharacterBibleStep. Renders the
+ * name/role/visual/consistency fields, hidden file input for the reference
+ * image (compressed and persisted by the parent's `handleCharacterImageUpload`),
+ * and a remove button that calls `onRemove` with the field index.
+ *
+ * @returns A character bible card.
+ */
 export function CharacterCard({
   field,
   index,

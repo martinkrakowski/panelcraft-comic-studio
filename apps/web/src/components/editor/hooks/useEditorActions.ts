@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useToast } from '@panelcraft/ui';
 import api from '../../../lib/api';
 import type { SubmitReviewFormValues } from '../../../lib/validation/form-schemas';
@@ -41,7 +41,14 @@ export function useEditorActions({
     number | null
   >(null);
 
+  // Refs close the click-burst window before React re-renders the disabled
+  // button — the *_State flags drive UI, the refs drive the guard.
+  const selectingLayoutRef = useRef(false);
+  const submittingReviewRef = useRef(false);
+
   const onSelectLayout = async (layout: string) => {
+    if (selectingLayoutRef.current) return;
+    selectingLayoutRef.current = true;
     setSelectingLayout(true);
     try {
       await api.selectLayout(projectId, layout);
@@ -59,6 +66,7 @@ export function useEditorActions({
       });
     } finally {
       setSelectingLayout(false);
+      selectingLayoutRef.current = false;
     }
   };
 
@@ -85,6 +93,8 @@ export function useEditorActions({
   };
 
   const onSubmitReview = async (data: SubmitReviewFormValues) => {
+    if (submittingReviewRef.current) return;
+    submittingReviewRef.current = true;
     setSubmittingReview(true);
     try {
       await api.submitReview(projectId, {
@@ -108,6 +118,7 @@ export function useEditorActions({
       });
     } finally {
       setSubmittingReview(false);
+      submittingReviewRef.current = false;
     }
   };
 

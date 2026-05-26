@@ -21,6 +21,13 @@ export interface NewComicWizardSidebarProps {
   fields: FieldArrayWithId<WizardFormValues, 'characters', 'id'>[];
 }
 
+/**
+ * Sidebar pane for the new-comic wizard. Renders the variant-appropriate
+ * `SidebarStep{0,1,2}` for steps 0–2 and returns `null` for steps 3+ (the
+ * review/submit and layout-chooser steps run full-width with no sidebar).
+ *
+ * @returns The active sidebar step, or `null` past step 2.
+ */
 export function NewComicWizardSidebar(props: NewComicWizardSidebarProps) {
   const { activeStep } = props;
 

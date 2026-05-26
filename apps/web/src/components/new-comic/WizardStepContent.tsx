@@ -47,6 +47,15 @@ interface WizardStepContentProps {
   onSubmit: () => Promise<void>;
 }
 
+/**
+ * Step router for the new-comic wizard. Switches on `activeStep` to render
+ * one of the five step bodies (StoryPrompt, CharacterBible, StyleReferences,
+ * ReviewSubmit, LayoutChooser) inside an `AnimatePresence` slide transition.
+ * The form `control` is passed down so each step subscribes scoped via
+ * `useWatch` instead of forcing the orchestrator to re-render.
+ *
+ * @returns The active step's body wrapped in the slide-transition container.
+ */
 export function WizardStepContent(props: WizardStepContentProps) {
   const {
     activeStep,

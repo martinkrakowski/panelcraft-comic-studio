@@ -21,6 +21,13 @@ interface SidebarStep0Props {
   saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
 }
 
+/**
+ * Sidebar contents for wizard step 0: genre/tone chip toggles, panel-count
+ * range slider, and a recommended-layouts grid driven by `getLayoutsByMood`.
+ * All mutations write through `setValue` and persist via `saveToIndexedDB`.
+ *
+ * @returns The step-0 sidebar sections.
+ */
 export function SidebarStep0({
   control,
   preferredLayoutId,
@@ -67,6 +74,7 @@ export function SidebarStep0({
             <button
               type="button"
               key={tone}
+              aria-pressed={tones?.includes(tone)}
               onClick={() => {
                 const current = tones || [];
                 const next = current.includes(tone)
