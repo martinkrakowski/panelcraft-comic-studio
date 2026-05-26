@@ -43,7 +43,7 @@ Create exactly ${panelCount} short, vivid visual descriptions for each panel of 
 Each description should be 1-2 sentences focused on visual elements, composition, characters, and mood.
 Make them cinematic and action-oriented where appropriate.
 
-Where a single short line of dialog naturally advances the panel's beat, attribute it to the speaker in-line and follow it with a parenthetical noting it should render as a speech bubble next to that character. Use dialog sparingly; prefer silent visual beats otherwise. Escape inner double quotes so the JSON still parses.
+Every panel MUST feature at least one speech bubble, thought bubble, or narration caption — bubbles are the signature visual cue that makes these read as comic panels, so lean in hard. When two or more characters share a frame, write a short back-and-forth of two or three bubbles. Write the spoken or thought text in double quotes, attribute it to the speaker in-line, and follow each line with a parenthetical of the form (speech bubble from <character>, tail pointing to them), (thought bubble above <character>, cloud shape with small trailing dots), or (narration caption box across the top of the panel) when no character is speaking. Keep bubbles punchy — one short line each, in-character, and they must advance the beat or land a reaction. Never leave a panel text-free. Escape inner double quotes so the JSON still parses.
 
 Return ONLY a valid JSON array of exactly ${panelCount} strings with no markdown or extra formatting:
 ["Panel 1: ...", "Panel 2: ...", ...]`;

@@ -211,6 +211,6 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
 
   private buildComicPrompt(basePrompt: string, modifiers?: string): string {
     const style = modifiers ? `, ${modifiers}` : '';
-    return `${basePrompt}. Professional comic book panel, bold black outlines, vibrant colors, dynamic composition, high detail${style}. Comic art style.`;
+    return `${basePrompt}. Professional comic book panel, bold black outlines, vibrant colors, dynamic composition, high detail${style}. Comic art style. Render every quoted line of dialog as a clearly hand-lettered SPEECH BUBBLE with a tail pointing to the speaker; render any indicated thought as a CLOUD-SHAPED THOUGHT BUBBLE with small trailing dots above the character; render any narration as a RECTANGULAR CAPTION BOX with a contrasting border at the top or bottom of the panel. Bubbles and captions are a non-negotiable, defining feature of the comic look — they must be present, large enough to read at a glance, and integrated naturally into the composition without covering faces.`;
   }
 }
