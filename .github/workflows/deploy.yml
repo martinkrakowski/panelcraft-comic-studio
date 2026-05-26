@@ -47,11 +47,15 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: XAI_API_KEY,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,LANGCHAIN_TRACING_V2,LANGCHAIN_API_KEY,LANGCHAIN_PROJECT,LANGCHAIN_ENDPOINT,REDIS_HOST,REDIS_PORT,CORS_ORIGIN,NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY
+          envs: XAI_API_KEY,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,LANGCHAIN_TRACING_V2,LANGCHAIN_API_KEY,LANGCHAIN_PROJECT,LANGCHAIN_ENDPOINT,NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY
           script: "set -Eeuo pipefail\n\
             cd /opt/varo-ai-panelcraft\n\
             cat <<EOF > .env\n\
             NODE_ENV=\"production\"\n\
+            DISABLE_REDIS=\"false\"\n\
+            REDIS_HOST=\"redis\"\n\
+            REDIS_PORT=\"6379\"\n\
+            CORS_ORIGIN=\"https://varoai.martinkrakowski.com\"\n\
             XAI_API_KEY=\"$XAI_API_KEY\"\n\
             SUPABASE_URL=\"$SUPABASE_URL\"\n\
             SUPABASE_ANON_KEY=\"$SUPABASE_ANON_KEY\"\n\
@@ -60,9 +64,6 @@ jobs:
             LANGCHAIN_API_KEY=\"$LANGCHAIN_API_KEY\"\n\
             LANGCHAIN_PROJECT=\"$LANGCHAIN_PROJECT\"\n\
             LANGCHAIN_ENDPOINT=\"$LANGCHAIN_ENDPOINT\"\n\
-            REDIS_HOST=\"$REDIS_HOST\"\n\
-            REDIS_PORT=\"$REDIS_PORT\"\n\
-            CORS_ORIGIN=\"$CORS_ORIGIN\"\n\
             NEXT_PUBLIC_API_URL=\"$NEXT_PUBLIC_API_URL\"\n\
             NEXT_PUBLIC_SUPABASE_URL=\"$NEXT_PUBLIC_SUPABASE_URL\"\n\
             NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$NEXT_PUBLIC_SUPABASE_ANON_KEY\"\n\
@@ -81,9 +82,6 @@ jobs:
           LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
           LANGCHAIN_PROJECT: ${{ secrets.LANGCHAIN_PROJECT }}
           LANGCHAIN_ENDPOINT: ${{ secrets.LANGCHAIN_ENDPOINT }}
-          REDIS_HOST: ${{ secrets.REDIS_HOST }}
-          REDIS_PORT: ${{ secrets.REDIS_PORT }}
-          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
