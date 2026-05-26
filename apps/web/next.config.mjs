@@ -1,3 +1,8 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const defaultApiUrl = 'http://localhost:3001';
 const isAbsoluteUrl = (url) => /^https?:\/\//.test(url);
 const apiUrl =
@@ -27,6 +32,8 @@ const remotePatterns = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   transpilePackages: [
     "@panelcraft/ui",
     "@panelcraft/types",
