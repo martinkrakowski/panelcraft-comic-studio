@@ -34,21 +34,45 @@ export function useDeleteProject(): UseDeleteProjectReturn {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setDeleting(true);
+    // Outer try/finally guarantees the in-flight ref + deleting flag are
+    // cleared on every exit path (delete-error early return, refetch
+    // failure, or full success).
     try {
-      await api.deleteProject(id);
+      // Delete attempt — its own catch so refetch failures below don't
+      // get misreported as "Delete failed".
+      try {
+        await api.deleteProject(id);
+      } catch (err) {
+        toast({
+          variant: 'destructive',
+          title: 'Delete failed',
+          description:
+            err instanceof Error
+              ? err.message
+              : 'Could not delete the project.',
+        });
+        return;
+      }
+
       toast({
         variant: 'success',
         title: 'Project deleted',
         description: 'The comic and its assets have been removed.',
       });
-      await refetchProjects();
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Delete failed',
-        description:
-          err instanceof Error ? err.message : 'Could not delete the project.',
-      });
+
+      // Refetch is best-effort — the project is already gone from the DB
+      // at this point, so failure here is a stale-UI issue, not a
+      // delete failure.
+      try {
+        await refetchProjects();
+      } catch {
+        toast({
+          variant: 'destructive',
+          title: 'List refresh failed',
+          description:
+            'The project was deleted, but refreshing the list failed. Please reload.',
+        });
+      }
     } finally {
       setDeleting(false);
       inFlightRef.current = false;
