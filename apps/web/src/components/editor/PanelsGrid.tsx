@@ -104,7 +104,12 @@ export function PanelsGrid({
       <div
         className={
           useLayoutGrid
-            ? 'grid gap-4 mx-auto w-full max-w-2xl'
+            ? // `items-start` overrides the grid's default
+              // `align-items: stretch` so each card sizes to its own content
+              // height instead of inflating to fill a tall cell (splash rows,
+              // dominant-panel layouts, etc. would otherwise leave dead
+              // space below the image / prompt / actions).
+              'grid gap-4 w-full items-start'
             : 'grid grid-cols-1 md:grid-cols-2 gap-6'
         }
         style={gridStyle}
