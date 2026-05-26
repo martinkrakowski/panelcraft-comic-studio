@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { Loader2, Layers, Check, XCircle } from 'lucide-react';
+import { Layers, Check, XCircle } from 'lucide-react';
 import { Button } from '@panelcraft/ui';
 import styles from '../NewComicWizard.module.css';
 
@@ -24,11 +24,24 @@ export function LayoutChooserStep({
   return (
     <div className="space-y-6 text-center">
       {isPolling || !projectStatus ? (
-        <div className="space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-violet-500 mx-auto" />
-          <h1 className={styles.heroHeading}>
-            Varo is dreaming up your world...
-          </h1>
+        // Loader fills the available wizard content height and centers the
+        // video + caption both axes so the brainstorm wait isn't visually
+        // anchored at the top of the pane.
+        <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            aria-label="Generating your comic"
+            className="w-full max-w-md rounded-xl"
+          >
+            {/* WebM first so Chrome/Firefox/Edge pick the more efficient
+                codec; .mov fallback for Safari versions / codecs that
+                don't decode VP9. */}
+            <source src="/generate-comic-loader.webm" type="video/webm" />
+            <source src="/generate-comic-loader.mov" type="video/quicktime" />
+          </video>
           <p className="text-slate-400">Generating cover and layout options</p>
         </div>
       ) : projectStatus === 'failed' ? (
