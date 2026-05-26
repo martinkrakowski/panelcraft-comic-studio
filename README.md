@@ -2,7 +2,7 @@
 
 **Turn your ideas into complete comics with Varo, your AI creative partner.**
 
-PanelCraft is a production-grade proof-of-concept AI comic creation platform that demonstrates clean hexagonal architecture, strict architectural governance through Hexagen-Monaco (a governance engine that I created) generated boundaries, a fully deterministic and consistent UI system, and an agentic orchestration powered by LangGraph.js with Human-in-the-Loop (HITL) capabilities.
+PanelCraft is a production-grade proof-of-concept AI comic creation platform that demonstrates clean hexagonal architecture, strict architectural governance through Hexagen-Monaco (a governance engine that I created) generated boundaries, a fully deterministic and consistent UI system, and an agentic orchestration layer powered by LangGraph.js with Human-in-the-Loop (HITL) capabilities.
 
 → **Live demo:** https://varoai.martinkrakowski.com/
 
