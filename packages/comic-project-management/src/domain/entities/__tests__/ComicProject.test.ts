@@ -97,7 +97,6 @@ describe('ComicProject', () => {
     it('should reject invalid displayTitle lengths via create', () => {
       expect(ComicDisplayTitle.create('ab').success).toBe(false);
       expect(ComicDisplayTitle.create('x'.repeat(121)).success).toBe(false);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect(ComicDisplayTitle.create(42 as any).success).toBe(false);
     });
   });

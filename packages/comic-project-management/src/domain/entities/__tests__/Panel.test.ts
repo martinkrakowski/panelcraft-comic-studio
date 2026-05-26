@@ -174,7 +174,6 @@ describe('Panel', () => {
       // Simulate regen spread (as in graph node)
       const json = panel.toJSON();
       const updated = { ...json, generatedImageUrl: 'https://new.png', status: 'generated' };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const afterRegen = Panel.fromJSON(updated as any);
 
       expect(afterRegen.getDialogue().length).toBe(1);
@@ -183,7 +182,6 @@ describe('Panel', () => {
       expect(afterRegen.getCaptions()[0].text).toBe('NARRATION');
 
       // set again (as in worker/entity path)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       afterRegen.setDialogue([{ id: 'd2', text: 'Updated!', speaker: 'B', variant: 'thought', position: { x: 0.6, y: 0.6 } } as any]);
       const finalJson = afterRegen.toJSON();
       expect(finalJson.dialogue?.[0].text).toBe('Updated!');

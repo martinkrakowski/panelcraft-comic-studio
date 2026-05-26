@@ -3,6 +3,7 @@ import { ValidationError } from '../errors/ValidationError.js';
 
 // Centralized overlay types from the shared kernel (remediation).
 import type {
+  NormalizedPoint,
   DialogueEntry,
   CaptionEntry,
 } from '@panelcraft/shared';
