@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, buttonVariants } from '@panelcraft/ui';
-import { Sparkles } from 'lucide-react';
+import { LayoutGrid, Sparkles } from 'lucide-react';
+import styles from './DashboardSplash.module.css';
 
 /**
  * Splash overlay shown only when the user **reloads** the dashboard via the
@@ -41,33 +42,39 @@ export function DashboardSplash() {
         Welcome to Varo AI
       </h2>
       <div className="flex flex-col items-center gap-8 p-8 max-w-md">
-        <video
-          autoPlay
-          muted
-          playsInline
-          aria-label="Varo AI logo"
-          className="w-full max-w-sm rounded-xl"
-        >
-          <source src="/varo-ai-logo.webm" type="video/webm" />
-        </video>
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+        <div className={`${styles.videoContainer} w-full max-w-sm`}>
+          <div className={styles.videoBorderGradient} aria-hidden="true" />
+          <div className={styles.videoInner}>
+            <video
+              autoPlay
+              muted
+              playsInline
+              aria-label="Varo AI logo"
+              className={styles.video}
+            >
+              <source src="/varo-ai-logo.webm" type="video/webm" />
+            </video>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+          <Link
+            href="/new"
+            scroll={false}
+            className={`${buttonVariants({ size: 'lg' })} w-full bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center justify-center gap-2`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Create New Comic
+          </Link>
           <Button
             type="button"
             onClick={() => setVisible(false)}
             size="lg"
             variant="outline"
-            className="w-full sm:w-auto border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800 hover:text-white"
+            className="w-full gap-2 border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800 hover:text-white"
           >
+            <LayoutGrid className="h-4 w-4" />
             View All Comics
           </Button>
-          <Link
-            href="/new"
-            scroll={false}
-            className={`${buttonVariants({ size: 'lg' })} w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-2`}
-          >
-            <Sparkles className="h-4 w-4" />
-            Create New Comic
-          </Link>
         </div>
       </div>
     </div>
