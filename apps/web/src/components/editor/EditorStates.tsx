@@ -75,6 +75,7 @@ export function EditorErrorState({ message }: { message?: string }) {
           <div className="mt-4">
             <Link
               href="/"
+              scroll={false}
               className={buttonVariants({ variant: 'outline', size: 'sm' })}
             >
               Back to Dashboard

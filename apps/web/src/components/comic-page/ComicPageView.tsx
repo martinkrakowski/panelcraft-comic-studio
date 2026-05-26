@@ -224,7 +224,11 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
           <p className="text-slate-400 max-w-sm text-sm">
             {error?.message || 'Could not load the project for viewing.'}
           </p>
-          <Link href="/" className={buttonVariants({ variant: 'outline' })}>
+          <Link
+            href="/"
+            scroll={false}
+            className={buttonVariants({ variant: 'outline' })}
+          >
             Back to dashboard
           </Link>
         </div>
@@ -248,6 +252,7 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
           </p>
           <Link
             href={`/projects/${project.id}`}
+            scroll={false}
             className={buttonVariants({ variant: 'outline' })}
           >
             Open editor
@@ -279,6 +284,7 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
           <div className="flex items-center gap-2">
             <Link
               href={`/projects/${project.id}`}
+              scroll={false}
               className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -286,6 +292,7 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
             </Link>
             <Link
               href="/"
+              scroll={false}
               className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
             >
               <Home className="h-4 w-4 mr-2" />

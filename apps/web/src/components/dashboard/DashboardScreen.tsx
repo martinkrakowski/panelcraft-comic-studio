@@ -62,6 +62,7 @@ export function DashboardScreen() {
           <span aria-hidden />
           <Link
             href="/new"
+            scroll={false}
             className={`${buttonVariants({ size: 'sm' })} bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-1.5`}
           >
             <Sparkles className="h-4 w-4" />

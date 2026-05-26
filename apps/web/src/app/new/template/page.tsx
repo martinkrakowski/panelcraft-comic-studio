@@ -38,6 +38,7 @@ export default function Page() {
       >
         <Link
           href="/new"
+          scroll={false}
           className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors duration-200 group"
         >
           <ArrowLeft className="h-4 w-4 mr-2 transform group-hover:-translate-x-0.5 transition-transform duration-200" />

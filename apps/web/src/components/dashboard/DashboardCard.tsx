@@ -40,6 +40,7 @@ export function DashboardCard({ project }: DashboardCardProps) {
     <div className="relative group">
       <Link
         href={destination}
+        scroll={false}
         className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60 rounded-xl"
       >
         <Card className="border-slate-700/60 group-hover:border-indigo-400/60 bg-slate-900/20 overflow-hidden flex flex-col h-full">
