@@ -7,17 +7,30 @@ import { LayoutGrid, Sparkles } from 'lucide-react';
 import styles from './DashboardSplash.module.css';
 
 /**
- * Splash overlay shown only when the user **reloads** the dashboard via the
- * browser (Cmd+R / F5). Initial navigation, back/forward, and route changes
- * do not trigger it. Dismissed by the "Begin" button or Escape.
+ * Module-level flag that survives client-side route changes (same JS
+ * context) but resets on a real browser reload (fresh JS context). Needed
+ * because performance.getEntriesByType('navigation')[0].type stays as
+ * 'reload' for the document's whole lifetime — without this guard, the
+ * splash would re-fire every time the user navigated back to the dashboard
+ * within the same reload-session.
+ */
+let hasShownThisSession = false;
+
+/**
+ * Splash overlay shown only when the user reloads the dashboard via the
+ * browser (Cmd+R / F5). Initial navigation, back/forward, and in-app route
+ * changes do not trigger it. Dismissed by the buttons or Escape.
  */
 export function DashboardSplash() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (hasShownThisSession) return;
     const entries = performance.getEntriesByType('navigation');
     const navEntry = entries[0] as PerformanceNavigationTiming | undefined;
-    if (navEntry?.type === 'reload') setVisible(true);
+    if (navEntry?.type !== 'reload') return;
+    hasShownThisSession = true;
+    setVisible(true);
   }, []);
 
   useEffect(() => {
