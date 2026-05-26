@@ -343,6 +343,9 @@ export function initComicWorker(
             throw new Error('Failed to construct completed PanelStatus');
           }
           targetPanel.setStatus(completedStatus.value);
+          // Regen safety (cover-title-dialog): only mutating image + status on the live Panel entity.
+          // dialogue[], captions[] (and project.displayTitle) are untouched and survive via
+          // setPanels + toJSON roundtrip. JSDoc contract in entity + this path.
           project.setPanels(panels);
 
           const rawPanelCount = project.getPanelCount();

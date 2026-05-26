@@ -8,6 +8,8 @@ import {
   submitReview,
   enqueueResumeComic,
   regeneratePanel,
+  updatePanelOverlays,
+  updateDisplayTitle,
 } from '../handlers/submitReviewHandler.js';
 import { updateProjectPaths } from '../handlers/updateProjectPathsHandler.js';
 
@@ -118,6 +120,24 @@ export class ComicGenerationUseCase implements RestControllerPort {
   ): Promise<void> {
     return updateProjectPaths(projectId, paths, {
       projectRepo: this.projectRepo,
+    });
+  }
+
+  async updatePanelOverlays(
+    projectId: string,
+    panelIndex: number,
+    updates: { dialogue?: unknown[]; captions?: unknown[] }
+  ): Promise<void> {
+    return updatePanelOverlays(projectId, panelIndex, updates, {
+      projectRepo: this.projectRepo,
+      logger: this.logger,
+    });
+  }
+
+  async updateDisplayTitle(projectId: string, title: string | null): Promise<void> {
+    return updateDisplayTitle(projectId, title, {
+      projectRepo: this.projectRepo,
+      logger: this.logger,
     });
   }
 }

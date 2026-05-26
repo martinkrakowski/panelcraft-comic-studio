@@ -15,6 +15,9 @@
     "lint": "eslint src --fix",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@panelcraft/shared": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.5.4"
   }

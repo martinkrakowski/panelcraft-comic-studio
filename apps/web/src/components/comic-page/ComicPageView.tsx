@@ -18,6 +18,9 @@ import {
 import { useProject } from '../../lib/hooks/useProject';
 import { resolveComicPageLayout } from '../../lib/comic-page-layouts';
 import { ImageWithFallback } from '../editor/ImageWithFallback';
+import { SpeechBubble } from '../editor/overlays/SpeechBubble';
+import { CaptionBox } from '../editor/overlays/CaptionBox';
+import type { DialogueEntry, CaptionEntry } from '@panelcraft/types';
 import type { PanelDTO } from '@panelcraft/types';
 
 interface ComicPageViewProps {
@@ -255,7 +258,7 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
             Back to editor
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
-            {project.prompt}
+            {project.displayTitle || project.prompt}
           </h1>
           <p className="text-xs text-slate-500">
             Layout: <span className="text-slate-400">{layout.label}</span>
@@ -293,6 +296,7 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
               <CoverSlide
                 src={project.coverImageUrl}
                 prompt={project.prompt}
+                displayTitle={project.displayTitle}
                 corsCapable={isCorsCapableHost(project.coverImageUrl)}
               />
             </CarouselSlide>
@@ -333,6 +337,11 @@ interface ComposedPageProps {
  * Composed CSS-grid page. Always rendered as a static DOM subtree so that
  * `html-to-image` can capture it regardless of carousel state — no animation
  * primitives wrap it (see plan D3).
+ *
+ * Post-integration: contains <SpeechBubble draggable={false}/> + <CaptionBox/> children
+ * (absolute % positioned inside each cell). + title in CoverSlide preview.
+ * Export PNG (onDownload) therefore includes all overlays + displayTitle treatment.
+ * Verified via static DOM structure + pageRef contract (no portals, all descendants).
  */
 function ComposedPage({ pageRef, layout, panels }: ComposedPageProps) {
   return (
@@ -364,6 +373,24 @@ function ComposedPage({ pageRef, layout, panels }: ComposedPageProps) {
             // Supabase signed URLs) — otherwise the image is blocked.
             crossOrigin={isCorsCapableHost(panel.imageUrl)}
           />
+
+          {/* Overlay integration: Speech bubbles + captions as DOM (SVG-like comic lettering) inside pageRef subtree.
+              Normalized 0-1 coords → absolute % positioning (handled inside SpeechBubble/CaptionBox).
+              draggable=false for static export-safe render. All text data, never baked in PNG source image. */}
+          {(panel.dialogue as DialogueEntry[] | undefined)?.map((entry) => (
+            <SpeechBubble
+              key={entry.id}
+              {...entry}
+              draggable={false}
+            />
+          ))}
+          {(panel.captions as CaptionEntry[] | undefined)?.map((entry) => (
+            <CaptionBox
+              key={entry.id}
+              {...entry}
+              draggable={false}
+            />
+          ))}
         </div>
       ))}
     </div>
@@ -373,6 +400,8 @@ function ComposedPage({ pageRef, layout, panels }: ComposedPageProps) {
 interface CoverSlideProps {
   src: string;
   prompt: string;
+  /** Optional punchy display title (from title LLM or user edit). Renders as comic lettering overlay in top reserved space (image gen reserves blank via hygiene phrase). */
+  displayTitle?: string | null;
   corsCapable: boolean;
 }
 
@@ -380,8 +409,16 @@ interface CoverSlideProps {
  * Book-cover style first slide. xAI returns 1:1 covers; `object-contain`
  * inside a `aspect-[2/3]` frame letterboxes gracefully if a future generator
  * returns a non-square image.
+ *
+ * Updated for cover-title-dialog: if `displayTitle` present, renders a clean
+ * comic-book lettering style overlay at top (in the space reserved by the
+ * "blank space reserved at top..." prompt hygiene). Classic bold, high-contrast,
+ * drop-shadow treatment. Bottom retains synopsis (prompt) for context.
+ * Text is pure DOM overlay — never baked into generated bitmap.
  */
-function CoverSlide({ src, prompt, corsCapable }: CoverSlideProps) {
+function CoverSlide({ src, prompt, displayTitle, corsCapable }: CoverSlideProps) {
+  const titleToShow = displayTitle?.trim() || null;
+
   return (
     <div className="relative w-full aspect-[2/3] overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-2xl shadow-black/40">
       <ImageWithFallback
@@ -390,7 +427,27 @@ function CoverSlide({ src, prompt, corsCapable }: CoverSlideProps) {
         className="absolute inset-0 w-full h-full object-contain"
         crossOrigin={corsCapable}
       />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-5 sm:p-6">
+
+      {/* Comic lettering title overlay — top placement, reserved space aware.
+          Styling evokes classic comic covers (bold, tracking, pop via layered shadows). */}
+      {titleToShow && (
+        <div className="absolute inset-x-0 top-0 flex justify-center pt-6 sm:pt-8 z-10 pointer-events-none">
+          <div
+            className="px-4 py-1.5 sm:py-2 rounded-sm bg-black/70 backdrop-blur-sm border border-white/30"
+            style={{ boxShadow: '0 2px 0 #000, 0 4px 0 #000, 0 0 8px rgba(0,0,0,0.9)' }}
+          >
+            <h2
+              className="font-serif font-black text-white text-2xl sm:text-3xl md:text-4xl tracking-[0.15em] uppercase drop-shadow-[2px_2px_0_#000, -1px_-1px_0_#000] text-center leading-none"
+              title={titleToShow}
+            >
+              {titleToShow}
+            </h2>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom gradient synopsis (kept for context; de-emphasized when title present) */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent p-5 sm:p-6 z-10">
         <p className="text-white text-sm sm:text-base font-medium line-clamp-3 drop-shadow-md">
           {prompt}
         </p>

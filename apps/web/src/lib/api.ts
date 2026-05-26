@@ -5,6 +5,8 @@ import {
   CreateProjectResponse,
   SubmitReviewInput,
   ReviewResponse,
+  type DialogueEntry,
+  type CaptionEntry,
 } from '@panelcraft/types';
 
 // Determine default API URL (automatically handles server-side rendering vs client browser execution)
@@ -162,6 +164,36 @@ export const api = {
       `/api/projects/${id}/panels/${panelIndex}/regenerate`,
       { method: 'POST' }
     );
+  },
+
+  /**
+   * Update dialogue bubbles and/or captions for a panel (editor mutation).
+   * Reuses /review endpoint (dual-purpose for creative fields post-gen).
+   * Follows existing POST + envelope patterns.
+   */
+  async updatePanelOverlays(
+    id: string,
+    panelIndex: number,
+    updates: { dialogue?: DialogueEntry[]; captions?: CaptionEntry[] }
+  ): Promise<{ message: string }> {
+    return request<{ message: string }>(`/api/projects/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ panelIndex, ...updates }),
+    });
+  },
+
+  /**
+   * Update the project's short displayTitle (from title LLM result or user edit in OverlayEditorPanel).
+   * Reuses /review endpoint for minimal surface.
+   */
+  async updateDisplayTitle(
+    id: string,
+    displayTitle: string | null
+  ): Promise<{ message: string }> {
+    return request<{ message: string }>(`/api/projects/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ displayTitle }),
+    });
   },
 };
 export default api;
