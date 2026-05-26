@@ -9,18 +9,17 @@ import styles from './DashboardSplash.module.css';
 
 /**
  * Module-level flag that survives client-side route changes (same JS
- * context) but resets on a real browser reload (fresh JS context). Needed
- * because performance.getEntriesByType('navigation')[0].type stays as
- * 'reload' for the document's whole lifetime — without this guard, the
- * splash would re-fire every time the user navigated back to the dashboard
- * within the same reload-session.
+ * context) but resets on a real browser reload (fresh JS context). Keeps
+ * the splash from re-firing when the user navigates back to the dashboard
+ * within the same JS session.
  */
 let hasShownThisSession = false;
 
 /**
- * Splash overlay shown only when the user reloads the dashboard via the
- * browser (Cmd+R / F5). Initial navigation, back/forward, and in-app route
- * changes do not trigger it. Dismissed by the buttons or Escape.
+ * Splash overlay shown on any fresh page load of the dashboard — initial
+ * navigation, browser reload, or back from an external page. In-app route
+ * changes do not trigger it (module flag persists). Dismissed by the
+ * buttons or Escape.
  */
 export function DashboardSplash() {
   const [visible, setVisible] = useState(false);
@@ -38,9 +37,6 @@ export function DashboardSplash() {
     window.addEventListener('keydown', onKeyRef.current);
 
     if (hasShownThisSession) return;
-    const entries = performance.getEntriesByType('navigation');
-    const navEntry = entries[0] as PerformanceNavigationTiming | undefined;
-    if (navEntry?.type !== 'reload') return;
     hasShownThisSession = true;
     setVisible(true);
   });
