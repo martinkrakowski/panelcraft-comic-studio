@@ -48,6 +48,48 @@ export function AppCanvasCenter({
 }
 
 /**
+ * Full-viewport single-pane canvas: just the content panel (no sidebar).
+ *
+ * Use for:
+ * - `/projects/[id]/view` (comic page view) where there's no per-section
+ *   sidebar nav but we still want viewport-locked chrome + a scrollable
+ *   content area + a pinned footer.
+ *
+ * Slots match `AppCanvasTwoPane` minus `sidebar`:
+ * - `topStrip` — pinned header content inside the content panel.
+ * - `children` — scrollable area (consumers supply their own padding).
+ * - `footer` — pinned footer, typically a `<ContentPanelFooter>`.
+ *
+ * @param clearHeader - When true (default), applies `mt-16` to reserve space
+ *   under the sticky WorkspaceShell header.
+ */
+export function AppCanvasOnePane({
+  topStrip,
+  children,
+  footer,
+  clearHeader = true,
+}: {
+  topStrip?: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  clearHeader?: boolean;
+}) {
+  return (
+    <CanvasBase>
+      <div className="relative h-full flex flex-col gap-[var(--panelcraft-gutter-space)]">
+        <div
+          className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative ${clearHeader ? 'mt-16' : ''}`}
+        >
+          {topStrip}
+          <div className="flex-1 overflow-y-auto">{children}</div>
+          {footer}
+        </div>
+      </div>
+    </CanvasBase>
+  );
+}
+
+/**
  * Full-viewport two-pane canvas: sidebar (left) + main content (right).
  *
  * Use for:
@@ -63,6 +105,10 @@ export function AppCanvasCenter({
  * `px-*`, `pb-*`, `space-y-*` etc. (see topStrip for pinned header content
  * that should not scroll).
  *
+ * The `footer` slot is pinned at the bottom of the content panel (sibling to
+ * the scroll area, not under the sidebar) — typically a `<ContentPanelFooter>`
+ * carrying back/next navigation.
+ *
  * @param clearHeader - When true (default), applies `mt-16` to the content
  *   pane to reserve space under the sticky header. Set false for full-bleed
  *   two-pane experiences.
@@ -71,12 +117,14 @@ export function AppCanvasTwoPane({
   sidebar,
   topStrip,
   children,
+  footer,
   /** Reserve top space for the sticky WorkspaceShell header. Default true. */
   clearHeader = true,
 }: {
   sidebar: ReactNode;
   topStrip?: ReactNode;
   children: ReactNode;
+  footer?: ReactNode;
   clearHeader?: boolean;
 }) {
   return (
@@ -88,6 +136,7 @@ export function AppCanvasTwoPane({
         >
           {topStrip}
           <div className="flex-1 overflow-y-auto">{children}</div>
+          {footer}
         </div>
       </div>
     </CanvasBase>
