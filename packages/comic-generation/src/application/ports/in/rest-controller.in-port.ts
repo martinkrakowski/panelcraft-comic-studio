@@ -109,19 +109,4 @@ export interface RestControllerPort {
    * iterate on individual frames after the HITL flow has finished.
    */
   regeneratePanel(projectId: string, panelIndex: number): Promise<void>;
-
-  /**
-   * Updates dialogue/captions overlays on a panel (editor creative mutations).
-   * Persists structured data; survives regens. Gated to completed projects.
-   */
-  updatePanelOverlays(
-    projectId: string,
-    panelIndex: number,
-    updates: { dialogue?: unknown[]; captions?: unknown[] }
-  ): Promise<void>;
-
-  /**
-   * Updates the short display title (post title-LLM or manual edit in overlays editor).
-   */
-  updateDisplayTitle(projectId: string, title: string | null): Promise<void>;
 }

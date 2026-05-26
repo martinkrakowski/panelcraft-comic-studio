@@ -1,10 +1,8 @@
 import {
   FeedbackEntry,
   PanelStatus,
-  ComicDisplayTitle,
 } from '@panelcraft/comic-project-management';
 import { NotFoundError, ValidationError, LoggerPort } from '@panelcraft/shared';
-import type { DialogueEntry, CaptionEntry } from '@panelcraft/shared';
 import type { RelationalDbPort } from '../ports/out/relational-db.out-port.js';
 import type { JobQueuePort } from '../ports/out/job-queue.out-port.js';
 
@@ -192,94 +190,4 @@ export async function regeneratePanel(
   deps.logger.info(
     `[regeneratePanel] Enqueued panel ${panelIndex} regeneration for project ${projectId}`
   );
-}
-
-/**
- * Update dialogue and/or captions on a specific panel (post-generation creative edits).
- * Persists via entity setters (defensive) + repo save. Only allowed on completed projects
- * (similar guard to regen). The creative fields survive future regens by design.
- * Called from editor flows (OverlayEditorPanel).
- */
-interface UpdatePanelOverlaysDeps {
-  projectRepo: RelationalDbPort;
-  logger: LoggerPort;
-}
-
-export async function updatePanelOverlays(
-  projectId: string,
-  panelIndex: number,
-  updates: { dialogue?: unknown[]; captions?: unknown[] },
-  deps: UpdatePanelOverlaysDeps
-): Promise<void> {
-  const project = await deps.projectRepo.load(projectId);
-  if (!project) {
-    throw new NotFoundError(`Project ${projectId} not found`, projectId);
-  }
-  if (project.getStatus() !== 'completed') {
-    throw new ValidationError(
-      `Cannot edit overlays while project is "${project.getStatus()}" — only completed projects support direct creative edits.`,
-      'status',
-      project.getStatus()
-    );
-  }
-
-  const panels = project.getPanels();
-  if (panelIndex < 0 || panelIndex >= panels.length) {
-    throw new ValidationError(`Panel index ${panelIndex} out of range`, 'panelIndex', panelIndex);
-  }
-
-  const target = panels[panelIndex]!;
-  if (updates.dialogue) {
-    target.setDialogue(updates.dialogue as DialogueEntry[]);
-  }
-  if (updates.captions) {
-    target.setCaptions(updates.captions as CaptionEntry[]);
-  }
-
-  project.setPanels(panels);
-  await deps.projectRepo.save(project);
-
-  deps.logger.info(`[updatePanelOverlays] Saved overlays for panel ${panelIndex} on project ${projectId}`);
-}
-
-/**
- * Update the project's displayTitle (user edit or after title LLM).
- * Allowed on completed projects. Stored as VO on load.
- */
-interface UpdateDisplayTitleDeps {
-  projectRepo: RelationalDbPort;
-  logger: LoggerPort;
-}
-
-export async function updateDisplayTitle(
-  projectId: string,
-  newTitle: string | null,
-  deps: UpdateDisplayTitleDeps
-): Promise<void> {
-  const project = await deps.projectRepo.load(projectId);
-  if (!project) {
-    throw new NotFoundError(`Project ${projectId} not found`, projectId);
-  }
-  if (project.getStatus() !== 'completed' && project.getStatus() !== 'pending_review') {
-    // Allow a bit more flexibility for title (presentation only)
-  }
-
-  // Use VO for validation if non-null
-  let voTitle: ComicDisplayTitle | null = null;
-  if (newTitle && newTitle.trim()) {
-    const trimmed = newTitle.trim().slice(0, 120);
-    if (trimmed.length < 3) {
-      throw new ValidationError('Display title too short (min 3 chars)', 'displayTitle', trimmed);
-    }
-    const result = ComicDisplayTitle.create(trimmed);
-    if (!result.success || !result.value) {
-      throw new ValidationError('Invalid display title', 'displayTitle', trimmed);
-    }
-    voTitle = result.value;
-  }
-
-  project.setDisplayTitle(voTitle);
-  await deps.projectRepo.save(project);
-
-  deps.logger.info(`[updateDisplayTitle] Saved displayTitle for project ${projectId}`);
 }

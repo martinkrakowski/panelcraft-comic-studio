@@ -2,15 +2,7 @@ import type { GeneratePanelCommand } from '../../commands/GeneratePanelCommand.j
 
 /**
  * Port interface for image generation adapters.
- * Implement this interface to swap between different image generation providers (xAI Grok Imagine today,
- * Adobe Firefly / Gemini tomorrow per project goals).
- *
- * Extended in cover-title-dialog workstream for:
- * - aspect ratio control (landscape covers via Gemini)
- * - reserveTitleSpace + targetTitle for prompt hygiene and title overlay prep (text never baked in art)
- *
- * @see ImageGenerationAdapter for impl
- * @see COVER-TITLE-IMPLEMENTATION-DESIGN-2026-05.md
+ * Implement this interface to swap between different image generation providers.
  */
 export interface ImageGenerationPort {
   /**
@@ -20,23 +12,13 @@ export interface ImageGenerationPort {
   generatePanel(command: GeneratePanelCommand): Promise<string>;
 
   /**
-   * Generates a cover image using the configured provider.
-   *
-   * New options (non-breaking) support landscape covers and title-reserved clean artwork:
-   * - aspect: provider-specific ratio (Gemini native; others via prompt)
-   * - reserveTitleSpace: triggers append of hygiene phrase in adapter
-   * - targetTitle: hint for model (overlay title is separate code concern)
+   * Generates a cover image using the configured provider
+   * @returns Image buffer of the generated cover
    */
   generateCover(options: {
     prompt: string;
     style?: unknown;
     characterBible?: unknown;
-    /** Aspect ratio for cover (square default for comics; landscape for modern covers). */
-    aspect?: 'square' | 'landscape-3:2' | 'landscape-16:9' | 'portrait';
-    /** If true, adapter appends "clean artwork, blank space reserved at top for title overlay..." etc. */
-    reserveTitleSpace?: boolean;
-    /** Optional short title hint passed through to image prompt (actual display title overlaid in UI/export). */
-    targetTitle?: string;
   }): Promise<Buffer>;
 
   /**
