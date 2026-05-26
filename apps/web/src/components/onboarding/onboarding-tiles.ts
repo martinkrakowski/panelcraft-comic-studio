@@ -1,6 +1,6 @@
-import { Lightbulb, LayoutTemplate, FolderOpen } from 'lucide-react';
+import { Lightbulb, FolderOpen } from 'lucide-react';
 
-export type StartingMethod = 'brainstorm' | 'template' | 'load-existing';
+export type StartingMethod = 'brainstorm' | 'load-existing';
 
 export interface TileAccent {
   r: number;
@@ -26,13 +26,6 @@ export const TILES: TileConfig[] = [
     accent: { r: 139, g: 92, b: 246 },
   },
   {
-    id: 'template',
-    label: 'Choose a Template',
-    badgeLabel: 'Quick Start',
-    Icon: LayoutTemplate,
-    accent: { r: 6, g: 182, b: 212 },
-  },
-  {
     id: 'load-existing',
     label: 'Load Existing Project',
     badgeLabel: 'Continue',
@@ -43,6 +36,5 @@ export const TILES: TileConfig[] = [
 
 export const ROUTE_MAP: Record<StartingMethod, string> = {
   brainstorm: '/new/brainstorm',
-  template: '/new/template',
   'load-existing': '/',
 };

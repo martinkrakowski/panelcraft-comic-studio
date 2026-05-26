@@ -36,9 +36,7 @@ const itemVariants = {
  * @param props.className - Optional className forwarded to the inner centered container.
  * @returns An animated onboarding screen JSX.Element with method selection tiles.
  */
-export function OnboardingScreen({
-  className,
-}: OnboardingScreenProps) {
+export function OnboardingScreen({ className }: OnboardingScreenProps) {
   const router = useRouter();
 
   function handleTileClick(method: StartingMethod) {
@@ -55,19 +53,6 @@ export function OnboardingScreen({
         initial="hidden"
         animate="visible"
       >
-        {/* Step indicator */}
-        <motion.div
-          variants={itemVariants}
-          className="flex items-center justify-center gap-2 mb-6"
-        >
-          <div className={styles.dotActive} />
-          <div className={styles.dotInactive} />
-          <div className={styles.dotInactive} />
-          <span className="ml-2 text-[10px] text-slate-500 uppercase tracking-widest">
-            Step 1 of 3
-          </span>
-        </motion.div>
-
         {/* Hero card */}
         <motion.div
           variants={itemVariants}
@@ -87,15 +72,14 @@ export function OnboardingScreen({
           </div>
         </motion.div>
 
-        {/* Tile grid */}
-        <div className="grid grid-cols-3 gap-2.5 w-full">
+        {/* Tile grid — flex + justify-center so removing tiles keeps the
+            remaining ones centered; each tile claims an equal share up to a
+            sensible max so two tiles don't blow up to full-row width. */}
+        <div className="flex flex-wrap justify-center gap-2.5 w-full">
           {TILES.map((tile, i) => (
-            <OnboardingTile
-              key={tile.id}
-              {...tile}
-              index={i}
-              onSelect={handleTileClick}
-            />
+            <div key={tile.id} className="flex-1 min-w-[200px] max-w-xs">
+              <OnboardingTile {...tile} index={i} onSelect={handleTileClick} />
+            </div>
           ))}
         </div>
       </motion.div>
