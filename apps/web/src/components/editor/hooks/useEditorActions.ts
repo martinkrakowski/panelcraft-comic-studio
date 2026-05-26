@@ -1,9 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { useToast } from '@panelcraft/ui';
-import api from '../../../lib/api';
 import type { SubmitReviewFormValues } from '../../../lib/validation/form-schemas';
+import type { DialogueEntry, CaptionEntry } from '@panelcraft/types';
+
+import { useLayoutActions } from './useLayoutActions';
+import { useRegenerationActions } from './useRegenerationActions';
+import { useReviewActions } from './useReviewActions';
+import { useOverlayActions } from './useOverlayActions';
 
 interface UseEditorActionsArgs {
   projectId: string;
@@ -17,117 +20,42 @@ interface UseEditorActionsReturn {
   onSelectLayout: (layout: string) => Promise<void>;
   onRegeneratePanel: (panelIndex: number) => Promise<void>;
   onSubmitReview: (data: SubmitReviewFormValues) => Promise<void>;
+  onUpdatePanelOverlays: (panelIndex: number, updates: { dialogue?: DialogueEntry[]; captions?: CaptionEntry[] }) => Promise<void>;
+  onUpdateDisplayTitle: (title: string | null) => Promise<void>;
 
   // Loading states
   selectingLayout: boolean;
   regeneratingPanelIndex: number | null;
   submittingReview: boolean;
+  updatingOverlays: boolean;
 }
 
 /**
- * Hook that encapsulates all action handlers and their associated loading states
- * for the ComicEditor. This keeps the main component focused on rendering and orchestration.
+ * Composed hook that orchestrates focused action hooks for the ComicEditor.
+ * This keeps the public API stable while improving internal decomposition.
  */
 export function useEditorActions({
   projectId,
   refreshSilent,
   resetForm,
 }: UseEditorActionsArgs): UseEditorActionsReturn {
-  const { toast } = useToast();
-
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const [selectingLayout, setSelectingLayout] = useState(false);
-  const [regeneratingPanelIndex, setRegeneratingPanelIndex] = useState<
-    number | null
-  >(null);
-
-  // Refs close the click-burst window before React re-renders the disabled
-  // button — the *_State flags drive UI, the refs drive the guard.
-  const selectingLayoutRef = useRef(false);
-  const submittingReviewRef = useRef(false);
-
-  const onSelectLayout = async (layout: string) => {
-    if (selectingLayoutRef.current) return;
-    selectingLayoutRef.current = true;
-    setSelectingLayout(true);
-    try {
-      await api.selectLayout(projectId, layout);
-      toast({
-        variant: 'success',
-        title: 'Layout selected',
-        description: 'Resuming workflow to generate panels.',
-      });
-      await refreshSilent();
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Layout selection failed',
-        description: err instanceof Error ? err.message : 'An error occurred.',
-      });
-    } finally {
-      setSelectingLayout(false);
-      selectingLayoutRef.current = false;
-    }
-  };
-
-  const onRegeneratePanel = async (panelIndex: number) => {
-    if (regeneratingPanelIndex !== null) return;
-    setRegeneratingPanelIndex(panelIndex);
-    try {
-      await api.regeneratePanel(projectId, panelIndex);
-      toast({
-        variant: 'success',
-        title: 'Regenerating panel',
-        description: `Panel ${panelIndex + 1} is being re-rendered.`,
-      });
-      await refreshSilent();
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Regeneration failed',
-        description: err instanceof Error ? err.message : 'An error occurred.',
-      });
-    } finally {
-      setRegeneratingPanelIndex(null);
-    }
-  };
-
-  const onSubmitReview = async (data: SubmitReviewFormValues) => {
-    if (submittingReviewRef.current) return;
-    submittingReviewRef.current = true;
-    setSubmittingReview(true);
-    try {
-      await api.submitReview(projectId, {
-        approved: data.approved,
-        comment: data.comment || undefined,
-      });
-      toast({
-        variant: 'success',
-        title: data.approved ? 'Panel Approved!' : 'Regeneration Queued',
-        description: data.approved
-          ? 'Continuing comic generation workflow in the background.'
-          : 'Regenerating the current panel with your feedback comments.',
-      });
-      resetForm?.({ approved: true, comment: '' });
-      await refreshSilent();
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Review submission failed',
-        description: err instanceof Error ? err.message : 'An error occurred.',
-      });
-    } finally {
-      setSubmittingReview(false);
-      submittingReviewRef.current = false;
-    }
-  };
+  const layout = useLayoutActions({ projectId, refreshSilent });
+  const regeneration = useRegenerationActions({ projectId, refreshSilent });
+  const review = useReviewActions({ projectId, refreshSilent, resetForm });
+  const overlays = useOverlayActions({ projectId, refreshSilent });
 
   return {
-    onSelectLayout,
-    onRegeneratePanel,
-    onSubmitReview,
-    selectingLayout,
-    regeneratingPanelIndex,
-    submittingReview,
+    onSelectLayout: layout.onSelectLayout,
+    selectingLayout: layout.selectingLayout,
+
+    onRegeneratePanel: regeneration.onRegeneratePanel,
+    regeneratingPanelIndex: regeneration.regeneratingPanelIndex,
+
+    onSubmitReview: review.onSubmitReview,
+    submittingReview: review.submittingReview,
+
+    onUpdatePanelOverlays: overlays.onUpdatePanelOverlays,
+    onUpdateDisplayTitle: overlays.onUpdateDisplayTitle,
+    updatingOverlays: overlays.updatingOverlays,
   };
 }

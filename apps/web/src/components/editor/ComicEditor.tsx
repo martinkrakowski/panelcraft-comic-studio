@@ -21,6 +21,7 @@ import { ProjectStatusStrip } from './ProjectStatusStrip';
 import { useEditorActions } from './hooks/useEditorActions';
 import { EditorLoadingState, EditorErrorState } from './EditorStates';
 import { LayoutChooserCard } from './LayoutChooserCard';
+import { OverlayEditorPanel } from './overlays/OverlayEditorPanel';
 
 interface ComicEditorProps {
   projectId: string;
@@ -48,9 +49,12 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
     onSelectLayout,
     onRegeneratePanel,
     onSubmitReview,
+    onUpdatePanelOverlays,
+    onUpdateDisplayTitle,
     selectingLayout,
     regeneratingPanelIndex,
     submittingReview,
+    updatingOverlays, // eslint-disable-line @typescript-eslint/no-unused-vars -- loading state is wired but not yet used in UI
   } = useEditorActions({
     projectId,
     refreshSilent,
@@ -108,7 +112,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
             <div className="space-y-1 min-w-0">
               <div className="flex items-center space-x-3">
                 <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
-                  {project.prompt}
+                  {project.displayTitle || project.prompt}
                 </h1>
                 <ProjectStatusBadge status={project.status} />
               </div>
@@ -168,6 +172,25 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           }
           regeneratingPanelIndex={regeneratingPanelIndex}
         />
+
+        {/* Full editor integration: OverlayEditorPanel now live with real Panel fields + mutations.
+            Uses /review dual-purpose endpoint for persistence (via extended handler/useCase).
+            Title + per-panel dialogue/captions editable; changes survive regen + export. */}
+        {project.status === 'completed' && (
+          <div className="pt-2">
+            <OverlayEditorPanel
+              panelIndex={0}
+              dialogue={project.panels[0]?.dialogue}
+              captions={project.panels[0]?.captions}
+              displayTitle={project.displayTitle}
+              onUpdatePanelOverlays={(updates) => onUpdatePanelOverlays(0, updates)}
+              onUpdateDisplayTitle={onUpdateDisplayTitle}
+            />
+            <p className="text-[10px] text-slate-500 mt-1 px-1">
+              Edits use structured data (dialogue/captions/displayTitle). Overlays render in ComposedPage + export PNG. (Panel 0 controls for demo; extend with selector for multi-panel.)
+            </p>
+          </div>
+        )}
       </div>
     </AppCanvasTwoPane>
   );

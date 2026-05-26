@@ -6,6 +6,17 @@ export type {
   Json,
 } from './database.types.js';
 
+// Re-export centralized overlay types from the shared kernel
+// so consumers of @panelcraft/types continue to work without changes.
+export type {
+  NormalizedPoint,
+  DialogueEntry,
+  CaptionEntry,
+} from '@panelcraft/shared';
+
+// Import for use within this file (re-exports don't automatically bring names into scope for the module body)
+import type { DialogueEntry, CaptionEntry } from '@panelcraft/shared';
+
 export interface CharacterValue {
   name: string;
   role: string;
@@ -35,11 +46,22 @@ export interface PanelDTO {
   status: PanelStatus;
   prompt: string;
   imageUrl: string | null;
+  /**
+   * Dialogue overlays (bubbles) for this panel. Optional; empty or omitted means no bubbles.
+   * These are the source of truth for editor and export; survive panel regeneration.
+   */
+  dialogue?: DialogueEntry[];
+  /**
+   * Caption overlays for this panel. Optional.
+   */
+  captions?: CaptionEntry[];
 }
 
 export interface ComicProjectDTO {
   id: string;
   prompt: string;
+  /** Optional short display / cover title (punchy, for UI and overlays). Populated after initial creation or via edit. */
+  displayTitle?: string | null;
   panelCount: number;
   panels: PanelDTO[];
   characterBible: CharacterBibleValue | null;
@@ -72,6 +94,8 @@ export interface CreateProjectInput {
     artDirectionNotes?: string;
   } | null;
   referenceImages?: string[]; // Relative paths to Supabase Storage
+  /** Optional initial display title (rarely provided at create; usually derived later). */
+  displayTitle?: string | null;
 }
 
 export interface SubmitReviewInput {
@@ -101,6 +125,8 @@ export type ResponseEnvelope<T> =
 export interface ProjectSummaryDTO {
   id: string;
   prompt: string;
+  /** Short display title if set (preferred for cards over truncated prompt). */
+  displayTitle?: string | null;
   panelCount: number;
   status: ProjectStatus;
   createdAt: string;

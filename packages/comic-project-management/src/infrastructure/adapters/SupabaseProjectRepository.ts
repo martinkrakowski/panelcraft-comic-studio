@@ -121,6 +121,8 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       status: row.status || 'pending_creation',
       createdAt: row.created_at || new Date().toISOString(),
       lastReviewSubmittedAt: null,
+      // displayTitle not yet a DB column (added in foundation VO refactor); will be null until migration + column mapping.
+      displayTitle: null,
     };
 
     return ComicProject.fromJSON(json);

@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ComicProject } from '../ComicProject';
 import { Panel } from '../Panel';
-import { ComicProjectId, ComicTitle, PanelCount, PanelId, PanelStatus, CharacterBible } from '../../value-objects/index.js';
+import { ComicProjectId, ComicPrompt, ComicDisplayTitle, PanelCount, PanelId, PanelStatus, CharacterBible } from '../../value-objects/index.js';
 
 describe('ComicProject', () => {
   let project: ComicProject;
 
   beforeEach(() => {
     const id = ComicProjectId.create('project-1').value!;
-    const prompt = ComicTitle.create('A comic about superheroes').value!;
+    const prompt = ComicPrompt.create('A comic about superheroes').value!;
     const panelCount = PanelCount.create(4).value!;
 
     project = new ComicProject(id, {
@@ -34,20 +34,23 @@ describe('ComicProject', () => {
       const panels = [new Panel(panelId, { status: panelStatus }), new Panel(PanelId.create('p2').value!, { status: panelStatus })];
 
       const id = ComicProjectId.create('project-2').value!;
-      const prompt = ComicTitle.create('Full project with ten chars').value!;
+      const prompt = ComicPrompt.create('Full project with ten chars').value!;
       const panelCount = PanelCount.create(2).value!;
       const createdAt = new Date().toISOString();
 
+      const displayTitle = ComicDisplayTitle.create('Full Project Title').value!;
       const fullProject = new ComicProject(id, {
         prompt,
         panelCount,
         panels,
         status: 'created',
         createdAt,
+        displayTitle,
       });
 
       expect(fullProject.getPanels()).toEqual(panels);
       expect(fullProject.getCreatedAt()).toBe(createdAt);
+      expect(fullProject.getDisplayTitle()?.getValue()).toBe('Full Project Title');
     });
   });
 
@@ -63,11 +66,38 @@ describe('ComicProject', () => {
     });
 
     it('should set a new prompt', () => {
-      const newPrompt = ComicTitle.create('Updated prompt text here').value!;
+      const newPrompt = ComicPrompt.create('Updated prompt text here').value!;
 
       project.setPrompt(newPrompt);
 
       expect(project.getPrompt().equals(newPrompt)).toBe(true);
+    });
+  });
+
+  describe('displayTitle management', () => {
+    it('should return null for displayTitle when not provided', () => {
+      expect(project.getDisplayTitle()).toBeNull();
+    });
+
+    it('should set and get a valid displayTitle', () => {
+      const title = ComicDisplayTitle.create('The Shadow Protocol').value!;
+      project.setDisplayTitle(title);
+      expect(project.getDisplayTitle()).not.toBeNull();
+      expect(project.getDisplayTitle()!.getValue()).toBe('The Shadow Protocol');
+      expect(project.getDisplayTitle()!.equals(title)).toBe(true);
+    });
+
+    it('should allow clearing displayTitle by setting null', () => {
+      const title = ComicDisplayTitle.create('Temporary Title').value!;
+      project.setDisplayTitle(title);
+      project.setDisplayTitle(null);
+      expect(project.getDisplayTitle()).toBeNull();
+    });
+
+    it('should reject invalid displayTitle lengths via create', () => {
+      expect(ComicDisplayTitle.create('ab').success).toBe(false);
+      expect(ComicDisplayTitle.create('x'.repeat(121)).success).toBe(false);
+      expect(ComicDisplayTitle.create(42 as any).success).toBe(false);
     });
   });
 
@@ -160,6 +190,7 @@ describe('ComicProject', () => {
 
       expect(json.id).toBe('project-1');
       expect(json.prompt).toBe('A comic about superheroes');
+      expect(json.displayTitle).toBeNull();
       expect(json.panelCount).toBe(4);
       expect(json.panels).toHaveLength(1);
       expect(json.status).toBe('created');
@@ -176,6 +207,7 @@ describe('ComicProject', () => {
       const json = {
         id: 'project-99',
         prompt: 'Deserialized comic is great',
+        displayTitle: 'Great Comic',
         panelCount: 3,
         status: 'created',
         createdAt: new Date().toISOString(),
@@ -200,6 +232,7 @@ describe('ComicProject', () => {
 
       expect(deserialized.getId().getValue()).toBe('project-99');
       expect(deserialized.getPrompt().getValue()).toBe('Deserialized comic is great');
+      expect(deserialized.getDisplayTitle()?.getValue()).toBe('Great Comic');
       expect(deserialized.getPanelCount().getValue()).toBe(3);
       expect(deserialized.getPanels()).toHaveLength(2);
       expect(deserialized.getCharacterBible()).toBeNull();
@@ -218,6 +251,7 @@ describe('ComicProject', () => {
 
       expect(deserialized.getPanels()).toEqual([]);
       expect(deserialized.getCharacterBible()).toBeNull();
+      expect(deserialized.getDisplayTitle()).toBeNull();
     });
 
     it('should handle round-trip serialization', () => {
@@ -228,11 +262,16 @@ describe('ComicProject', () => {
       project.setPanels(panels);
       project.setStatus('pending_review');
 
+      // Exercise displayTitle in roundtrip
+      const titleVo = ComicDisplayTitle.create('Roundtrip Title').value!;
+      project.setDisplayTitle(titleVo);
+
       const json = project.toJSON();
       const deserialized = ComicProject.fromJSON(json);
       const json2 = deserialized.toJSON();
 
       expect(json2).toEqual(json);
+      expect(json2.displayTitle).toBe('Roundtrip Title');
     });
   });
 
@@ -245,7 +284,7 @@ describe('ComicProject', () => {
       project.setPanels([panel1]);
       expect(project.getPanels()).toHaveLength(1);
 
-      const newPrompt = ComicTitle.create('Updated prompt is here').value!;
+      const newPrompt = ComicPrompt.create('Updated prompt is here').value!;
       project.setPrompt(newPrompt);
       expect(project.getPrompt().equals(newPrompt)).toBe(true);
       expect(project.getPanels()).toHaveLength(1);
