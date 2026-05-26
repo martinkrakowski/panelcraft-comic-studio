@@ -15,6 +15,7 @@ export * from './components/elements/skeleton';
 export * from './components/elements/textarea';
 
 // Modules
+export * from './components/modules/carousel';
 export * from './components/modules/dialog';
 export * from './components/modules/toast';
 
