@@ -170,5 +170,18 @@ export const api = {
       { method: 'POST', body }
     );
   },
+
+  /**
+   * Permanently delete a project and all associated assets (storage objects,
+   * LangGraph checkpoints, DB row). The server returns `{ id, deleted: true }`
+   * on full success. On partial cleanup failure (project row gone but some
+   * assets couldn't be removed) the request rejects with a non-2xx and the
+   * caller should treat the project as deleted from the user's perspective.
+   */
+  async deleteProject(id: string): Promise<{ id: string; deleted: boolean }> {
+    return request<{ id: string; deleted: boolean }>(`/api/projects/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 export default api;
