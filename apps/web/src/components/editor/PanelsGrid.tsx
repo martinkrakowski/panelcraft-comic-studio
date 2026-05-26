@@ -92,7 +92,13 @@ export function PanelsGrid({
                   ) : (
                     <div className="flex flex-col items-center justify-center text-slate-600 text-xs space-y-1">
                       <ImageIcon className="h-6 w-6" />
-                      <span>No image rendered</span>
+                      {/* Hide the text while the panel is mid-render (busy
+                          state already shows the pulsing border via
+                          animate-panel-busy). Only surface explanatory
+                          copy when the render actually failed. */}
+                      {panel.status === 'failed' && (
+                        <span className="text-red-400">Failed to render</span>
+                      )}
                     </div>
                   )}
                 </div>
