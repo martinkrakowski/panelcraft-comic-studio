@@ -1,5 +1,11 @@
 import React from 'react';
-import { UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
+import {
+  Control,
+  UseFormRegister,
+  FieldErrors,
+  UseFormSetValue,
+  useWatch,
+} from 'react-hook-form';
 import { Textarea } from '@panelcraft/ui';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 import { WizardPersistedState } from '../../../lib/hooks';
@@ -7,9 +13,9 @@ import { STYLE_PRESETS } from '../../../lib/wizard-constants';
 import styles from '../NewComicWizard.module.css';
 
 export interface StyleReferencesStepProps {
+  control: Control<WizardFormValues>;
   register: UseFormRegister<WizardFormValues>;
   errors: FieldErrors<WizardFormValues>;
-  watchMoodBoardPreset: string;
   setValue: UseFormSetValue<WizardFormValues>;
   handleMoodBoardUpload: (files: FileList) => Promise<void>;
   moodBoardObjectUrls: string[];
@@ -17,14 +23,16 @@ export interface StyleReferencesStepProps {
 }
 
 export function StyleReferencesStep({
+  control,
   register,
   errors,
-  watchMoodBoardPreset,
   setValue,
   handleMoodBoardUpload,
   moodBoardObjectUrls,
   saveToIndexedDB,
 }: StyleReferencesStepProps) {
+  const watchMoodBoardPreset = useWatch({ control, name: 'moodBoardPreset' });
+
   return (
     <div className="space-y-6">
       <div>

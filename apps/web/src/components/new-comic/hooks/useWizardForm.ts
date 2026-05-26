@@ -81,7 +81,9 @@ export function useWizardForm({
   const saveToIndexedDB = async (overrides?: Partial<WizardPersistedState>) => {
     if (typeof window === 'undefined') return;
     try {
-      await saveStateToDB(form.watch(), overrides);
+      // getValues is an imperative read — no subscription, so this no longer
+      // forces a re-render of the wizard host on every form change.
+      await saveStateToDB(form.getValues(), overrides);
     } catch (err) {
       if (err instanceof IndexedDBQuotaExceededError) {
         toast({
@@ -95,26 +97,11 @@ export function useWizardForm({
     }
   };
 
-  // Watched values (convenience)
-  const prompt = form.watch('prompt');
-  const panelCount = form.watch('panelCount');
-  const genres = form.watch('genres');
-  const tones = form.watch('tones');
-  const characters = form.watch('characters');
-  const moodBoardPreset = form.watch('moodBoardPreset');
-
   return {
     form,
     fields,
     append,
     remove,
     saveToIndexedDB,
-    // Convenience watched values
-    prompt,
-    panelCount,
-    genres,
-    tones,
-    characters,
-    moodBoardPreset,
   };
 }

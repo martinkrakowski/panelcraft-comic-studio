@@ -1,5 +1,11 @@
 import React from 'react';
-import { UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
+import {
+  Control,
+  UseFormRegister,
+  FieldErrors,
+  UseFormSetValue,
+  useWatch,
+} from 'react-hook-form';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { Button, SelectionChip, Textarea } from '@panelcraft/ui';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
@@ -7,11 +13,9 @@ import { WizardPersistedState } from '../../../lib/hooks';
 import styles from '../NewComicWizard.module.css';
 
 export interface StoryPromptStepProps {
+  control: Control<WizardFormValues>;
   register: UseFormRegister<WizardFormValues>;
   errors: FieldErrors<WizardFormValues>;
-  watchPrompt: string;
-  watchGenres: string[];
-  watchTones: string[];
   setValue: UseFormSetValue<WizardFormValues>;
   isAnalyzing: boolean;
   handleAnalyzePrompt: () => Promise<void>;
@@ -19,16 +23,20 @@ export interface StoryPromptStepProps {
 }
 
 export function StoryPromptStep({
+  control,
   register,
   errors,
-  watchPrompt,
-  watchGenres,
-  watchTones,
   setValue,
   isAnalyzing,
   handleAnalyzePrompt,
   saveToIndexedDB,
 }: StoryPromptStepProps) {
+  // Scoped subscriptions: this leaf re-renders only when these fields change,
+  // not when any wizard form field changes.
+  const watchPrompt = useWatch({ control, name: 'prompt' });
+  const watchGenres = useWatch({ control, name: 'genres' });
+  const watchTones = useWatch({ control, name: 'tones' });
+
   return (
     <div className="space-y-6">
       <div>

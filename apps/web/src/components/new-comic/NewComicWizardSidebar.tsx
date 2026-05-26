@@ -1,6 +1,7 @@
 import React from 'react';
 import { WizardSidebar } from '@panelcraft/ui';
 import type {
+  Control,
   UseFormSetValue,
   FieldArrayWithId,
 } from 'react-hook-form';
@@ -12,16 +13,12 @@ import { SidebarStep2 } from './sidebar/SidebarStep2';
 
 export interface NewComicWizardSidebarProps {
   activeStep: number;
-  genres: string[];
-  tones: string[];
-  panelCount: number;
+  control: Control<WizardFormValues>;
   preferredLayoutId: string | null;
   setPreferredLayoutId: (id: string | null) => void;
   setValue: UseFormSetValue<WizardFormValues>;
   saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
   fields: FieldArrayWithId<WizardFormValues, 'characters', 'id'>[];
-  characters: WizardFormValues['characters'];
-  moodBoardPreset: string;
 }
 
 export function NewComicWizardSidebar(props: NewComicWizardSidebarProps) {
@@ -30,25 +27,19 @@ export function NewComicWizardSidebar(props: NewComicWizardSidebarProps) {
   if (activeStep >= 3) return null;
 
   const {
-    genres,
-    tones,
-    panelCount,
+    control,
     preferredLayoutId,
     setPreferredLayoutId,
     setValue,
     saveToIndexedDB,
     fields,
-    characters,
-    moodBoardPreset,
   } = props;
 
   return (
     <WizardSidebar variant="flex" className="pt-20">
       {activeStep === 0 && (
         <SidebarStep0
-          genres={genres}
-          tones={tones}
-          panelCount={panelCount}
+          control={control}
           preferredLayoutId={preferredLayoutId}
           setPreferredLayoutId={setPreferredLayoutId}
           setValue={setValue}
@@ -56,11 +47,11 @@ export function NewComicWizardSidebar(props: NewComicWizardSidebarProps) {
         />
       )}
       {activeStep === 1 && (
-        <SidebarStep1 fields={fields} characters={characters} />
+        <SidebarStep1 control={control} fields={fields} />
       )}
       {activeStep === 2 && (
         <SidebarStep2
-          moodBoardPreset={moodBoardPreset}
+          control={control}
           setValue={setValue}
           saveToIndexedDB={saveToIndexedDB}
         />

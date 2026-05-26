@@ -9,14 +9,12 @@ import {
   TONE_OPTIONS,
 } from '../../../lib/wizard-constants';
 import { getLayoutsByMood } from '../../../lib/layout-templates';
-import type { UseFormSetValue } from 'react-hook-form';
+import { useWatch, type Control, type UseFormSetValue } from 'react-hook-form';
 import type { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 import type { WizardPersistedState } from '../../../lib/hooks';
 
 interface SidebarStep0Props {
-  genres: string[];
-  tones: string[];
-  panelCount: number;
+  control: Control<WizardFormValues>;
   preferredLayoutId: string | null;
   setPreferredLayoutId: (id: string | null) => void;
   setValue: UseFormSetValue<WizardFormValues>;
@@ -24,14 +22,16 @@ interface SidebarStep0Props {
 }
 
 export function SidebarStep0({
-  genres,
-  tones,
-  panelCount,
+  control,
   preferredLayoutId,
   setPreferredLayoutId,
   setValue,
   saveToIndexedDB,
 }: SidebarStep0Props) {
+  const genres = useWatch({ control, name: 'genres' });
+  const tones = useWatch({ control, name: 'tones' });
+  const panelCount = useWatch({ control, name: 'panelCount' });
+
   return (
     <>
       <CollapsibleSection title="Genres" defaultOpen>

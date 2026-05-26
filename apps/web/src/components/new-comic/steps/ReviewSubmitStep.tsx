@@ -1,18 +1,12 @@
 import React from 'react';
-import { UseFormHandleSubmit } from 'react-hook-form';
+import { Control, UseFormHandleSubmit, useWatch } from 'react-hook-form';
 import { PenSquare, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@panelcraft/ui';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 import styles from '../NewComicWizard.module.css';
 
 export interface ReviewSubmitStepProps {
-  watchPrompt: string;
-  watchPanelCount: number;
-  watchGenres: string[];
-  watchTones: string[];
-  watchCharacters: WizardFormValues['characters'];
-  watchMoodBoardPreset: string;
-  watchGlobalStylePrompt: string;
+  control: Control<WizardFormValues>;
   setActiveStep: React.Dispatch<React.SetStateAction<number>>;
   isSubmitting: boolean;
   handleSubmit: UseFormHandleSubmit<WizardFormValues>;
@@ -20,18 +14,23 @@ export interface ReviewSubmitStepProps {
 }
 
 export function ReviewSubmitStep({
-  watchPrompt,
-  watchPanelCount,
-  watchGenres,
-  watchTones,
-  watchCharacters,
-  watchMoodBoardPreset,
-  watchGlobalStylePrompt,
+  control,
   setActiveStep,
   isSubmitting,
   handleSubmit,
   onSubmit,
 }: ReviewSubmitStepProps) {
+  // Review only renders on step 3 entry; a single useWatch subscription on the
+  // whole form is cheaper than seven separate ones for an end-of-flow summary.
+  const values = useWatch({ control }) as Partial<WizardFormValues>;
+  const watchPrompt = values.prompt ?? '';
+  const watchPanelCount = values.panelCount ?? 0;
+  const watchGenres = values.genres ?? [];
+  const watchTones = values.tones ?? [];
+  const watchCharacters = values.characters ?? [];
+  const watchMoodBoardPreset = values.moodBoardPreset ?? '';
+  const watchGlobalStylePrompt = values.globalStylePrompt ?? '';
+
   return (
     <div className="space-y-6">
       <div>

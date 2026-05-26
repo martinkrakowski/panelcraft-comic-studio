@@ -2,17 +2,19 @@
 
 import { CollapsibleSection } from '@panelcraft/ui';
 import { STYLE_PRESETS } from '../../../lib/wizard-constants';
-import type { UseFormSetValue } from 'react-hook-form';
+import { useWatch, type Control, type UseFormSetValue } from 'react-hook-form';
 import type { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 import type { WizardPersistedState } from '../../../lib/hooks';
 
 interface SidebarStep2Props {
-  moodBoardPreset: string;
+  control: Control<WizardFormValues>;
   setValue: UseFormSetValue<WizardFormValues>;
   saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
 }
 
-export function SidebarStep2({ moodBoardPreset, setValue, saveToIndexedDB }: SidebarStep2Props) {
+export function SidebarStep2({ control, setValue, saveToIndexedDB }: SidebarStep2Props) {
+  const moodBoardPreset = useWatch({ control, name: 'moodBoardPreset' });
+
   return (
     <CollapsibleSection title="Style Preset" defaultOpen>
       <div className="grid grid-cols-2 gap-2">

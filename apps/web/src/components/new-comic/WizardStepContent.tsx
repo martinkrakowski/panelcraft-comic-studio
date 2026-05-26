@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type {
+  Control,
   UseFormRegister,
   FieldErrors,
   UseFormSetValue,
@@ -21,6 +22,7 @@ import {
 
 interface WizardStepContentProps {
   activeStep: number;
+  control: Control<WizardFormValues>;
   register: UseFormRegister<WizardFormValues>;
   handleSubmit: UseFormHandleSubmit<WizardFormValues>;
   setValue: UseFormSetValue<WizardFormValues>;
@@ -28,15 +30,7 @@ interface WizardStepContentProps {
   fields: FieldArrayWithId<WizardFormValues, 'characters', 'id'>[];
   append: (value: WizardFormValues['characters'][number]) => void;
   remove: (index: number) => void;
-  // watched values (to avoid re-watching inside)
-  prompt: string;
-  genres: string[];
-  tones: string[];
-  panelCount: number;
-  characters: WizardFormValues['characters'];
-  moodBoardPreset: string;
   moodBoardObjectUrls: string[];
-  // handlers
   isAnalyzing: boolean;
   handleAnalyzePrompt: () => Promise<void>;
   handleCharacterImageUpload: (index: number, file: File) => Promise<void>;
@@ -50,14 +44,13 @@ interface WizardStepContentProps {
   handleLayoutSelect: (layout: string) => Promise<void>;
   handleRetry: () => void;
   saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
-  // for review step
-  globalStylePrompt: string;
   onSubmit: () => Promise<void>;
 }
 
 export function WizardStepContent(props: WizardStepContentProps) {
   const {
     activeStep,
+    control,
     register,
     handleSubmit,
     setValue,
@@ -65,12 +58,6 @@ export function WizardStepContent(props: WizardStepContentProps) {
     fields,
     append,
     remove,
-    prompt,
-    genres,
-    tones,
-    panelCount,
-    characters,
-    moodBoardPreset,
     moodBoardObjectUrls,
     isAnalyzing,
     handleAnalyzePrompt,
@@ -85,7 +72,6 @@ export function WizardStepContent(props: WizardStepContentProps) {
     handleLayoutSelect,
     handleRetry,
     saveToIndexedDB,
-    globalStylePrompt,
     onSubmit,
   } = props;
 
@@ -101,28 +87,25 @@ export function WizardStepContent(props: WizardStepContentProps) {
           className="w-full"
         >
           {activeStep === 0 && (
-            <div className="px-4 pb-8 flex justify-center">
-              <img
-                src="/tell-your-story.jpg"
-                alt="Tell your story"
-                className="rounded-lg"
-                style={{ maxWidth: '784px', width: '100%', maxHeight: '100%' }}
+            <>
+              <div className="px-4 pb-8 flex justify-center">
+                <img
+                  src="/tell-your-story.jpg"
+                  alt="Tell your story"
+                  className="rounded-lg"
+                  style={{ maxWidth: '784px', width: '100%', maxHeight: '100%' }}
+                />
+              </div>
+              <StoryPromptStep
+                control={control}
+                register={register}
+                errors={errors}
+                setValue={setValue}
+                isAnalyzing={isAnalyzing}
+                handleAnalyzePrompt={handleAnalyzePrompt}
+                saveToIndexedDB={saveToIndexedDB}
               />
-            </div>
-          )}
-
-          {activeStep === 0 && (
-            <StoryPromptStep
-              register={register}
-              errors={errors}
-              watchPrompt={prompt}
-              watchGenres={genres}
-              watchTones={tones}
-              setValue={setValue}
-              isAnalyzing={isAnalyzing}
-              handleAnalyzePrompt={handleAnalyzePrompt}
-              saveToIndexedDB={saveToIndexedDB}
-            />
+            </>
           )}
           {activeStep === 1 && (
             <CharacterBibleStep
@@ -137,9 +120,9 @@ export function WizardStepContent(props: WizardStepContentProps) {
           )}
           {activeStep === 2 && (
             <StyleReferencesStep
+              control={control}
               register={register}
               errors={errors}
-              watchMoodBoardPreset={moodBoardPreset}
               setValue={setValue}
               handleMoodBoardUpload={handleMoodBoardUpload}
               moodBoardObjectUrls={moodBoardObjectUrls}
@@ -148,13 +131,7 @@ export function WizardStepContent(props: WizardStepContentProps) {
           )}
           {activeStep === 3 && (
             <ReviewSubmitStep
-              watchPrompt={prompt}
-              watchPanelCount={panelCount}
-              watchGenres={genres}
-              watchTones={tones}
-              watchCharacters={characters}
-              watchMoodBoardPreset={moodBoardPreset}
-              watchGlobalStylePrompt={globalStylePrompt}
+              control={control}
               setActiveStep={setActiveStep}
               isSubmitting={isSubmitting}
               handleSubmit={handleSubmit}

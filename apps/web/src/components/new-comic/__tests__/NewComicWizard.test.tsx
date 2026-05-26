@@ -40,7 +40,7 @@ vi.mock('@panelcraft/ui', () => ({
   WizardSidebar: ({ children, ...props }: any) => (
     <div {...props}>{children}</div>
   ),
-  CollapsibleSection: ({ children, title, defaultOpen, ...props }: any) => (
+  CollapsibleSection: ({ children, title, defaultOpen: _defaultOpen, ...props }: any) => (
     <div {...props}>
       <h3>{title}</h3>
       {children}

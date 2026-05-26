@@ -31,12 +31,6 @@ export function NewComicWizard() {
     append,
     remove,
     saveToIndexedDB,
-    prompt,
-    panelCount,
-    genres,
-    tones,
-    characters,
-    moodBoardPreset,
   } = useWizardForm({
     activeStep,
     setActiveStep,
@@ -50,8 +44,16 @@ export function NewComicWizard() {
     setProjectId,
   });
 
-  const { register, handleSubmit, watch, setValue, trigger, formState: { errors } } = form;
-  const globalStylePrompt = watch('globalStylePrompt') || '';
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    getValues,
+    trigger,
+    control,
+    formState: { errors },
+  } = form;
 
   const { handleNextStep, handleBackStep, handleAnalyzePrompt, isAnalyzing } =
     useWizardStepNavigation({
@@ -59,7 +61,7 @@ export function NewComicWizard() {
       setActiveStep,
       trigger,
       setValue,
-      prompt,
+      getValues,
       saveToIndexedDB,
     });
 
@@ -101,16 +103,12 @@ export function NewComicWizard() {
       sidebar={
         <NewComicWizardSidebar
           activeStep={activeStep}
-          genres={genres}
-          tones={tones}
-          panelCount={panelCount}
+          control={control}
           preferredLayoutId={preferredLayoutId}
           setPreferredLayoutId={setPreferredLayoutId}
           setValue={setValue}
           saveToIndexedDB={saveToIndexedDB}
           fields={fields}
-          characters={characters}
-          moodBoardPreset={moodBoardPreset}
         />
       }
       clearHeader={activeStep < 3}
@@ -133,6 +131,7 @@ export function NewComicWizard() {
     >
       <WizardStepContent
         activeStep={activeStep}
+        control={control}
         register={register}
         handleSubmit={handleSubmit}
         setValue={setValue}
@@ -140,12 +139,6 @@ export function NewComicWizard() {
         fields={fields}
         append={append}
         remove={remove}
-        prompt={prompt}
-        genres={genres}
-        tones={tones}
-        panelCount={panelCount}
-        characters={characters}
-        moodBoardPreset={moodBoardPreset}
         moodBoardObjectUrls={moodBoardObjectUrls}
         isAnalyzing={isAnalyzing}
         handleAnalyzePrompt={handleAnalyzePrompt}
@@ -160,7 +153,6 @@ export function NewComicWizard() {
         handleLayoutSelect={handleLayoutSelect}
         handleRetry={handleRetry}
         saveToIndexedDB={saveToIndexedDB}
-        globalStylePrompt={globalStylePrompt}
         onSubmit={onSubmit}
       />
 

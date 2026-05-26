@@ -1,15 +1,17 @@
 'use client';
 
 import { CollapsibleSection } from '@panelcraft/ui';
-import type { FieldArrayWithId } from 'react-hook-form';
+import { useWatch, type Control, type FieldArrayWithId } from 'react-hook-form';
 import type { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 
 interface SidebarStep1Props {
+  control: Control<WizardFormValues>;
   fields: FieldArrayWithId<WizardFormValues, 'characters', 'id'>[];
-  characters: WizardFormValues['characters'];
 }
 
-export function SidebarStep1({ fields, characters }: SidebarStep1Props) {
+export function SidebarStep1({ control, fields }: SidebarStep1Props) {
+  const characters = useWatch({ control, name: 'characters' });
+
   return (
     <CollapsibleSection title="Characters" defaultOpen>
       <div className="space-y-2 max-h-64 overflow-y-auto">

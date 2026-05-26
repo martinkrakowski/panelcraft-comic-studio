@@ -34,5 +34,9 @@ export function useEffectOnce(effect: EffectCallback) {
       }
     }
     return cleanup;
+    // `effect` is intentionally excluded: this hook's contract is single
+    // execution against the first effect identity, regardless of later
+    // re-renders changing the callback reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

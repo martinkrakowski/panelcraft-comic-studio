@@ -3,7 +3,6 @@ import {
   ProjectListResponse,
   ProjectDetailResponse,
   CreateProjectResponse,
-  CreateProjectInput,
   SubmitReviewInput,
   ReviewResponse,
 } from '@panelcraft/types';
@@ -40,7 +39,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       if (errorJson?.error?.message) {
         errorMsg = errorJson.error.message;
       }
-    } catch (_) {
+    } catch {
       // Ignore if body is not JSON
     }
     throw new Error(errorMsg);
