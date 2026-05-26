@@ -2,7 +2,7 @@
 
 import { useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Download, Share2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Download, Home, Share2, AlertCircle } from 'lucide-react';
 import {
   buttonVariants,
   Button,
@@ -276,13 +276,22 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
       }
       footer={
         <ContentPanelFooter>
-          <Link
-            href={`/projects/${project.id}`}
-            className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to editor
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/projects/${project.id}`}
+              className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to editor
+            </Link>
+            <Link
+              href="/"
+              className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Dashboard
+            </Link>
+          </div>
           <div className="flex items-center gap-2">
             <Button
               type="button"
