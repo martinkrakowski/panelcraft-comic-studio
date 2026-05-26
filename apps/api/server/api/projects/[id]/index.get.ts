@@ -52,12 +52,28 @@ export default defineEventHandler(async (event) => {
 
   // Storage paths persisted in DB must be exchanged for short-lived signed
   // URLs before reaching the browser — `next/image` rejects relative paths.
-  const [coverImageUrl, ...panelImageUrls] = await Promise.all([
-    toSignedUrlIfPath(j.coverImageUrl),
-    ...(j.panels || []).map((p: PanelJSON) =>
-      toSignedUrlIfPath(p.generatedImageUrl)
-    ),
-  ]);
+  const moodBoardPaths: string[] = j.styleReferences?.moodBoardImages || [];
+  const [coverImageUrl, panelImageUrls, moodBoardImageUrls] = await Promise.all(
+    [
+      toSignedUrlIfPath(j.coverImageUrl),
+      Promise.all(
+        (j.panels || []).map((p: PanelJSON) =>
+          toSignedUrlIfPath(p.generatedImageUrl)
+        )
+      ),
+      Promise.all(moodBoardPaths.map((p) => toSignedUrlIfPath(p))),
+    ]
+  );
+
+  const styleReferences = j.styleReferences
+    ? {
+        ...j.styleReferences,
+        // Replace storage paths with signed URLs; drop any paths that failed to sign.
+        moodBoardImages: moodBoardImageUrls.filter((u): u is string =>
+          Boolean(u)
+        ),
+      }
+    : null;
 
   return ok({
     project: {
@@ -69,7 +85,7 @@ export default defineEventHandler(async (event) => {
       // Wizard-specific fields
       genres: j.genres,
       tones: j.tones,
-      styleReferences: j.styleReferences,
+      styleReferences,
       coverImageUrl,
       selectedLayout: j.selectedLayout,
       layoutOptions: j.layoutOptions,

@@ -6,12 +6,14 @@ import { ArrowLeft, Download, Share2, AlertCircle } from 'lucide-react';
 import {
   buttonVariants,
   Button,
+  AppCanvasOnePane,
   Carousel,
   CarouselDots,
   CarouselNext,
   CarouselPrev,
   CarouselSlide,
   CarouselViewport,
+  ContentPanelFooter,
   Skeleton,
   useToast,
 } from '@panelcraft/ui';
@@ -191,27 +193,42 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-6 w-32" />
-        <Skeleton className="aspect-[2/3] w-full max-w-3xl mx-auto rounded-xl" />
-      </div>
+      <AppCanvasOnePane
+        topStrip={
+          <div className="flex-shrink-0 px-4 pt-4 pb-3 space-y-2 border-b border-slate-800/60">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        }
+        footer={
+          <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-4 border-t border-slate-800/60 bg-slate-900/40">
+            <Skeleton className="h-9 w-36 rounded-md" />
+          </div>
+        }
+      >
+        <div className="px-4 py-6">
+          <Skeleton className="aspect-[2/3] w-full max-w-3xl mx-auto rounded-xl" />
+        </div>
+      </AppCanvasOnePane>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
-        <div className="p-3 bg-red-950/20 border border-red-500/30 rounded-full text-red-400">
-          <AlertCircle className="h-8 w-8" />
+      <AppCanvasOnePane>
+        <div className="h-full flex flex-col items-center justify-center text-center space-y-4 p-6">
+          <div className="p-3 bg-red-950/20 border border-red-500/30 rounded-full text-red-400">
+            <AlertCircle className="h-8 w-8" />
+          </div>
+          <h2 className="text-xl font-semibold">Failed to load comic page</h2>
+          <p className="text-slate-400 max-w-sm text-sm">
+            {error?.message || 'Could not load the project for viewing.'}
+          </p>
+          <Link href="/" className={buttonVariants({ variant: 'outline' })}>
+            Back to dashboard
+          </Link>
         </div>
-        <h2 className="text-xl font-semibold">Failed to load comic page</h2>
-        <p className="text-slate-400 max-w-sm text-sm">
-          {error?.message || 'Could not load the project for viewing.'}
-        </p>
-        <Link href="/" className={buttonVariants({ variant: 'outline' })}>
-          Back to dashboard
-        </Link>
-      </div>
+      </AppCanvasOnePane>
     );
   }
 
@@ -222,19 +239,21 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
   );
   if (renderablePanels.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
-        <h2 className="text-xl font-semibold">Comic page not ready yet</h2>
-        <p className="text-slate-400 max-w-sm text-sm">
-          Approve all panels in the editor first, then return here to view the
-          composed page.
-        </p>
-        <Link
-          href={`/projects/${project.id}`}
-          className={buttonVariants({ variant: 'outline' })}
-        >
-          Open editor
-        </Link>
-      </div>
+      <AppCanvasOnePane>
+        <div className="h-full flex flex-col items-center justify-center text-center space-y-4 p-6">
+          <h2 className="text-xl font-semibold">Comic page not ready yet</h2>
+          <p className="text-slate-400 max-w-sm text-sm">
+            Approve all panels in the editor first, then return here to view the
+            composed page.
+          </p>
+          <Link
+            href={`/projects/${project.id}`}
+            className={buttonVariants({ variant: 'outline' })}
+          >
+            Open editor
+          </Link>
+        </div>
+      </AppCanvasOnePane>
     );
   }
 
@@ -244,16 +263,9 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-4 border-b border-slate-800/60">
-        <div className="space-y-1">
-          <Link
-            href={`/projects/${project.id}`}
-            className="inline-flex items-center text-xs text-slate-400 hover:text-white transition-colors group"
-          >
-            <ArrowLeft className="h-3.5 w-3.5 mr-1 transform group-hover:-translate-x-0.5 transition-transform" />
-            Back to editor
-          </Link>
+    <AppCanvasOnePane
+      topStrip={
+        <div className="flex-shrink-0 px-4 pt-4 pb-3 space-y-1 border-b border-slate-800/60">
           <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
             {project.prompt}
           </h1>
@@ -261,65 +273,78 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
             Layout: <span className="text-slate-400">{layout.label}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onShare}
-            className="text-xs"
+      }
+      footer={
+        <ContentPanelFooter>
+          <Link
+            href={`/projects/${project.id}`}
+            className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
           >
-            <Share2 className="h-3.5 w-3.5 mr-1.5" />
-            Copy link
-          </Button>
-          <Button
-            type="button"
-            onClick={onDownload}
-            disabled={exporting}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs"
-          >
-            <Download className="h-3.5 w-3.5 mr-1.5" />
-            {exporting ? 'Exporting…' : 'Download PNG'}
-          </Button>
-        </div>
-      </div>
-
-      {project.coverImageUrl ? (
-        <Carousel
-          ariaLabel="Comic preview"
-          className="mx-auto w-full max-w-3xl"
-        >
-          <CarouselViewport>
-            <CarouselSlide label="Cover">
-              <CoverSlide
-                src={project.coverImageUrl}
-                prompt={project.prompt}
-                corsCapable={isCorsCapableHost(project.coverImageUrl)}
-              />
-            </CarouselSlide>
-            <CarouselSlide label="Composed page">
-              <ComposedPage
-                pageRef={pageRef}
-                layout={layout}
-                panels={renderablePanels}
-              />
-            </CarouselSlide>
-          </CarouselViewport>
-          <div className="flex items-center justify-between pt-4">
-            <CarouselPrev />
-            <CarouselDots />
-            <CarouselNext />
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to editor
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onShare}
+              className="text-xs"
+            >
+              <Share2 className="h-3.5 w-3.5 mr-1.5" />
+              Copy link
+            </Button>
+            <Button
+              type="button"
+              onClick={onDownload}
+              disabled={exporting}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs"
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              {exporting ? 'Exporting…' : 'Download PNG'}
+            </Button>
           </div>
-        </Carousel>
-      ) : (
-        <div className="mx-auto w-full max-w-3xl">
-          <ComposedPage
-            pageRef={pageRef}
-            layout={layout}
-            panels={renderablePanels}
-          />
-        </div>
-      )}
-    </div>
+        </ContentPanelFooter>
+      }
+    >
+      <div className="px-4 py-6">
+        {project.coverImageUrl ? (
+          <Carousel
+            ariaLabel="Comic preview"
+            className="mx-auto w-full max-w-3xl"
+          >
+            <CarouselViewport>
+              <CarouselSlide label="Cover">
+                <CoverSlide
+                  src={project.coverImageUrl}
+                  prompt={project.prompt}
+                  corsCapable={isCorsCapableHost(project.coverImageUrl)}
+                />
+              </CarouselSlide>
+              <CarouselSlide label="Composed page">
+                <ComposedPage
+                  pageRef={pageRef}
+                  layout={layout}
+                  panels={renderablePanels}
+                />
+              </CarouselSlide>
+            </CarouselViewport>
+            <div className="flex items-center justify-between pt-4">
+              <CarouselPrev />
+              <CarouselDots />
+              <CarouselNext />
+            </div>
+          </Carousel>
+        ) : (
+          <div className="mx-auto w-full max-w-3xl">
+            <ComposedPage
+              pageRef={pageRef}
+              layout={layout}
+              panels={renderablePanels}
+            />
+          </div>
+        )}
+      </div>
+    </AppCanvasOnePane>
   );
 }
 

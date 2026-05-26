@@ -112,6 +112,7 @@ interface RegeneratePanelDeps {
 export async function regeneratePanel(
   projectId: string,
   panelIndex: number,
+  feedback: string | undefined,
   deps: RegeneratePanelDeps
 ): Promise<void> {
   const project = await deps.projectRepo.load(projectId);
@@ -161,7 +162,7 @@ export async function regeneratePanel(
   try {
     await deps.taskQueue.add(
       'regenerate-panel',
-      { projectId, panelIndex },
+      { projectId, panelIndex, regenFeedback: feedback },
       {
         attempts: 3,
         backoff: { type: 'exponential', delay: 2000 },

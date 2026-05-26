@@ -15,7 +15,7 @@ interface UseEditorActionsArgs {
 interface UseEditorActionsReturn {
   // Handlers
   onSelectLayout: (layout: string) => Promise<void>;
-  onRegeneratePanel: (panelIndex: number) => Promise<void>;
+  onRegeneratePanel: (panelIndex: number, feedback?: string) => Promise<void>;
   onSubmitReview: (data: SubmitReviewFormValues) => Promise<void>;
 
   // Loading states
@@ -70,14 +70,14 @@ export function useEditorActions({
     }
   };
 
-  const onRegeneratePanel = async (panelIndex: number) => {
+  const onRegeneratePanel = async (panelIndex: number, feedback?: string) => {
     if (regeneratingPanelIndex !== null) return;
     setRegeneratingPanelIndex(panelIndex);
     try {
-      await api.regeneratePanel(projectId, panelIndex);
+      await api.regeneratePanel(projectId, panelIndex, feedback);
       toast({
         variant: 'success',
-        title: 'Regenerating panel',
+        title: feedback ? 'Regenerating with feedback' : 'Regenerating panel',
         description: `Panel ${panelIndex + 1} is being re-rendered.`,
       });
       await refreshSilent();

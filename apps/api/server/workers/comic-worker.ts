@@ -21,6 +21,12 @@ interface ComicJobData {
     comment?: string;
     regenerationHint?: string;
   };
+  /**
+   * Optional reviewer feedback supplied when regenerating a single panel
+   * out-of-graph (Edit panel dialog). Distinct from the HITL `feedback`
+   * field above which carries the full review payload.
+   */
+  regenFeedback?: string;
 }
 
 interface CharacterBibleEntry {
@@ -263,7 +269,7 @@ export function initComicWorker(
           // generation, and re-entering it for a one-off panel rework
           // would require resetting the checkpoint. A direct call to
           // imageGenPort is simpler and matches what the graph node does.
-          const { panelIndex } = job.data;
+          const { panelIndex, regenFeedback } = job.data;
           if (typeof panelIndex !== 'number') {
             throw new Error('[Worker] regenerate-panel job missing panelIndex');
           }
@@ -274,15 +280,27 @@ export function initComicWorker(
               `[Worker] Panel ${panelIndex} not found on project ${projectId}`
             );
           }
-          const prompt = targetPanel.getPrompt()?.trim();
-          if (!prompt) {
+          const basePrompt = targetPanel.getPrompt()?.trim();
+          if (!basePrompt) {
             throw new Error(
               `[Worker] Panel ${panelIndex} has no prompt; cannot regenerate`
             );
           }
+          // Append optional reviewer feedback for this regen only; the
+          // persisted panel prompt is unchanged so subsequent regens revert
+          // to the original direction unless new feedback is supplied.
+          const feedbackText =
+            typeof regenFeedback === 'string' && regenFeedback.trim().length > 0
+              ? regenFeedback.trim()
+              : null;
+          const prompt = feedbackText
+            ? `${basePrompt}\n\nReviewer feedback for this regeneration: ${feedbackText}`
+            : basePrompt;
 
           logger.info(
-            `[Worker] Regenerating panel ${panelIndex} for project ${projectId}`
+            `[Worker] Regenerating panel ${panelIndex} for project ${projectId}${
+              feedbackText ? ' with feedback' : ''
+            }`
           );
 
           const styleModifiers = buildStyleModifiers(project);

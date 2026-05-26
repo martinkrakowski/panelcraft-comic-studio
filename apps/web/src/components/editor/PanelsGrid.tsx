@@ -7,7 +7,7 @@ import {
   CardContent,
   Button,
 } from '@panelcraft/ui';
-import { Image as ImageIcon, RefreshCw } from 'lucide-react';
+import { Image as ImageIcon, RefreshCw, Pencil } from 'lucide-react';
 import { getPanelStatusLabel } from '../../lib/panel-status';
 import { ImageWithFallback } from './ImageWithFallback';
 
@@ -29,12 +29,19 @@ interface PanelsGridProps {
    * top-level review card instead).
    */
   onRegenerate?: (panelIndex: number) => void | Promise<void>;
+  /**
+   * When provided alongside `onRegenerate`, each panel also renders an
+   * Edit action that opens a HITL-style dialog for supplying feedback
+   * before regenerating. Hidden when `onRegenerate` is omitted.
+   */
+  onEdit?: (panelIndex: number) => void;
   regeneratingPanelIndex?: number | null;
 }
 
 export function PanelsGrid({
   panels,
   onRegenerate,
+  onEdit,
   regeneratingPanelIndex,
 }: PanelsGridProps) {
   return (
@@ -45,11 +52,23 @@ export function PanelsGrid({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {panels.map((panel) => {
           const label = getPanelStatusLabel(panel.status);
+          // Mid-work signal: panel is queued, mid-generation, or being
+          // regenerated via the per-tile button. Drives the animated
+          // border ring so the user has a non-static "something is
+          // happening" indicator.
+          const isBusy =
+            regeneratingPanelIndex === panel.index ||
+            panel.status === 'pending' ||
+            panel.status === 'generating';
 
           return (
             <Card
               key={panel.id}
-              className="border-slate-850/80 bg-slate-900/20 overflow-hidden flex flex-col justify-between"
+              className={`bg-slate-900/20 overflow-hidden flex flex-col justify-between ${
+                isBusy
+                  ? 'border-transparent animate-panel-busy'
+                  : 'border-slate-700/60 hover:border-indigo-400/60'
+              }`}
             >
               <CardHeader className="p-4 border-b border-slate-800/30 flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-sm font-bold text-white">
@@ -86,27 +105,34 @@ export function PanelsGrid({
                   <div className="h-4 w-3/4 bg-slate-800 rounded animate-pulse" />
                 )}
 
-                {onRegenerate &&
-                  (() => {
-                    const isRegenerating =
-                      regeneratingPanelIndex === panel.index ||
-                      panel.status === 'pending' ||
-                      panel.status === 'generating';
-                    return (
+                {onRegenerate && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => onRegenerate(panel.index)}
+                      disabled={isBusy}
+                      className="flex-1 text-xs flex items-center justify-center gap-1.5 border border-slate-800"
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${isBusy ? 'animate-spin' : ''}`}
+                      />
+                      {isBusy ? 'Regenerating…' : 'Regenerate'}
+                    </Button>
+                    {onEdit && (
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => onRegenerate(panel.index)}
-                        disabled={isRegenerating}
-                        className="w-full text-xs flex items-center justify-center gap-1.5 border border-slate-800"
+                        onClick={() => onEdit(panel.index)}
+                        disabled={isBusy}
+                        className="flex-1 text-xs flex items-center justify-center gap-1.5 border border-slate-800"
                       >
-                        <RefreshCw
-                          className={`h-3.5 w-3.5 ${isRegenerating ? 'animate-spin' : ''}`}
-                        />
-                        {isRegenerating ? 'Regenerating…' : 'Regenerate'}
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit panel
                       </Button>
-                    );
-                  })()}
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

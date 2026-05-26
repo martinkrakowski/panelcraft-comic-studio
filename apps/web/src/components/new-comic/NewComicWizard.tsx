@@ -35,13 +35,7 @@ export function NewComicWizard() {
     null
   );
 
-  const {
-    form,
-    fields,
-    append,
-    remove,
-    saveToIndexedDB,
-  } = useWizardForm({
+  const { form, fields, append, remove, saveToIndexedDB } = useWizardForm({
     activeStep,
     setActiveStep,
     referenceImageBlobs,
@@ -138,6 +132,13 @@ export function NewComicWizard() {
           <WizardStepIndicator activeStep={activeStep} />
         </>
       }
+      footer={
+        <WizardNavButtons
+          activeStep={activeStep}
+          onBack={handleBackStep}
+          onNext={handleNextStep}
+        />
+      }
     >
       <WizardStepContent
         activeStep={activeStep}
@@ -164,12 +165,6 @@ export function NewComicWizard() {
         handleRetry={handleRetry}
         saveToIndexedDB={saveToIndexedDB}
         onSubmit={onSubmit}
-      />
-
-      <WizardNavButtons
-        activeStep={activeStep}
-        onBack={handleBackStep}
-        onNext={handleNextStep}
       />
     </AppCanvasTwoPane>
   );
