@@ -1,6 +1,5 @@
 import type { ImageGenerationPort } from '../../application/ports/out/image-generation.out-port.js';
 import type { GeneratePanelCommand } from '../../application/commands/GeneratePanelCommand.js';
-import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 
 /**
  * Gemini 2.5 Flash Image adapter (chosen for cover landscape generation per design review).
@@ -22,7 +21,7 @@ import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 export class GeminiImageGenerationAdapter implements ImageGenerationPort {
   private readonly apiKey = process.env['GEMINI_API_KEY'] || process.env['GOOGLE_API_KEY'];
 
-  async generatePanel(command: GeneratePanelCommand): Promise<string> {
+  async generatePanel(_command: GeneratePanelCommand): Promise<string> {
     // Panels remain on the primary xAI provider for cost/quality/latency reasons.
     // This adapter is intended primarily for cover generation.
     throw new Error(
@@ -66,8 +65,8 @@ export class GeminiImageGenerationAdapter implements ImageGenerationPort {
   }
 
   async generatePreview(
-    stylePrompt: string,
-    options?: { preset?: string; moodBoardImages?: string[] }
+    _stylePrompt: string,
+    _options?: { preset?: string; moodBoardImages?: string[] }
   ): Promise<Buffer> {
     // Preview generation can stay on the fast xAI path.
     throw new Error('GeminiImageGenerationAdapter.generatePreview not implemented (use xAI path).');
