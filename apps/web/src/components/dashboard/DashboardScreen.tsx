@@ -46,12 +46,14 @@ export function DashboardScreen() {
         <div className="flex-shrink-0 px-4 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-slate-800/60">
           <div className="space-y-1 min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-white">
-              Your Comics
+              Shared Project Workspace
             </h1>
             {!loadingProjects && !errorProjects && projects.length > 0 && (
               <p className="text-xs text-slate-500">
                 {projects.length}{' '}
-                {projects.length === 1 ? 'project' : 'projects'}
+                {projects.length === 1
+                  ? 'community project'
+                  : 'community projects'}
               </p>
             )}
           </div>
