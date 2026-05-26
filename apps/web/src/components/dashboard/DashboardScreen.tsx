@@ -12,6 +12,7 @@ import { useWorkspace } from '../../providers/WorkspaceProvider';
 import { DashboardGrid } from './DashboardGrid';
 import { DashboardLoadingState } from './DashboardLoadingState';
 import { DashboardErrorState } from './DashboardErrorState';
+import { DashboardSplash } from './DashboardSplash';
 
 /**
  * Home / dashboard surface — replaces the previous `/` → `/new` redirect.
@@ -41,45 +42,48 @@ export function DashboardScreen() {
   }
 
   return (
-    <AppCanvasOnePane
-      topStrip={
-        <div className="flex-shrink-0 px-4 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-slate-800/60">
-          <div className="space-y-1 min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
-              Shared Project Workspace
-            </h1>
-            {!loadingProjects && !errorProjects && projects.length > 0 && (
-              <p className="text-xs text-slate-500">
-                {projects.length}{' '}
-                {projects.length === 1
-                  ? 'community project'
-                  : 'community projects'}
-              </p>
-            )}
+    <>
+      <DashboardSplash />
+      <AppCanvasOnePane
+        topStrip={
+          <div className="flex-shrink-0 px-4 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-slate-800/60">
+            <div className="space-y-1 min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight text-white">
+                Shared Project Workspace
+              </h1>
+              {!loadingProjects && !errorProjects && projects.length > 0 && (
+                <p className="text-xs text-slate-500">
+                  {projects.length}{' '}
+                  {projects.length === 1
+                    ? 'community project'
+                    : 'community projects'}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      }
-      footer={
-        <ContentPanelFooter>
-          <span aria-hidden />
-          <Link
-            href="/new"
-            scroll={false}
-            className={`${buttonVariants({ size: 'sm' })} bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-1.5`}
-          >
-            <Sparkles className="h-4 w-4" />
-            New comic
-          </Link>
-        </ContentPanelFooter>
-      }
-    >
-      <DashboardBody
-        loading={loadingProjects}
-        error={errorProjects}
-        projects={projects}
-        onRetry={refetchProjects}
-      />
-    </AppCanvasOnePane>
+        }
+        footer={
+          <ContentPanelFooter>
+            <span aria-hidden />
+            <Link
+              href="/new"
+              scroll={false}
+              className={`${buttonVariants({ size: 'sm' })} bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-1.5`}
+            >
+              <Sparkles className="h-4 w-4" />
+              New comic
+            </Link>
+          </ContentPanelFooter>
+        }
+      >
+        <DashboardBody
+          loading={loadingProjects}
+          error={errorProjects}
+          projects={projects}
+          onRetry={refetchProjects}
+        />
+      </AppCanvasOnePane>
+    </>
   );
 }
 
