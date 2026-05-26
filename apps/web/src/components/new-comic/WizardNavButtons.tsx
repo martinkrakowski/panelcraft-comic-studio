@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronRight } from 'lucide-react';
-import { Button } from '@panelcraft/ui';
+import { Button, ContentPanelFooter } from '@panelcraft/ui';
 
 interface WizardNavButtonsProps {
   activeStep: number;
@@ -9,6 +9,15 @@ interface WizardNavButtonsProps {
   onNext: () => void;
 }
 
+/**
+ * Pinned footer for wizard step navigation. Renders inside the
+ * `<AppCanvasTwoPane footer>` slot. Returns null on terminal steps where
+ * neither Back nor Next applies, so the footer area collapses cleanly.
+ *
+ * Layout: Back on the left, Next on the right (platform-standard). Empty
+ * spacer keeps the surviving button anchored to its edge when only one of
+ * the two is shown.
+ */
 export function WizardNavButtons({
   activeStep,
   onBack,
@@ -16,9 +25,14 @@ export function WizardNavButtons({
 }: WizardNavButtonsProps) {
   if (activeStep >= 4) return null;
 
+  const showBack = activeStep > 0;
+  const showNext = activeStep < 3;
+
+  if (!showBack && !showNext) return null;
+
   return (
-    <div className="flex-shrink-0 flex gap-3 justify-center px-4 py-6 border-t border-slate-700">
-      {activeStep > 0 && (
+    <ContentPanelFooter>
+      {showBack ? (
         <Button
           type="button"
           onClick={onBack}
@@ -26,8 +40,10 @@ export function WizardNavButtons({
         >
           Back
         </Button>
+      ) : (
+        <span aria-hidden />
       )}
-      {activeStep < 3 && (
+      {showNext ? (
         <Button
           type="button"
           onClick={onNext}
@@ -35,7 +51,9 @@ export function WizardNavButtons({
         >
           Next <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
+      ) : (
+        <span aria-hidden />
       )}
-    </div>
+    </ContentPanelFooter>
   );
 }

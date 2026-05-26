@@ -27,15 +27,19 @@ export function EditorLoadingState() {
       }
       topStrip={
         <>
-          <div className="flex-shrink-0 px-4 pt-4">
-            <Skeleton className="h-4 w-28" />
-          </div>
-          <div className="flex-shrink-0 px-4 py-3 border-b border-slate-800/60">
+          <div className="flex-shrink-0 px-4 pt-4 pb-3 space-y-2 border-b border-slate-800/60">
             <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-3 w-32" />
           </div>
           {/* Status strip placeholder (prevents pop when real strip mounts) */}
           <div className="flex-shrink-0 h-12 px-4 bg-slate-900/30" />
         </>
+      }
+      footer={
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-4 border-t border-slate-800/60 bg-slate-900/40">
+          <Skeleton className="h-9 w-36 rounded-md" />
+          <Skeleton className="h-9 w-36 rounded-md" />
+        </div>
       }
     >
       <div className="px-4 pb-8 space-y-6 pt-4">

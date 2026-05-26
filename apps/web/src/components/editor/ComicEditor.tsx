@@ -12,6 +12,7 @@ import {
   ProjectStatusBadge,
   buttonVariants,
   AppCanvasTwoPane,
+  ContentPanelFooter,
 } from '@panelcraft/ui';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { EditorSidebar } from './EditorSidebar';
@@ -92,37 +93,15 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
       }
       topStrip={
         <>
-          {/* Back link (top-left of content area) */}
-          <div className="flex-shrink-0 px-4 pt-4">
-            <Link
-              href="/"
-              className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200 transition-colors duration-200 group"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Link>
-          </div>
-
-          {/* Title row: prompt + status badge + ID + CTA */}
-          <div className="flex-shrink-0 px-4 pt-2 pb-3 flex flex-col md:flex-row md:items-start md:justify-between gap-3 border-b border-slate-800/60">
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center space-x-3">
-                <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
-                  {project.prompt}
-                </h1>
-                <ProjectStatusBadge status={project.status} />
-              </div>
-              <p className="text-xs text-slate-500">Project ID: {project.id}</p>
+          {/* Title row: prompt + status badge + ID. Back/View nav lives in footer. */}
+          <div className="flex-shrink-0 px-4 pt-4 pb-3 flex flex-col gap-1 border-b border-slate-800/60">
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
+                {project.prompt}
+              </h1>
+              <ProjectStatusBadge status={project.status} />
             </div>
-            {project.status === 'completed' && (
-              <Link
-                href={`/projects/${project.id}/view`}
-                className={`${buttonVariants({ size: 'sm' })} bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 shrink-0`}
-              >
-                <BookOpen className="h-3.5 w-3.5" />
-                View comic page
-              </Link>
-            )}
+            <p className="text-xs text-slate-500">Project ID: {project.id}</p>
           </div>
 
           <ProjectStatusStrip
@@ -131,6 +110,28 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
             panelCount={project.panelCount}
           />
         </>
+      }
+      footer={
+        <ContentPanelFooter>
+          <Link
+            href="/"
+            className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Link>
+          {project.status === 'completed' ? (
+            <Link
+              href={`/projects/${project.id}/view`}
+              className={`${buttonVariants({ size: 'sm' })} bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1.5`}
+            >
+              <BookOpen className="h-4 w-4" />
+              View comic page
+            </Link>
+          ) : (
+            <span aria-hidden />
+          )}
+        </ContentPanelFooter>
       }
     >
       {/* Scrollable content area (layout chooser, review panel, grid).

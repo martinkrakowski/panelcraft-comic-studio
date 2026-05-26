@@ -40,7 +40,12 @@ vi.mock('@panelcraft/ui', () => ({
   WizardSidebar: ({ children, ...props }: any) => (
     <div {...props}>{children}</div>
   ),
-  CollapsibleSection: ({ children, title, defaultOpen: _defaultOpen, ...props }: any) => (
+  CollapsibleSection: ({
+    children,
+    title,
+    defaultOpen: _defaultOpen,
+    ...props
+  }: any) => (
     <div {...props}>
       <h3>{title}</h3>
       {children}
@@ -54,11 +59,26 @@ vi.mock('@panelcraft/ui', () => ({
       {children}
     </div>
   ),
-  AppCanvasTwoPane: ({ sidebar, topStrip, children, clearHeader }: any) => (
-    <div data-testid="app-canvas-two-pane" data-clear-header={String(clearHeader)}>
+  AppCanvasTwoPane: ({
+    sidebar,
+    topStrip,
+    children,
+    footer,
+    clearHeader,
+  }: any) => (
+    <div
+      data-testid="app-canvas-two-pane"
+      data-clear-header={String(clearHeader)}
+    >
       <div data-testid="sidebar-slot">{sidebar}</div>
       <div data-testid="topstrip-slot">{topStrip}</div>
       <div data-testid="children-slot">{children}</div>
+      <div data-testid="footer-slot">{footer}</div>
+    </div>
+  ),
+  ContentPanelFooter: ({ children, ...props }: any) => (
+    <div data-testid="content-panel-footer" {...props}>
+      {children}
     </div>
   ),
 }));
