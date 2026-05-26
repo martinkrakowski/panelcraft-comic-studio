@@ -3,36 +3,13 @@ import { z } from 'zod';
 import { ok } from '../../../utils/envelope.js';
 import { parseParams } from '../../../utils/validation.js';
 import { getComicUseCase } from '../../../utils/dependencies.js';
-import { getSignedUrl } from '../../../utils/supabase.js';
-import { createLogger } from '@panelcraft/shared';
-
-const logger = createLogger('projects.get');
+import { toSignedUrlIfPath } from '../../../utils/supabase.js';
 
 interface PanelJSON {
   id: string;
   prompt?: string;
   status: string;
   generatedImageUrl?: string | null;
-}
-
-/**
- * Convert a Supabase Storage path stored on a project (e.g. `comics/<id>/covers/front.webp`)
- * to a freshly-signed short-lived URL the frontend can render. Returns the
- * original value unchanged if it's already an http(s) URL or empty.
- */
-async function toSignedUrlIfPath(
-  value: string | null | undefined
-): Promise<string | null> {
-  if (!value) return null;
-  if (/^https?:\/\//i.test(value)) return value;
-  try {
-    return await getSignedUrl('comics', value);
-  } catch (err) {
-    logger.warn(
-      `Failed to sign storage path ${value}: ${err instanceof Error ? err.message : String(err)}`
-    );
-    return null;
-  }
 }
 
 /**
