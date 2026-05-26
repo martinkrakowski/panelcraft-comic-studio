@@ -5,7 +5,7 @@ import {
 } from '@panelcraft/comic-project-management';
 import {
   ComicProjectId,
-  ComicPrompt,
+  ComicTitle,
   PanelCount,
   PanelId,
   PanelStatus,
@@ -35,7 +35,7 @@ export async function createProject(
   },
   deps: CreateProjectDeps
 ): Promise<string> {
-  const promptResult = ComicPrompt.create(options.prompt);
+  const promptResult = ComicTitle.create(options.prompt);
   if (!promptResult.success) {
     throw new ValidationError(
       promptResult.error?.message || 'Invalid prompt',

@@ -2,7 +2,3 @@
 
 export * from './errors';
 export * from './value-objects/index';
-
-// Shared overlay types (dialogue, captions, positioning)
-// Centralized here so domain, API DTOs, and UI stay in sync.
-export * from './overlay-types';

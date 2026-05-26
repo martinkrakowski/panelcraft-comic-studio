@@ -1,8 +1,7 @@
 import { Panel, PanelJSON } from './Panel.js';
 import {
   ComicProjectId,
-  ComicPrompt,
-  ComicDisplayTitle,
+  ComicTitle,
   PanelCount,
   CharacterBible,
 } from '../value-objects/index.js';
@@ -29,8 +28,6 @@ export interface ComicProjectJSON {
   status: string;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;
-  /** Optional short display title (presentation concern). Null/omitted when not set. */
-  displayTitle?: string | null;
 }
 
 export class ComicProjectSerializer {
@@ -42,7 +39,7 @@ export class ComicProjectSerializer {
       );
     }
 
-    const promptResult = ComicPrompt.create(json.prompt);
+    const promptResult = ComicTitle.create(json.prompt);
     if (!promptResult.success) {
       throw new ValidationError(
         `ComicProject.fromJSON prompt: ${promptResult.error?.message}`
@@ -67,17 +64,6 @@ export class ComicProjectSerializer {
       characterBible = charBibleResult.value!;
     }
 
-    let displayTitle: ComicDisplayTitle | null = null;
-    if (json.displayTitle) {
-      const titleResult = ComicDisplayTitle.create(json.displayTitle);
-      if (!titleResult.success) {
-        throw new ValidationError(
-          `ComicProject.fromJSON displayTitle: ${titleResult.error?.message}`
-        );
-      }
-      displayTitle = titleResult.value!;
-    }
-
     return new ComicProject(idResult.value!, {
       prompt: promptResult.value!,
       panelCount: panelCountResult.value!,
@@ -94,7 +80,6 @@ export class ComicProjectSerializer {
       status: json.status || 'pending_creation',
       createdAt: json.createdAt || new Date().toISOString(),
       lastReviewSubmittedAt: json.lastReviewSubmittedAt || null,
-      displayTitle,
     });
   }
 }

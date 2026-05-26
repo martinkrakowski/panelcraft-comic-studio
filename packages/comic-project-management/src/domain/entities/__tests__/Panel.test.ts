@@ -124,8 +124,6 @@ describe('Panel', () => {
         prompt: 'Test prompt',
         status: 'completed',
         generatedImageUrl: 'https://example.com/img.png',
-        dialogue: [],
-        captions: [],
       });
     });
 
@@ -158,33 +156,6 @@ describe('Panel', () => {
       const deserialized = Panel.fromJSON(json);
 
       expect(deserialized.toJSON()).toEqual(json);
-    });
-
-    it('should preserve dialogue/captions through regen-like updates and roundtrips (cover-title safety)', () => {
-      const id = PanelId.create('panel-overlay-1').value!;
-      const status = PanelStatus.create('completed').value!;
-      const panel = new Panel(id, {
-        prompt: 'Overlay test',
-        status,
-        generatedImageUrl: 'https://example.com/ov.png',
-        dialogue: [{ id: 'd1', text: 'Hello!', speaker: 'A', variant: 'speech', position: { x: 0.5, y: 0.5 }, tailTarget: { x: 0.2, y: 0.7 } }],
-        captions: [{ id: 'c1', text: 'NARRATION', variant: 'caption', position: { x: 0.5, y: 0.1 } }],
-      });
-
-      // Simulate regen spread (as in graph node)
-      const json = panel.toJSON();
-      const updated = { ...json, generatedImageUrl: 'https://new.png', status: 'generated' };
-      const afterRegen = Panel.fromJSON(updated as any);
-
-      expect(afterRegen.getDialogue().length).toBe(1);
-      expect(afterRegen.getDialogue()[0].text).toBe('Hello!');
-      expect(afterRegen.getCaptions().length).toBe(1);
-      expect(afterRegen.getCaptions()[0].text).toBe('NARRATION');
-
-      // set again (as in worker/entity path)
-      afterRegen.setDialogue([{ id: 'd2', text: 'Updated!', speaker: 'B', variant: 'thought', position: { x: 0.6, y: 0.6 } } as any]);
-      const finalJson = afterRegen.toJSON();
-      expect(finalJson.dialogue?.[0].text).toBe('Updated!');
     });
   });
 });

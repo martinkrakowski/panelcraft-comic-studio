@@ -19,12 +19,6 @@ interface XaiImageResponse {
  *
  * To switch providers (e.g., Adobe Firefly, Gemini): implement
  * ImageGenerationPort in a new adapter and swap it in the composition root.
- *
- * Gemini prep note (2026-05 cover-title work): Per design review, Gemini 2.5 Flash Image
- * selected for *cover only* (landscape aspect native support + cost). Port extension
- * (aspect/reserveTitleSpace) + generateCover options ready. xAI path remains active
- * default. Skeleton/conditional or dedicated Gemini adapter can be added later in
- * init.ts factory without breaking existing calls. See docs/planning/COVER-TITLE-IMPLEMENTATION-DESIGN-2026-05.md.
  */
 export class ImageGenerationAdapter implements ImageGenerationPort {
   private readonly apiKey = process.env['XAI_API_KEY'];
@@ -44,9 +38,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     }
     const fullPrompt = this.buildComicPrompt(
       command.prompt,
-      command.styleModifiers,
-      command.reserveTitleSpace,
-      command.targetTitle
+      command.styleModifiers
     );
     // Note: xAI's image API (as of late 2025) does not support OpenAI-style
     // image edits (multipart form data → 415). For now we always call
@@ -121,7 +113,11 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     return url;
   }
 
-  async generateCover(options: Parameters<ImageGenerationPort['generateCover']>[0]): Promise<Buffer> {
+  async generateCover(options: {
+    prompt: string;
+    style?: unknown;
+    characterBible?: unknown;
+  }): Promise<Buffer> {
     if (!this.apiKey)
       throw new Error('XAI_API_KEY environment variable is not set');
 
@@ -131,15 +127,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     const characterDesc = options.characterBible
       ? `Characters: ${JSON.stringify(options.characterBible)}`
       : '';
-
-    // Prompt hygiene (cover-title-dialogue Phase 1): always produce clean artwork.
-    // When reserveTitleSpace, append the reserved blank space phrase so title overlay
-    // (SVG/DOM, never baked) has room at top. targetTitle injected as hint only.
-    const hygiene = ' clean artwork, blank space reserved at top for title overlay, lettering omitted, no text, no title, no speech bubbles, no narration boxes';
-    let coverPrompt = `Comic book cover for story: ${options.prompt}. ${styleDesc} ${characterDesc}. Professional comic cover, vibrant colors, dynamic composition.${options.reserveTitleSpace ? hygiene : ''}`;
-    if (options.targetTitle) {
-      coverPrompt += ` Title hint: ${options.targetTitle}.`;
-    }
+    const fullPrompt = `Comic book cover for story: ${options.prompt}. ${styleDesc} ${characterDesc}. Professional comic cover, bold title, vibrant colors, dynamic composition.`;
 
     const response = await fetchWithTimeout(this.generateEndpoint, {
       method: 'POST',
@@ -149,7 +137,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
       },
       body: JSON.stringify({
         model: this.qualityModel,
-        prompt: coverPrompt,
+        prompt: fullPrompt,
         n: 1,
         response_format: 'url',
       }),
@@ -221,19 +209,8 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     return Buffer.from(await imageResponse.arrayBuffer());
   }
 
-  private buildComicPrompt(
-    basePrompt: string,
-    modifiers?: string,
-    reserveTitleSpace?: boolean,
-    targetTitle?: string
-  ): string {
+  private buildComicPrompt(basePrompt: string, modifiers?: string): string {
     const style = modifiers ? `, ${modifiers}` : '';
-    // Prompt hygiene update (cover-title-dialogue): append clean artwork phrase to *all* panel prompts
-    // so generated bitmaps contain no baked text/lettering/bubbles (overlays are data only).
-    // reserveTitleSpace / targetTitle supported for future panel title cases or consistency.
-    const hygiene = ' clean artwork, blank space reserved at top for title overlay, lettering omitted, no text, no title, no speech bubbles, no narration boxes';
-    let p = `${basePrompt}. Professional comic book panel, bold black outlines, vibrant colors, dynamic composition, high detail${style}. Comic art style.${hygiene}`;
-    if (targetTitle) p += ` Title hint: ${targetTitle}.`;
-    return p;
+    return `${basePrompt}. Professional comic book panel, bold black outlines, vibrant colors, dynamic composition, high detail${style}. Comic art style.`;
   }
 }

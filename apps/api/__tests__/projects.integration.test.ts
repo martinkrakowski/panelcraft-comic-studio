@@ -190,7 +190,6 @@ describe('Projects API Integration Tests', () => {
       const project = getResponse.body.data.project;
       expect(project).toHaveProperty('id');
       expect(project).toHaveProperty('prompt');
-      expect(project).toHaveProperty('displayTitle');
       expect(project).toHaveProperty('panelCount');
       expect(project).toHaveProperty('status');
       expect(project).toHaveProperty('createdAt');

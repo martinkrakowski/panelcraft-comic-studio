@@ -13,7 +13,6 @@ import type { WorkflowDeps } from './ComicWorkflowTypes.js';
 import { structureStory, buildCharacterBible } from './StoryStructureNodes.js';
 import {
   generateCover,
-  generateDisplayTitle,
   suggestLayouts,
   layoutInterrupt,
   generatePanel,
@@ -25,9 +24,6 @@ import {
  * LangGraph orchestration adapter that manages the comic generation workflow.
  * Implements HITL (Human-in-the-Loop) using LangGraph's interrupt() mechanism.
  * The compiled graph is built once at construction and reused across all invocations.
- *
- * Flow includes (post VO+schema work): ... → generateCover → generateDisplayTitle (best-effort short title LLM for displayTitle / overlays) → suggestLayouts → ...
- * Title node is explicitly best-effort and never fails the graph (per design).
  */
 export class LangGraphOrchestrationAdapter {
   private readonly deps: WorkflowDeps;
@@ -60,11 +56,6 @@ export class LangGraphOrchestrationAdapter {
         buildCharacterBible(s, d)
       )
       .addNode('generateCover', (s: ComicGraphStateType) => generateCover(s, d))
-      // Title node (lightweight/best-effort LLM after cover; displayTitle for overlays + UI).
-      // Non-blocking: failures fall back inside the node; workflow always continues.
-      .addNode('generateDisplayTitle', (s: ComicGraphStateType) =>
-        generateDisplayTitle(s, d)
-      )
       .addNode('suggestLayouts', (s: ComicGraphStateType) =>
         suggestLayouts(s, d)
       )
@@ -80,8 +71,7 @@ export class LangGraphOrchestrationAdapter {
     workflow.addEdge(START, 'structureStory');
     workflow.addEdge('structureStory', 'buildCharacterBible');
     workflow.addEdge('buildCharacterBible', 'generateCover');
-    workflow.addEdge('generateCover', 'generateDisplayTitle');
-    workflow.addEdge('generateDisplayTitle', 'suggestLayouts');
+    workflow.addEdge('generateCover', 'suggestLayouts');
     workflow.addEdge('suggestLayouts', 'layoutInterrupt');
     workflow.addEdge('layoutInterrupt', 'generatePanel');
     workflow.addEdge('generatePanel', 'hitlReview');

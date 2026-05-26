@@ -1,8 +1,7 @@
 import { Panel } from './Panel.js';
 import {
   ComicProjectId,
-  ComicPrompt,
-  ComicDisplayTitle,
+  ComicTitle,
   PanelCount,
   CharacterBible,
 } from '../value-objects/index.js';
@@ -10,7 +9,7 @@ import type { ComicProjectJSON } from './ComicProjectSerializer.js';
 import { ComicProjectSerializer } from './ComicProjectSerializer.js';
 
 export interface ComicProjectProps {
-  prompt: ComicPrompt;
+  prompt: ComicTitle;
   panelCount: PanelCount;
   panels?: Panel[];
   characterBible?: CharacterBible | null;
@@ -28,14 +27,12 @@ export interface ComicProjectProps {
   status: string;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;
-  /** Optional short punchy title for UI, covers, and listings. Distinct from the long `prompt`. */
-  displayTitle?: ComicDisplayTitle | null;
 }
 
 export type { ComicProjectJSON } from './ComicProjectSerializer.js';
 
 export class ComicProject {
-  private prompt: ComicPrompt;
+  private prompt: ComicTitle;
   private panelCount: PanelCount;
   private panels: Panel[];
   private characterBible: CharacterBible | null;
@@ -53,7 +50,6 @@ export class ComicProject {
   private status: string;
   private createdAt: string;
   private lastReviewSubmittedAt: string | null;
-  private displayTitle: ComicDisplayTitle | null;
 
   constructor(
     private readonly id: ComicProjectId,
@@ -77,43 +73,17 @@ export class ComicProject {
     this.status = props.status;
     this.createdAt = props.createdAt;
     this.lastReviewSubmittedAt = props.lastReviewSubmittedAt || null;
-    this.displayTitle = props.displayTitle ?? null;
   }
 
   getId(): ComicProjectId {
     return this.id;
   }
-
-  /**
-   * Returns the long story prompt / synopsis (ComicPrompt VO).
-   * This is the primary creative input from the user.
-   */
-  getPrompt(): ComicPrompt {
+  getPrompt(): ComicTitle {
     return this.prompt;
   }
-
-  /**
-   * Updates the long story prompt. Domain remains pure; no side effects.
-   */
-  setPrompt(prompt: ComicPrompt): void {
+  setPrompt(prompt: ComicTitle): void {
     this.prompt = prompt;
   }
-
-  /**
-   * Returns the optional short display title (ComicDisplayTitle VO), or null if not set.
-   * Used for cover overlays, project cards, and UI titles. Source of truth for presentation.
-   */
-  getDisplayTitle(): ComicDisplayTitle | null {
-    return this.displayTitle;
-  }
-
-  /**
-   * Sets or clears the short display title. Optional field; null/undefined clears it.
-   */
-  setDisplayTitle(title: ComicDisplayTitle | null): void {
-    this.displayTitle = title;
-  }
-
   getPanelCount(): PanelCount {
     return this.panelCount;
   }
@@ -239,7 +209,6 @@ export class ComicProject {
       status: this.status,
       createdAt: this.createdAt,
       lastReviewSubmittedAt: this.lastReviewSubmittedAt,
-      displayTitle: this.displayTitle ? this.displayTitle.getValue() : null,
     };
   }
 

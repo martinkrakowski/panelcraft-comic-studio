@@ -36,17 +36,10 @@ export async function generateCover(
   deps.logger.info(`Generating cover for project ${projectId}`);
 
   try {
-    // Prompt hygiene (per design + ImageGenerationPort extension): pass reserveTitleSpace + targetTitle
-    // so adapter appends "clean artwork, blank space reserved at top for title overlay, lettering omitted, no text, no title, no speech bubbles, no narration boxes"
-    // to the cover prompt. (Panels get the phrase in buildComicPrompt always.)
-    // This keeps artwork clean for later SVG/DOM title + dialogue/caption overlays.
-    // Title display generation happens in the subsequent `generateDisplayTitle` node (best-effort LLM + fallback).
     const coverBuffer = await deps.imageGenPort.generateCover({
       prompt: project.prompt,
       style: project.styleReferences,
       characterBible: project.characterBible,
-      reserveTitleSpace: true,
-      targetTitle: undefined, // populated later by title LLM or user edit on displayTitle
     });
 
     const bucket = 'comics';
@@ -95,97 +88,6 @@ export async function generateCover(
     await deps.projectRepo.save(proj);
     throw error;
   }
-}
-
-/**
- * Separate lightweight title LLM generation node.
- *
- * Placed after `generateCover` (best-effort, non-blocking). Uses the existing
- * `LLMClientPort` (wired to XaiLLMClientAdapter / Grok) for a cheap, fast call
- * to produce a short punchy comic display title (3-8 words ideal).
- *
- * - On success: stores string on `project.displayTitle` (sanitized length).
- * - On any failure (LLM error, parse, validation): falls back to a cleaned
- *   truncation of the original user prompt (first ~60 chars + ellipsis).
- * - Never throws; title generation is a presentation concern, not core workflow.
- * - Prompt includes premise + optional genres/tones for relevance.
- * - JSDoc + logging per AGENTS.md and design (COVER-TITLE-IMPLEMENTATION-DESIGN-2026-05.md).
- *
- * The result flows through state → ComicProjectSerializer (validates via VO on load)
- * → API DTO → UI (CoverSlide, headers, editor). User can later override via editor.
- */
-export async function generateDisplayTitle(
-  state: ComicGraphStateType,
-  deps: WorkflowDeps
-): Promise<ComicGraphStateType> {
-  const { project } = state;
-  const projectId = project.id;
-  deps.logger.info(`[TitleNode] Generating display title for project ${projectId} (best-effort)`);
-
-  let displayTitle: string | null = null;
-
-  try {
-    const systemPrompt =
-      'You are a comic book title expert. Create a short, memorable, punchy title (3-8 words max, prefer title case) for the comic book. ' +
-      'Return ONLY valid minified JSON: {"title":"The Exact Title Here"}. No prose, no backticks, no extra keys or explanation.';
-
-    const premise = typeof project.prompt === 'string' ? project.prompt : '';
-    const genres = Array.isArray(project.genres) ? project.genres.join(', ') : 'unspecified';
-    const tones = Array.isArray(project.tones) ? project.tones.join(', ') : 'unspecified';
-
-    const userPrompt = `Premise / Story Prompt:\n${premise}\n\n` +
-      `Genre hints: ${genres}\nTone hints: ${tones}\n\n` +
-      'Produce the title now.';
-
-    const raw = await deps.llmClient.call(systemPrompt, userPrompt);
-    // Flexible extraction: support common response shapes from the LLM adapter
-    let candidate: unknown = (raw as Record<string, unknown>)?.title;
-    if (!candidate && typeof raw === 'string') {
-      candidate = raw;
-    }
-    if (!candidate && (raw as Record<string, unknown>)?.result) {
-      candidate = (raw as Record<string, unknown>).result;
-    }
-
-    if (typeof candidate === 'string') {
-      const trimmed = candidate.trim().replace(/^["']|["']$/g, '').slice(0, 120);
-      if (trimmed.length >= 3) {
-        displayTitle = trimmed;
-        deps.logger.info(`[TitleNode] LLM succeeded with title: "${displayTitle}"`);
-      } else {
-        throw new Error('LLM title too short after trim');
-      }
-    } else {
-      throw new Error('LLM response did not contain usable title string');
-    }
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    deps.logger.warn(`[TitleNode] LLM title generation failed for ${projectId} (will fallback): ${msg}`);
-    // Best-effort truncate fallback from prompt (cleaned + title-cased-ish)
-    const promptStr = (typeof project.prompt === 'string' ? project.prompt : '').replace(/\s+/g, ' ').trim();
-    if (promptStr.length > 0) {
-      let fb = promptStr.length > 60 ? promptStr.slice(0, 57).trim() + '…' : promptStr;
-      // Light title-ification
-      fb = fb
-        .split(/\s+/)
-        .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''))
-        .join(' ')
-        .slice(0, 120);
-      if (fb.length >= 3) {
-        displayTitle = fb;
-      }
-    }
-  }
-
-  const updatedProject = {
-    ...project,
-    displayTitle: displayTitle || null,
-  };
-
-  return {
-    ...state,
-    project: updatedProject,
-  };
 }
 
 export async function suggestLayouts(
@@ -328,18 +230,10 @@ export async function generatePanel(
   }
 
   const updatedPanels = [...panels];
-  // Harden preservation (cover-title-dialog regen safety): the spread of PanelJSON
-  // (which now includes dialogue[] / captions[] from schema work) + explicit copy of
-  // any creative fields guarantees they survive image regen in-graph. displayTitle
-  // lives at project root and is carried by the outer { ...state.project }.
-  // Contract: this node + worker regen path + entity setters MUST never drop creative text data.
   updatedPanels[panelIndex] = {
     ...(panel as PanelJSON),
     generatedImageUrl: stagedPath,
     status: 'generated',
-    // Explicit re-assertion for static analysis / future-proofing (fields are in spread)
-    dialogue: (panel as any).dialogue,
-    captions: (panel as any).captions,
   };
 
   return {

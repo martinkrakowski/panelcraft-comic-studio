@@ -13,9 +13,6 @@ interface PanelJSON {
   prompt?: string;
   status: string;
   generatedImageUrl?: string | null;
-  // New in cover-title-dialog: structured overlays (source of truth, survive regen)
-  dialogue?: Array<{ id: string; text: string; speaker?: string; variant?: string; position: { x: number; y: number }; tailTarget?: { x: number; y: number } }>;
-  captions?: Array<{ id: string; text: string; variant?: string; position: { x: number; y: number } }>;
 }
 
 /**
@@ -66,7 +63,6 @@ export default defineEventHandler(async (event) => {
     project: {
       id: j.id,
       prompt: j.prompt,
-      displayTitle: j.displayTitle ?? null,
       panelCount: j.panelCount,
       status: j.status,
       createdAt: j.createdAt,
@@ -85,9 +81,6 @@ export default defineEventHandler(async (event) => {
           status: p.status,
           prompt: p.prompt,
           imageUrl: panelImageUrls[idx],
-          // Pass through overlay data for editor + ComposedPage (gated integration now live)
-          dialogue: p.dialogue || [],
-          captions: p.captions || [],
         })) || [],
     },
   });

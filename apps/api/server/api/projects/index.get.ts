@@ -15,7 +15,6 @@ export default defineEventHandler(async (event) => {
       return {
         id: j.id,
         prompt: j.prompt.substring(0, 50),
-        displayTitle: j.displayTitle ?? null,
         panelCount: j.panelCount,
         status: j.status,
         createdAt: j.createdAt,

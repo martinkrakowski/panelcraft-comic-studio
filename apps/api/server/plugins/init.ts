@@ -89,22 +89,14 @@ export default defineNitroPlugin(async (nitroApp) => {
   // hitting any external API. In production mode wire the real xAI-backed
   // adapter — previously this branch threw unconditionally, which made
   // every generation request fail with a 5xx in non-mock environments.
-  //
-  // Gemini prep (per COVER-TITLE-IMPLEMENTATION-DESIGN): Gemini 2.5 Flash Image chosen
-  // for cover/landscape (native aspect + cheap). xAI remains default for panels + current
-  // covers. Future: conditional or factory in composition root using COVER_IMAGE_PROVIDER=gemini.
-  // A skeleton adapter exists at packages/comic-generation/src/infrastructure/adapters/GeminiImageGenerationAdapter.ts.
-  // Port already extended for aspect/reserveTitleSpace/targetTitle. See design doc §2.
   const imageGenPort: ImageGenerationPort =
     process.env.USE_MOCK_IMAGE === 'true'
       ? {
-          // Mock ignores new aspect/reserve/target options (and dialogue/captions on panels) per thin-mock guideline.
-          // Real adapter (ImageGenerationAdapter) will use them for prompt hygiene and provider selection.
           generatePanel: async (command: GeneratePanelCommand) => {
             await new Promise((r) => setTimeout(r, 500));
             return `https://example.com/panels/${command.panelNumber || 1}.png`;
           },
-          generateCover: async (_options?: unknown) => Buffer.from(''),
+          generateCover: async () => Buffer.from(''),
           generatePreview: async () => Buffer.from(''),
         }
       : new ImageGenerationAdapter();

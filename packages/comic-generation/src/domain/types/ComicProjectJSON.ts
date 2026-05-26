@@ -20,6 +20,4 @@ export interface ComicProjectJSON {
   status: string;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;
-  /** Optional short display title for presentation (added in VO rename foundation). */
-  displayTitle?: string | null;
 }
