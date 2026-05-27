@@ -166,6 +166,11 @@ export function AppCanvasTwoPane({
   // The portal decision still uses JS (`useIsDesktop` + drawer state)
   // because the portal target only exists when Radix has mounted the
   // drawer Content (i.e., `hasSlot` is true).
+  //
+  // Skip the mobile-hide when no `MobileSidebarProvider` is mounted: in
+  // tests, Storybook stories, and anywhere the primitive is used in
+  // isolation there is no drawer to portal into, so hiding the inline
+  // sidebar would leave the user with no sidebar at all on `< lg`.
   const shouldPortal =
     !!ctx && !isDesktop && ctx.hasSlot && !!ctx.sidebarSlotRef.current;
 
@@ -182,8 +187,10 @@ export function AppCanvasTwoPane({
             contents` on desktop makes the wrapper invisible to the flex
             container so the `<aside>` lays out as if the wrapper weren't
             there. When `shouldPortal` flips, the inline slot renders
-            null and the portaled copy below takes over. */}
-        <div className="hidden lg:contents">
+            null and the portaled copy below takes over. Without a
+            provider, fall back to a plain `contents` wrapper so the
+            sidebar renders at every breakpoint. */}
+        <div className={ctx ? 'hidden lg:contents' : 'contents'}>
           {shouldPortal ? null : sidebar}
         </div>
         <div

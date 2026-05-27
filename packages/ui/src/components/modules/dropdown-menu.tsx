@@ -42,6 +42,18 @@ const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
+/**
+ * Trigger row that opens a nested submenu when activated.
+ * Wraps Radix `DropdownMenuPrimitive.SubTrigger` and renders a trailing
+ * chevron to indicate it expands.
+ *
+ * @component
+ * @param props - Radix SubTrigger props plus `inset` to add an 8-unit
+ *   left padding so the row aligns with checkbox/radio items in the
+ *   same menu.
+ * @param ref - Forwarded reference to the underlying Radix SubTrigger.
+ * @returns React.Element trigger row that opens a submenu on activation.
+ */
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
@@ -64,6 +76,16 @@ const DropdownMenuSubTrigger = React.forwardRef<
 DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName;
 
+/**
+ * Floating panel that holds the contents of a nested submenu.
+ * Wraps Radix `DropdownMenuPrimitive.SubContent` with PanelCraft's
+ * slate surface, border, and shadow.
+ *
+ * @component
+ * @param props - Radix SubContent props (e.g. `sideOffset`, `align`).
+ * @param ref - Forwarded reference to the underlying Radix SubContent.
+ * @returns React.Element floating panel for the submenu items.
+ */
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
@@ -80,6 +102,18 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
+/**
+ * Main floating panel that holds the dropdown's items.
+ * Wraps Radix `DropdownMenuPrimitive.Content` in a `Portal` so it
+ * escapes the trigger's stacking context.
+ *
+ * @component
+ * @param props - Radix Content props. `sideOffset` defaults to 4px so
+ *   the menu sits just below the trigger; `align` controls horizontal
+ *   alignment relative to the trigger.
+ * @param ref - Forwarded reference to the underlying Radix Content.
+ * @returns React.Element portaled dropdown panel.
+ */
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
@@ -98,6 +132,18 @@ const DropdownMenuContent = React.forwardRef<
 ));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
+/**
+ * Selectable row inside a dropdown menu.
+ * Wraps Radix `DropdownMenuPrimitive.Item`; consumers wire behavior
+ * through `onSelect`.
+ *
+ * @component
+ * @param props - Radix Item props plus `inset` to add an 8-unit left
+ *   padding so the row aligns with checkbox/radio items in the same
+ *   menu.
+ * @param ref - Forwarded reference to the underlying Radix Item.
+ * @returns React.Element interactive menu row.
+ */
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
@@ -116,6 +162,17 @@ const DropdownMenuItem = React.forwardRef<
 ));
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
+/**
+ * Menu row with a leading check indicator that toggles on selection.
+ * Wraps Radix `DropdownMenuPrimitive.CheckboxItem`.
+ *
+ * @component
+ * @param props - Radix CheckboxItem props. `checked` is the current
+ *   toggle state (boolean or Radix' `'indeterminate'`); `onCheckedChange`
+ *   reports user toggles.
+ * @param ref - Forwarded reference to the underlying Radix CheckboxItem.
+ * @returns React.Element checkbox row with a left-aligned check icon.
+ */
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
@@ -140,6 +197,17 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName;
 
+/**
+ * Non-interactive section heading rendered above grouped items.
+ * Wraps Radix `DropdownMenuPrimitive.Label` with an uppercase, muted
+ * caption style.
+ *
+ * @component
+ * @param props - Radix Label props plus `inset` to add an 8-unit left
+ *   padding so the heading aligns with checkbox/radio items below.
+ * @param ref - Forwarded reference to the underlying Radix Label.
+ * @returns React.Element labelled heading inside a dropdown menu.
+ */
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
@@ -158,6 +226,15 @@ const DropdownMenuLabel = React.forwardRef<
 ));
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
 
+/**
+ * Thin horizontal rule that visually separates groups of items.
+ * Wraps Radix `DropdownMenuPrimitive.Separator`.
+ *
+ * @component
+ * @param props - Radix Separator props.
+ * @param ref - Forwarded reference to the underlying Radix Separator.
+ * @returns React.Element 1-pixel divider row.
+ */
 const DropdownMenuSeparator = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
