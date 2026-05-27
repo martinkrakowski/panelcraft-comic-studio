@@ -199,9 +199,12 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
       {/* Scrollable content area (layout chooser, review panel, grid).
           Restores the px-4 / pb-8 / space-y-6 that existed pre-refactor so
           cards and grids don't sit flush against the pane edges and have
-          consistent internal spacing. Matches the padding used in the
-          loading skeleton for a seamless loaded transition. */}
-      <div className="px-4 pb-8 space-y-6">
+          consistent internal spacing. `pt-4` separates the first card's
+          rounded border from the ProjectStatusStrip step counter pinned
+          in the topStrip — without it, the card border touches the
+          counter's bottom edge. Matches the padding used in the loading
+          skeleton for a seamless loaded transition. */}
+      <div className="px-4 pt-4 pb-8 space-y-6">
         {project.status === 'composing' ? (
           <ComposingCard />
         ) : project.status === 'regenerating_cover' ? (
