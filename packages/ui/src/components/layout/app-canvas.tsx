@@ -149,7 +149,9 @@ export function AppCanvasTwoPane({
   topStrip,
   children,
   footer,
-  /** Reserve top space for the sticky WorkspaceShell header. Default true. */
+  /** Reserve top/right/bottom insets on the content card (clears the
+   * sticky header + adds visible breathing room). Set false for
+   * full-bleed two-pane experiences. Default true. */
   clearHeader = true,
 }: {
   sidebar: ReactNode;
