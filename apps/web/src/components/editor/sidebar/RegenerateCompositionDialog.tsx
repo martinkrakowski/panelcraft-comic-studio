@@ -3,9 +3,13 @@
 import { useRef, useState } from 'react';
 import { FeedbackRegenerateDialog } from '@panelcraft/ui';
 import { RefreshCw } from 'lucide-react';
+import type { CompositionFlavor } from '@panelcraft/types';
 import { useEffectOnce } from '../../../lib/hooks/useEffectOnce';
 
-export type CompositionFlavor = 'composite-true' | 'repaint';
+// Re-export from the canonical source so existing siblings that import
+// from this module (FinalReviewPanel, etc.) keep working without a
+// churny import-path migration.
+export type { CompositionFlavor };
 
 interface RegenerateCompositionDialogProps {
   open: boolean;

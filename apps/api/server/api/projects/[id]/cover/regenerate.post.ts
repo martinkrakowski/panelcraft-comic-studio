@@ -1,4 +1,5 @@
 import {
+  createError,
   defineEventHandler,
   getRouterParam,
   readBody,
@@ -25,8 +26,20 @@ export default defineEventHandler(async (event) => {
     id: getRouterParam(event, 'id'),
   });
   // Body is optional — calling without feedback is a "re-roll the cover
-  // with the same prompt" affordance.
-  const rawBody = await readBody(event).catch(() => undefined);
+  // with the same prompt" affordance, so `undefined` is a valid input.
+  // A malformed body (Content-Type: application/json + bad JSON) is a
+  // client error and gets surfaced as a 400; we don't silently fall back
+  // to the no-feedback default in that case.
+  let rawBody: unknown;
+  try {
+    rawBody = await readBody(event);
+  } catch (err) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Malformed request body',
+      data: { message: err instanceof Error ? err.message : String(err) },
+    });
+  }
   const { feedback } = rawBody
     ? parseBody(RegenerateCoverSchema, rawBody)
     : { feedback: undefined };

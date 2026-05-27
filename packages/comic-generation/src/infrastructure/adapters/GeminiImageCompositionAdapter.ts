@@ -84,15 +84,21 @@ export class GeminiImageCompositionAdapter implements ImageCompositionPort {
       });
     }
 
-    const endpoint =
-      `${this.baseEndpoint}/${encodeURIComponent(this.model)}:generateContent` +
-      `?key=${encodeURIComponent(this.apiKey)}`;
+    // Send the API key via the `x-goog-api-key` header rather than as a
+    // `?key=` query parameter. Query parameters can leak into logs,
+    // proxy access records, error stack traces, and the `fetchWithTimeout`
+    // timeout-error message — the header is treated as a credential by
+    // every reasonable logger.
+    const endpoint = `${this.baseEndpoint}/${encodeURIComponent(this.model)}:generateContent`;
 
     const response = await fetchWithTimeout(
       endpoint,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': this.apiKey,
+        },
         body: JSON.stringify({
           contents: [{ role: 'user', parts }],
           // Request an image in the response. Newer Gemini image models

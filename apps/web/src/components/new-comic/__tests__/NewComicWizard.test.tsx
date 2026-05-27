@@ -160,7 +160,7 @@ vi.mock('@panelcraft/types', () => ({
   LAYOUTS_2_PANELS: [],
   LAYOUTS_3_PANELS: [],
   LAYOUTS_4_PANELS: [],
-  DEFAULT_FALLBACK_LAYOUT: {
+  getDefaultFallbackLayout: () => ({
     id: 'grid-2x2-variable',
     name: '2x2 Grid Variable',
     description: '',
@@ -168,7 +168,7 @@ vi.mock('@panelcraft/types', () => ({
     mood: 'balanced',
     panels: [],
     gridTemplate: '',
-  },
+  }),
 }));
 
 // Import after mocks

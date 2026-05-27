@@ -1,4 +1,5 @@
 import {
+  createError,
   defineEventHandler,
   getRouterParam,
   readBody,
@@ -35,9 +36,24 @@ export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), {
     id: getRouterParam(event, 'id'),
   });
+  // The body is optional (empty payload is a valid "re-roll with the
+  // existing prompt" call), but a malformed JSON payload is a client
+  // error we should surface as 400 rather than silently swallowing into
+  // an empty-body default. `readBody` returns `undefined` for no body
+  // and throws for parse failures; we treat the latter explicitly.
+  let rawBody: unknown;
+  try {
+    rawBody = await readBody(event);
+  } catch (err) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Malformed request body',
+      data: { message: err instanceof Error ? err.message : String(err) },
+    });
+  }
   const { regenFeedback, composeFlavor } = parseBody(
     ComposeFinalPageSchema,
-    (await readBody(event).catch(() => ({}))) ?? {}
+    rawBody ?? {}
   );
 
   try {

@@ -5,6 +5,7 @@ import {
   CreateProjectResponse,
   SubmitReviewInput,
   ReviewResponse,
+  type CompositionFlavor,
 } from '@panelcraft/types';
 
 // Determine default API URL (automatically handles server-side rendering vs client browser execution)
@@ -248,7 +249,7 @@ export const api = {
     id: string,
     options: {
       regenFeedback?: string;
-      composeFlavor?: 'composite-true' | 'repaint';
+      composeFlavor?: CompositionFlavor;
     } = {}
   ): Promise<{ message: string }> {
     return request<{ message: string }>(`/api/projects/${id}/compose`, {

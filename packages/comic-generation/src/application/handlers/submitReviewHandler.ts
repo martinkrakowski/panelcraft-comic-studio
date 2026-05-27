@@ -189,24 +189,48 @@ export async function submitReview(
       return;
     }
 
+    // Snapshot the prior status + review timestamp so we can roll the
+    // project out of `composing` if the queue add fails — otherwise the
+    // UI would see an in-flight status with no worker behind it. Same
+    // shape as `extendPanels` / `regeneratePanel`.
+    const priorStatus = currentStatus;
+    const priorReviewSubmittedAt = project.getLastReviewSubmittedAt();
     project.setStatus(COMPOSING_STATUS);
     project.setLastReviewSubmittedAt(new Date().toISOString());
     await deps.projectRepo.save(project);
 
-    await deps.taskQueue.add(
-      'compose-final-page',
-      {
-        projectId,
-        regenFeedback:
-          feedbackValue.comment || feedbackValue.regenerationHint || undefined,
-        composeFlavor,
-      },
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
-        removeOnComplete: true,
+    try {
+      await deps.taskQueue.add(
+        'compose-final-page',
+        {
+          projectId,
+          regenFeedback:
+            feedbackValue.comment ||
+            feedbackValue.regenerationHint ||
+            undefined,
+          composeFlavor,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: true,
+        }
+      );
+    } catch (enqueueErr) {
+      project.setStatus(priorStatus);
+      project.setLastReviewSubmittedAt(priorReviewSubmittedAt);
+      try {
+        await deps.projectRepo.save(project);
+      } catch (rollbackErr) {
+        deps.logger.error(
+          `[submitReview/final] Rollback save failed for project ${projectId}: ` +
+            (rollbackErr instanceof Error
+              ? rollbackErr.message
+              : String(rollbackErr))
+        );
       }
-    );
+      throw enqueueErr;
+    }
     return;
   }
 
@@ -225,23 +249,43 @@ export async function submitReview(
       return;
     }
 
+    const priorStatus = currentStatus;
+    const priorReviewSubmittedAt = project.getLastReviewSubmittedAt();
     project.setStatus(REGENERATING_COVER_STATUS);
     project.setLastReviewSubmittedAt(new Date().toISOString());
     await deps.projectRepo.save(project);
 
-    await deps.taskQueue.add(
-      'regenerate-cover',
-      {
-        projectId,
-        regenFeedback:
-          feedbackValue.comment || feedbackValue.regenerationHint || undefined,
-      },
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
-        removeOnComplete: true,
+    try {
+      await deps.taskQueue.add(
+        'regenerate-cover',
+        {
+          projectId,
+          regenFeedback:
+            feedbackValue.comment ||
+            feedbackValue.regenerationHint ||
+            undefined,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: true,
+        }
+      );
+    } catch (enqueueErr) {
+      project.setStatus(priorStatus);
+      project.setLastReviewSubmittedAt(priorReviewSubmittedAt);
+      try {
+        await deps.projectRepo.save(project);
+      } catch (rollbackErr) {
+        deps.logger.error(
+          `[submitReview/cover] Rollback save failed for project ${projectId}: ` +
+            (rollbackErr instanceof Error
+              ? rollbackErr.message
+              : String(rollbackErr))
+        );
       }
-    );
+      throw enqueueErr;
+    }
     return;
   }
 

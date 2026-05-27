@@ -511,12 +511,33 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
             </div>
           </Carousel>
         ) : (
+          // Single-slide fallback. The kind depends on which slides
+          // survived the build above (e.g. a project with only an AI
+          // composition and the CSS toggle off would land here with just
+          // `composed-ai`). Render whatever's actually in `slides[0]`
+          // rather than hard-coding `ComposedPage`, which would silently
+          // show the wrong asset.
           <div className="mx-auto w-full max-w-3xl">
-            <ComposedPage
-              pageRef={pageRef}
-              layout={layout}
-              panels={renderablePanels}
-            />
+            {slides[0]?.kind === 'cover' && project.coverImageUrl && (
+              <CoverSlide
+                src={project.coverImageUrl}
+                prompt={project.prompt}
+                corsCapable={isCorsCapableHost(project.coverImageUrl)}
+              />
+            )}
+            {slides[0]?.kind === 'composed-grid' && (
+              <ComposedPage
+                pageRef={pageRef}
+                layout={layout}
+                panels={renderablePanels}
+              />
+            )}
+            {slides[0]?.kind === 'composed-ai' && project.composedImageUrl && (
+              <AiCompositionSlide
+                src={project.composedImageUrl}
+                corsCapable={isCorsCapableHost(project.composedImageUrl)}
+              />
+            )}
           </div>
         )}
       </div>

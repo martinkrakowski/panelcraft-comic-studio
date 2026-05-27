@@ -80,7 +80,7 @@ export const WizardSidebar = React.forwardRef<
               ? 'Collapse all sidebar sections'
               : 'Expand all sidebar sections'
           }
-          aria-pressed={!allExpanded}
+          aria-pressed={allExpanded}
           title={allExpanded ? 'Collapse all' : 'Expand all'}
           className="p-1 rounded border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800/60 hover:border-slate-500 transition-colors"
         >

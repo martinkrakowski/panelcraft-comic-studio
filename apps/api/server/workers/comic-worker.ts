@@ -19,7 +19,7 @@ import {
 import type { LoggerPort } from '@panelcraft/shared';
 import {
   getLayoutById,
-  DEFAULT_FALLBACK_LAYOUT,
+  getDefaultFallbackLayout,
   type LayoutTemplate,
 } from '@panelcraft/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -655,20 +655,22 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
             );
           }
 
-          // Resolve layout. Fall back to the default 2x2 if the persisted
-          // selectedLayout was never set or references a legacy free-form
-          // string from before the layout catalog existed.
+          // Resolve layout. Fall back to a panel-count-aware default if
+          // the persisted selectedLayout was never set or references a
+          // legacy free-form string from before the layout catalog
+          // existed.
           const layoutId = project.getSelectedLayout();
           let layoutTemplate: LayoutTemplate | undefined = layoutId
             ? getLayoutById(layoutId)
             : undefined;
           if (!layoutTemplate) {
+            const fallback = getDefaultFallbackLayout(panels.length);
             logger.warn(
               `[Worker] Project ${projectId} selectedLayout="${layoutId}" ` +
-                `not in catalog — falling back to ` +
-                `"${DEFAULT_FALLBACK_LAYOUT.id}".`
+                `not in catalog — falling back to "${fallback.id}" ` +
+                `(matches panelCount=${panels.length}).`
             );
-            layoutTemplate = DEFAULT_FALLBACK_LAYOUT;
+            layoutTemplate = fallback;
           }
 
           // Fetch each panel image as a Buffer. Generated panels are stored
@@ -680,6 +682,41 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
             `[Worker] Composing final page for project ${projectId} ` +
               `(${panels.length} panel(s), layout="${layoutTemplate.id}")`
           );
+          // Bound each panel fetch to a 30s ceiling — signed URLs and
+          // CDN edges can hang on slow networks, and without an abort
+          // the whole compose-final-page job would block on the
+          // Promise.all forever. AbortController + setTimeout is the
+          // standard inline shape; we clean up the timer in `finally`
+          // so a fast response doesn't leak the handle.
+          const PANEL_FETCH_TIMEOUT_MS = 30_000;
+          const fetchPanelWithTimeout = async (
+            url: string,
+            idx: number
+          ): Promise<Response> => {
+            const controller = new AbortController();
+            const timer = setTimeout(
+              () => controller.abort(),
+              PANEL_FETCH_TIMEOUT_MS
+            );
+            try {
+              return await fetch(url, { signal: controller.signal });
+            } catch (err) {
+              if (
+                err instanceof Error &&
+                (err.name === 'AbortError' ||
+                  (err as { name?: string }).name === 'AbortError')
+              ) {
+                throw new Error(
+                  `[Worker] Panel ${idx} fetch timed out after ` +
+                    `${PANEL_FETCH_TIMEOUT_MS}ms (${url})`
+                );
+              }
+              throw err;
+            } finally {
+              clearTimeout(timer);
+            }
+          };
+
           const panelImages: Buffer[] = await Promise.all(
             panels.map(async (panel, idx) => {
               const stored = panel.getGeneratedImageUrl();
@@ -703,10 +740,11 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
                 }
                 fetchUrl = signedUrlData.signedUrl;
               }
-              const res = await fetch(fetchUrl);
+              const res = await fetchPanelWithTimeout(fetchUrl, idx);
               if (!res.ok) {
                 throw new Error(
-                  `[Worker] Failed to fetch panel ${idx}: HTTP ${res.status}`
+                  `[Worker] Failed to fetch panel ${idx} (${fetchUrl}): ` +
+                    `HTTP ${res.status}`
                 );
               }
               return Buffer.from(await res.arrayBuffer());

@@ -38,6 +38,13 @@ function getActiveStep(status: string, hasComposition: boolean): number {
     case 'composing':
     case 'pending_review_final':
       return 3;
+    case 'regenerating_cover':
+    case 'pending_review_cover':
+      // Cover regen runs against a settled (completed) project and
+      // doesn't progress the workflow — it loops back on the same
+      // terminal step. Mirror `completed`'s split so the strip doesn't
+      // reset to "Created" mid-cover-HITL.
+      return hasComposition ? 4 : 3;
     case 'completed':
       // `completed` straddles two terminal states: panels-finished (no
       // composition yet — sits at step 3 to expose the "Compose final page"

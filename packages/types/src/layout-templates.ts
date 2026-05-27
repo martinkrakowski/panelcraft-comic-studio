@@ -266,11 +266,27 @@ export const ALL_LAYOUTS: Record<1 | 2 | 3 | 4, LayoutTemplate[]> = {
 };
 
 /**
- * Default fallback layout used when a project's `selectedLayout` is missing
- * or refers to a layout id no longer present in the catalog (e.g. legacy
- * free-form strings from before this package existed).
+ * Default fallback layout used when a project's `selectedLayout` is
+ * missing or refers to an id no longer present in the catalog (legacy
+ * free-form strings from before this package existed, deleted templates,
+ * etc.). Returns the first template in the bucket matching the project's
+ * actual panel count so the rendered geometry doesn't lie about how
+ * many cells the page should have — picking a fixed 4-panel template for
+ * a 2-panel project would silently leave two empty cells in the
+ * composed page.
+ *
+ * Panel counts outside the supported `1..4` range get clamped to the
+ * nearest bound, so callers can pass an unvalidated number from a
+ * domain entity without an extra guard.
  */
-export const DEFAULT_FALLBACK_LAYOUT: LayoutTemplate = LAYOUTS_4_PANELS[0]!;
+export function getDefaultFallbackLayout(panelCount: number): LayoutTemplate {
+  const clamped = Math.min(4, Math.max(1, Math.trunc(panelCount))) as
+    | 1
+    | 2
+    | 3
+    | 4;
+  return ALL_LAYOUTS[clamped][0]!;
+}
 
 /**
  * Get all layout templates for a given panel count.
