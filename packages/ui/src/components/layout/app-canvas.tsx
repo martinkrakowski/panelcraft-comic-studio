@@ -69,8 +69,8 @@ export function AppCanvasCenter({
  * - `children` — scrollable area (consumers supply their own padding).
  * - `footer` — pinned footer, typically a `<ContentPanelFooter>`.
  *
- * @param clearHeader - When true (default), applies `mt-16` to reserve space
- *   under the sticky WorkspaceShell header.
+ * @param clearHeader - When true (default), applies `mt-[75px]` to reserve
+ *   space under the sticky WorkspaceShell header.
  */
 export function AppCanvasOnePane({
   topStrip,
@@ -87,7 +87,7 @@ export function AppCanvasOnePane({
     <CanvasBase>
       <div className="relative h-full flex flex-col gap-[var(--panelcraft-gutter-space)]">
         <div
-          className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative ${clearHeader ? 'mt-16' : ''}`}
+          className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative mr-2.5 mb-2.5 ${clearHeader ? 'mt-[75px]' : ''}`}
         >
           {topStrip}
           <div className="flex-1 overflow-y-auto">{children}</div>
@@ -135,9 +135,9 @@ export function AppCanvasOnePane({
  * sidebar is portaled into the drawer's slot div instead. Otherwise the
  * sidebar renders inline as it always has.
  *
- * @param clearHeader - When true (default), applies `mt-16` to the content
- *   pane to reserve space under the sticky header. Set false for full-bleed
- *   two-pane experiences.
+ * @param clearHeader - When true (default), applies `mt-[75px]` to the
+ *   content pane to reserve space under the sticky header. Set false for
+ *   full-bleed two-pane experiences.
  */
 export function AppCanvasTwoPane({
   sidebar,
@@ -194,7 +194,7 @@ export function AppCanvasTwoPane({
           {shouldPortal ? null : sidebar}
         </div>
         <div
-          className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative ${clearHeader ? 'mt-16' : ''}`}
+          className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative mr-2.5 mb-2.5 ${clearHeader ? 'mt-[75px]' : ''}`}
         >
           {topStrip}
           <div className="flex-1 overflow-y-auto">{children}</div>
