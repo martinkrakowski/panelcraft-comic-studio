@@ -36,6 +36,11 @@ export function useWizardStepNavigation({
 }: UseWizardStepNavigationProps) {
   const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  // The exact prompt string from the last successful analyze. Compared against
+  // the live prompt to decide whether the footer shows Analyze or Next.
+  const [lastAnalyzedPrompt, setLastAnalyzedPrompt] = useState<string | null>(
+    null
+  );
 
   const handleNextStep = async () => {
     let isValid = false;
@@ -91,6 +96,7 @@ export function useWizardStepNavigation({
         .slice(0, 3);
       if (nextGenres.length > 0) setValue('genres', nextGenres);
       if (nextTones.length > 0) setValue('tones', nextTones);
+      setLastAnalyzedPrompt(prompt);
       toast({
         title: 'Analysis complete',
         description: result.feedback || 'Suggested genres/tones applied',
@@ -107,5 +113,11 @@ export function useWizardStepNavigation({
     }
   };
 
-  return { handleNextStep, handleBackStep, handleAnalyzePrompt, isAnalyzing };
+  return {
+    handleNextStep,
+    handleBackStep,
+    handleAnalyzePrompt,
+    isAnalyzing,
+    lastAnalyzedPrompt,
+  };
 }

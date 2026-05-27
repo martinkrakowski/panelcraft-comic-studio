@@ -8,8 +8,6 @@ import {
 } from 'react-hook-form';
 import { motion, type Variants } from 'framer-motion';
 import {
-  Sparkles,
-  Loader2,
   PenLine,
   Eraser,
   Wand2,
@@ -18,7 +16,7 @@ import {
   FlaskConical,
   Rocket,
 } from 'lucide-react';
-import { Button, ConfirmDialog, SelectionChip, Textarea } from '@panelcraft/ui';
+import { ConfirmDialog, SelectionChip, Textarea } from '@panelcraft/ui';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 import { WizardPersistedState } from '../../../lib/hooks';
 import styles from '../NewComicWizard.module.css';
@@ -28,8 +26,6 @@ export interface StoryPromptStepProps {
   register: UseFormRegister<WizardFormValues>;
   errors: FieldErrors<WizardFormValues>;
   setValue: UseFormSetValue<WizardFormValues>;
-  isAnalyzing: boolean;
-  handleAnalyzePrompt: () => Promise<void>;
   saveToIndexedDB: (overrides?: Partial<WizardPersistedState>) => Promise<void>;
 }
 
@@ -106,8 +102,6 @@ export function StoryPromptStep({
   register,
   errors,
   setValue,
-  isAnalyzing,
-  handleAnalyzePrompt,
   saveToIndexedDB,
 }: StoryPromptStepProps) {
   const watchPrompt = useWatch({ control, name: 'prompt' });
@@ -216,20 +210,20 @@ export function StoryPromptStep({
               <div className={styles.promptCardTools}>
                 <button
                   type="button"
-                  className={styles.promptCardTool}
+                  className={`${styles.promptCardTool} ${styles.hasTooltip}`}
                   onClick={handleClear}
                   disabled={promptLength === 0}
                   aria-label="Clear story prompt"
-                  title="Clear"
+                  data-tooltip="Clear story prompt"
                 >
                   <Eraser className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
-                  className={styles.promptCardTool}
+                  className={`${styles.promptCardTool} ${styles.hasTooltip}`}
                   onClick={handleSurpriseMe}
-                  aria-label="Surprise me with a random prompt"
-                  title="Surprise me"
+                  aria-label="Random prompt"
+                  data-tooltip="Random Prompt"
                 >
                   <Wand2 className="h-3.5 w-3.5" />
                 </button>
@@ -339,22 +333,6 @@ export function StoryPromptStep({
             </button>
           ))}
         </div>
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <Button
-          type="button"
-          onClick={handleAnalyzePrompt}
-          disabled={isAnalyzing}
-          className="w-full bg-slate-800 hover:bg-slate-700 text-white"
-        >
-          {isAnalyzing ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Sparkles className="h-4 w-4 mr-2" />
-          )}
-          Analyze Prompt
-        </Button>
       </motion.div>
 
       <ConfirmDialog

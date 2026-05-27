@@ -32,8 +32,6 @@ interface WizardStepContentProps {
   append: (value: WizardFormValues['characters'][number]) => void;
   remove: (index: number) => void;
   moodBoardObjectUrls: string[];
-  isAnalyzing: boolean;
-  handleAnalyzePrompt: () => Promise<void>;
   handleCharacterImageUpload: (index: number, file: File) => Promise<void>;
   handleMoodBoardUpload: (files: FileList) => Promise<void>;
   isSubmitting: boolean;
@@ -70,8 +68,6 @@ export function WizardStepContent(props: WizardStepContentProps) {
     append,
     remove,
     moodBoardObjectUrls,
-    isAnalyzing,
-    handleAnalyzePrompt,
     handleCharacterImageUpload,
     handleMoodBoardUpload,
     isSubmitting,
@@ -104,8 +100,6 @@ export function WizardStepContent(props: WizardStepContentProps) {
               register={register}
               errors={errors}
               setValue={setValue}
-              isAnalyzing={isAnalyzing}
-              handleAnalyzePrompt={handleAnalyzePrompt}
               saveToIndexedDB={saveToIndexedDB}
             />
           )}

@@ -410,3 +410,39 @@
     animation: none;
   }
 }
+
+/* CSS-only tooltip — opt-in via .hasTooltip + data-tooltip attribute.
+   Shows on hover and keyboard focus; never blocks pointer events. */
+.hasTooltip {
+  position: relative;
+}
+
+.hasTooltip[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgb(15 15 23);
+  border: 1px solid rgb(42 42 64);
+  color: rgb(226 232 240);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.hasTooltip[data-tooltip]:hover::after,
+.hasTooltip[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

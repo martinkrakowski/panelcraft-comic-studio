@@ -10,7 +10,7 @@ interface WizardStepIndicatorProps {
 
 export function WizardStepIndicator({ activeStep }: WizardStepIndicatorProps) {
   return (
-    <div className="flex-shrink-0 flex items-center justify-center gap-2 px-4 py-4 flex-wrap">
+    <div className="flex-shrink-0 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-4 flex-wrap">
       {STEP_LABELS.map((label, i) => (
         <React.Fragment key={label}>
           <div
@@ -19,7 +19,7 @@ export function WizardStepIndicator({ activeStep }: WizardStepIndicatorProps) {
             }`}
           >
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
+              className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-semibold ${
                 i < activeStep
                   ? 'bg-violet-600 text-white'
                   : i === activeStep
@@ -27,7 +27,11 @@ export function WizardStepIndicator({ activeStep }: WizardStepIndicatorProps) {
                     : 'bg-slate-800 text-slate-500'
               }`}
             >
-              {i < activeStep ? <Check className="h-4 w-4" /> : i + 1}
+              {i < activeStep ? (
+                <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              ) : (
+                i + 1
+              )}
             </div>
             <span className="text-[10px] uppercase tracking-widest hidden sm:block">
               {label}
@@ -35,7 +39,7 @@ export function WizardStepIndicator({ activeStep }: WizardStepIndicatorProps) {
           </div>
           {i < STEP_LABELS.length - 1 && (
             <div
-              className={`w-8 h-0.5 ${
+              className={`w-4 sm:w-8 h-0.5 ${
                 i < activeStep ? 'bg-violet-500' : 'bg-slate-700'
               }`}
             />
