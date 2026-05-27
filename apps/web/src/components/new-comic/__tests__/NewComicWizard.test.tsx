@@ -100,6 +100,7 @@ vi.mock('lucide-react', () => ({
   PenSquare: () => <svg data-testid="pen-icon" />,
   ImagePlus: () => <svg data-testid="image-plus-icon" />,
   ChevronRight: () => <svg data-testid="chevron-right-icon" />,
+  ChevronLeft: () => <svg data-testid="chevron-left-icon" />,
   Check: () => <svg data-testid="check-icon" />,
 }));
 
@@ -148,7 +149,27 @@ vi.mock('../../../lib/compressImage', () => ({
     .mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
 }));
 
-vi.mock('@panelcraft/types', () => ({}));
+// The wizard transitively pulls layout-template helpers from @panelcraft/types
+// via SidebarStep0 → lib/layout-templates. The runtime values aren't exercised
+// by these smoke tests, but the imports must resolve to something defined.
+vi.mock('@panelcraft/types', () => ({
+  getLayoutsForPanelCount: () => [],
+  getLayoutById: () => undefined,
+  ALL_LAYOUTS: { 1: [], 2: [], 3: [], 4: [] },
+  LAYOUTS_1_PANEL: [],
+  LAYOUTS_2_PANELS: [],
+  LAYOUTS_3_PANELS: [],
+  LAYOUTS_4_PANELS: [],
+  getDefaultFallbackLayout: () => ({
+    id: 'grid-2x2-variable',
+    name: '2x2 Grid Variable',
+    description: '',
+    panelCount: 4,
+    mood: 'balanced',
+    panels: [],
+    gridTemplate: '',
+  }),
+}));
 
 // Import after mocks
 import { NewComicWizard } from '../NewComicWizard';

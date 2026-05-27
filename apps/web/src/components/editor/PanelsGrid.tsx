@@ -81,11 +81,20 @@ export function PanelsGrid({
     ? resolveComicPageLayout(selectedLayout, panels.length)
     : null;
   const useLayoutGrid = Boolean(layout?.cellPlacements?.length);
+  // The editor preserves COLUMN placement from the template so panels
+  // line up the same way they will on /view, but deliberately drops the
+  // template's fixed `aspectRatio` and proportional row sizing. The
+  // editor cards have variable content (image + prompt + 2 buttons) and
+  // align to the top of their row by `items-start`, so honoring the
+  // template's `1fr 1fr` rows inside a 2:3 portrait container left a
+  // visible vertical gap between top-row and bottom-row pairs (each row
+  // is half the container, and each card only fills its own content
+  // height). Letting rows auto-size to content produces an evenly-spread
+  // editor grid where each pair sits flush against the next.
   const gridStyle = useLayoutGrid
     ? {
         gridTemplateColumns: layout!.columns,
-        gridTemplateRows: layout!.rows,
-        aspectRatio: layout!.aspectRatio,
+        gridAutoRows: 'auto',
       }
     : undefined;
 

@@ -20,6 +20,11 @@ interface UseEditorActionsReturn {
   onShrinkPanels: (layout: string, keepIndices: number[]) => Promise<void>;
   onRegeneratePanel: (panelIndex: number, feedback?: string) => Promise<void>;
   onSubmitReview: (data: SubmitReviewFormValues) => Promise<void>;
+  onComposeFinalPage: (options?: {
+    regenFeedback?: string;
+    composeFlavor?: 'composite-true' | 'repaint';
+  }) => Promise<void>;
+  onRegenerateCover: (feedback?: string) => Promise<void>;
 
   // Loading states
   selectingLayout: boolean;
@@ -28,6 +33,8 @@ interface UseEditorActionsReturn {
   shrinkingPanels: boolean;
   regeneratingPanelIndex: number | null;
   submittingReview: boolean;
+  composingFinalPage: boolean;
+  regeneratingCover: boolean;
 }
 
 /**
@@ -49,6 +56,8 @@ export function useEditorActions({
   const [regeneratingPanelIndex, setRegeneratingPanelIndex] = useState<
     number | null
   >(null);
+  const [composingFinalPage, setComposingFinalPage] = useState(false);
+  const [regeneratingCover, setRegeneratingCover] = useState(false);
 
   // Refs close the click-burst window before React re-renders the disabled
   // button — the *_State flags drive UI, the refs drive the guard.
@@ -57,6 +66,8 @@ export function useEditorActions({
   const extendingPanelsRef = useRef(false);
   const shrinkingPanelsRef = useRef(false);
   const submittingReviewRef = useRef(false);
+  const composingFinalPageRef = useRef(false);
+  const regeneratingCoverRef = useRef(false);
 
   const onSelectLayout = async (layout: string) => {
     if (selectingLayoutRef.current) return;
@@ -201,6 +212,7 @@ export function useEditorActions({
       await api.submitReview(projectId, {
         approved: data.approved,
         comment: data.comment || undefined,
+        composeFlavor: data.composeFlavor,
       });
       toast({
         variant: 'success',
@@ -223,6 +235,75 @@ export function useEditorActions({
     }
   };
 
+  /**
+   * Trigger the AI final-composition pass. Used both for the initial run
+   * (no options) and for regen-with-feedback retries from the dialog. The
+   * project transitions to `composing` immediately; polling on
+   * `useProject` keeps the UI in sync until `pending_review_final`.
+   */
+  const onComposeFinalPage = async (options?: {
+    regenFeedback?: string;
+    composeFlavor?: 'composite-true' | 'repaint';
+  }) => {
+    if (composingFinalPageRef.current) return;
+    composingFinalPageRef.current = true;
+    setComposingFinalPage(true);
+    try {
+      await api.composeFinalPage(projectId, options ?? {});
+      toast({
+        variant: 'success',
+        title: options?.regenFeedback
+          ? 'Regenerating composition'
+          : 'Composing final page',
+        description:
+          'The AI is composing your comic page. This usually takes a minute.',
+      });
+      await refreshSilent();
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Composition failed',
+        description: err instanceof Error ? err.message : 'An error occurred.',
+      });
+    } finally {
+      setComposingFinalPage(false);
+      composingFinalPageRef.current = false;
+    }
+  };
+
+  /**
+   * Trigger a cover re-roll. Status flips to `processing` server-side
+   * (mirrors the regenerate-panel path) and the polling loop picks up
+   * the new cover URL when the worker completes. Optional `feedback` is
+   * appended to the cover prompt for this run only.
+   */
+  const onRegenerateCover = async (feedback?: string) => {
+    if (regeneratingCoverRef.current) return;
+    regeneratingCoverRef.current = true;
+    setRegeneratingCover(true);
+    try {
+      await api.regenerateCover(projectId, feedback);
+      toast({
+        variant: 'success',
+        title: feedback
+          ? 'Regenerating cover with feedback'
+          : 'Regenerating cover',
+        description:
+          'The AI is rendering a new cover. This usually takes 10–20 seconds.',
+      });
+      await refreshSilent();
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Cover regeneration failed',
+        description: err instanceof Error ? err.message : 'An error occurred.',
+      });
+    } finally {
+      setRegeneratingCover(false);
+      regeneratingCoverRef.current = false;
+    }
+  };
+
   return {
     onSelectLayout,
     onSwapLayout,
@@ -230,11 +311,15 @@ export function useEditorActions({
     onShrinkPanels,
     onRegeneratePanel,
     onSubmitReview,
+    onComposeFinalPage,
+    onRegenerateCover,
     selectingLayout,
     swappingLayout,
     extendingPanels,
     shrinkingPanels,
     regeneratingPanelIndex,
     submittingReview,
+    composingFinalPage,
+    regeneratingCover,
   };
 }

@@ -5,16 +5,11 @@
     "outDir": "dist",
     "noEmit": true
   },
-  "include": [
-    "server/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.test.ts",
-    "vitest.config.ts"
-  ],
+  "include": ["server/**/*"],
+  "exclude": ["node_modules", "**/*.test.ts", "vitest.config.ts"],
   "references": [
     { "path": "../../packages/shared" },
+    { "path": "../../packages/types" },
     { "path": "../../packages/comic-generation" }
   ]
 }

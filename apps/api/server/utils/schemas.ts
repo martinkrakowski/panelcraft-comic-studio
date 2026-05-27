@@ -16,6 +16,7 @@ export const CreateProjectSchema = z.object({
 export const SubmitReviewSchema = z.object({
   approved: z.boolean(),
   comment: z.string().trim().max(500).optional(),
+  composeFlavor: z.enum(['composite-true', 'repaint']).optional(),
 });
 
 export const ParamIdSchema = z.object({
@@ -51,4 +52,13 @@ export const ExtendPanelsSchema = z.object({
 export const ShrinkPanelsSchema = z.object({
   keepIndices: z.array(z.number().int().min(0)).min(1).max(4),
   selectedLayout: z.string().min(1, 'Layout selection required'),
+});
+
+export const ComposeFinalPageSchema = z.object({
+  regenFeedback: z.string().trim().max(1000).optional(),
+  composeFlavor: z.enum(['composite-true', 'repaint']).optional(),
+});
+
+export const RegenerateCoverSchema = z.object({
+  feedback: z.string().trim().max(1000).optional(),
 });

@@ -2,3 +2,4 @@
 
 export { LangGraphOrchestrationAdapter } from './adapters/LangGraphOrchestrationAdapter.js';
 export { ImageGenerationAdapter } from './adapters/ImageGenerationAdapter.js';
+export { GeminiImageCompositionAdapter } from './adapters/GeminiImageCompositionAdapter.js';

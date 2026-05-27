@@ -87,6 +87,10 @@ export function useProject(id: string) {
   // (between HITL gates) → completed; polling stops once a terminal state
   // is reached. `extending` / `pending_review_extend` are the post-completion
   // extend pipeline's analogues to processing / pending_review.
+  // `composing` / `pending_review_final` are the end-of-workflow AI
+  // composition pipeline — `composing` is the worker run, and
+  // `pending_review_final` keeps polling alive so the review surface
+  // refreshes after a `refreshSilent()` from a regenerate dialog.
   const inFlightStatuses = new Set([
     'created',
     'processing',
@@ -95,6 +99,10 @@ export function useProject(id: string) {
     'pending_review',
     'extending',
     'pending_review_extend',
+    'composing',
+    'pending_review_final',
+    'regenerating_cover',
+    'pending_review_cover',
   ]);
   const isGenerating = !!(project && inFlightStatuses.has(project.status));
 

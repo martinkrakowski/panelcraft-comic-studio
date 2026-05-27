@@ -1,9 +1,14 @@
-import { defineEventHandler, getRouterParam, readBody, setResponseStatus } from 'h3'
-import { z } from 'zod'
-import { ok } from '../../../utils/envelope.js'
-import { parseBody, parseParams } from '../../../utils/validation.js'
-import { getComicUseCase } from '../../../utils/dependencies.js'
-import { SubmitReviewSchema } from '../../../utils/schemas.js'
+import {
+  defineEventHandler,
+  getRouterParam,
+  readBody,
+  setResponseStatus,
+} from 'h3';
+import { z } from 'zod';
+import { ok } from '../../../utils/envelope.js';
+import { parseBody, parseParams } from '../../../utils/validation.js';
+import { getComicUseCase } from '../../../utils/dependencies.js';
+import { SubmitReviewSchema } from '../../../utils/schemas.js';
 
 /**
  * POST /api/projects/:id/review
@@ -15,9 +20,20 @@ import { SubmitReviewSchema } from '../../../utils/schemas.js'
  * @throws 404 if project not found
  */
 export default defineEventHandler(async (event) => {
-  const { id } = parseParams(z.object({ id: z.string().uuid() }), { id: getRouterParam(event, 'id') })
-  const { approved, comment } = parseBody(SubmitReviewSchema, await readBody(event))
-  await getComicUseCase(event).submitReview(id, approved, comment)
-  setResponseStatus(event, 202)
-  return ok({ message: 'Review submitted. Workflow resumption queued.' })
-})
+  const { id } = parseParams(z.object({ id: z.string().uuid() }), {
+    id: getRouterParam(event, 'id'),
+  });
+  const { approved, comment, composeFlavor } = parseBody(
+    SubmitReviewSchema,
+    await readBody(event)
+  );
+  await getComicUseCase(event).submitReview(
+    id,
+    approved,
+    comment,
+    undefined,
+    composeFlavor
+  );
+  setResponseStatus(event, 202);
+  return ok({ message: 'Review submitted. Workflow resumption queued.' });
+});

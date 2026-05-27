@@ -6,11 +6,24 @@ interface ProjectStatusStripProps {
   status: string;
   completedPanelCount: number;
   panelCount: number;
+  /**
+   * When set, `completed` collapses to the *final* terminal step (4 — Done)
+   * instead of step 3 (Compose). The presence of a composed image is what
+   * distinguishes a project that finished panel generation from one that
+   * also ran the AI composition pass, so this hook drives the visual.
+   */
+  composedImageUrl?: string | null;
 }
 
-const STATUS_STEPS = ['Created', 'Processing', 'Review', 'Completed'] as const;
+const STATUS_STEPS = [
+  'Created',
+  'Processing',
+  'Review',
+  'Compose',
+  'Completed',
+] as const;
 
-function getActiveStep(status: string): number {
+function getActiveStep(status: string, hasComposition: boolean): number {
   switch (status) {
     case 'created':
       return 0;
@@ -22,12 +35,26 @@ function getActiveStep(status: string): number {
     case 'pending_review':
     case 'pending_review_extend':
       return 2;
-    case 'completed':
+    case 'composing':
+    case 'pending_review_final':
       return 3;
+    case 'regenerating_cover':
+    case 'pending_review_cover':
+      // Cover regen runs against a settled (completed) project and
+      // doesn't progress the workflow — it loops back on the same
+      // terminal step. Mirror `completed`'s split so the strip doesn't
+      // reset to "Created" mid-cover-HITL.
+      return hasComposition ? 4 : 3;
+    case 'completed':
+      // `completed` straddles two terminal states: panels-finished (no
+      // composition yet — sits at step 3 to expose the "Compose final page"
+      // call-to-action) and fully-done (with composed image — advances to
+      // step 4).
+      return hasComposition ? 4 : 3;
     case 'failed':
       // Preserve visual progress at the terminal step; the ProjectStatusBadge
       // (and any error messaging) will communicate the failure state.
-      return 3;
+      return STATUS_STEPS.length - 1;
     default:
       return 0;
   }
@@ -53,8 +80,9 @@ export function ProjectStatusStrip({
   status,
   completedPanelCount,
   panelCount,
+  composedImageUrl,
 }: ProjectStatusStripProps) {
-  const activeStep = getActiveStep(status);
+  const activeStep = getActiveStep(status, Boolean(composedImageUrl));
 
   return (
     <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 bg-slate-900/30">

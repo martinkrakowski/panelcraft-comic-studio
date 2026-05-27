@@ -9,6 +9,23 @@ import {
   PENDING_REVIEW_EXTEND_STATUS,
   EXTENDING_STATUS,
 } from './panelReconfigureHandler.js';
+import {
+  COMPOSING_STATUS,
+  PENDING_REVIEW_FINAL_STATUS,
+} from './finalCompositionHandler.js';
+
+/**
+ * Status used while the regenerate-cover worker is actively rendering a
+ * new cover bitmap. Treated as in-flight by polling.
+ */
+export const REGENERATING_COVER_STATUS = 'regenerating_cover';
+
+/**
+ * Status used to mark that the worker produced a new cover and is paused
+ * for HITL approval. submitReview routes this through the regenerate-
+ * cover pipeline (approve → completed; reject + feedback → re-enqueue).
+ */
+export const PENDING_REVIEW_COVER_STATUS = 'pending_review_cover';
 
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -23,6 +40,7 @@ export async function submitReview(
   approved: boolean,
   comment: string | undefined,
   regenerationHint: string | undefined,
+  composeFlavor: 'composite-true' | 'repaint' | undefined,
   deps: SubmitReviewDeps
 ): Promise<void> {
   const feedbackResult = FeedbackEntry.create({
@@ -45,6 +63,8 @@ export async function submitReview(
 
   const currentStatus = project.getStatus();
   const isExtendReview = currentStatus === PENDING_REVIEW_EXTEND_STATUS;
+  const isFinalReview = currentStatus === PENDING_REVIEW_FINAL_STATUS;
+  const isCoverReview = currentStatus === PENDING_REVIEW_COVER_STATUS;
   const isStuckProcessing =
     currentStatus === 'processing' &&
     project.getLastReviewSubmittedAt() &&
@@ -54,11 +74,14 @@ export async function submitReview(
   if (
     currentStatus !== 'pending_review' &&
     !isExtendReview &&
+    !isFinalReview &&
+    !isCoverReview &&
     !isStuckProcessing
   ) {
     throw new ValidationError(
       `Cannot submit review for project in status "${currentStatus}". ` +
-        `Project must be in "pending_review" or "${PENDING_REVIEW_EXTEND_STATUS}" status.`,
+        `Project must be in "pending_review", "${PENDING_REVIEW_EXTEND_STATUS}", ` +
+        `"${PENDING_REVIEW_FINAL_STATUS}", or "${PENDING_REVIEW_COVER_STATUS}" status.`,
       'status',
       currentStatus
     );
@@ -150,6 +173,119 @@ export async function submitReview(
         removeOnComplete: true,
       }
     );
+    return;
+  }
+
+  // Final-composition review bypasses LangGraph the same way extend mode
+  // does. Approval lands the project back at `completed` with the composed
+  // image preserved; rejection re-enqueues compose-final-page with the
+  // user's feedback for one more pass.
+  if (isFinalReview) {
+    const feedbackValue = feedbackResult.value!.getValue();
+    if (feedbackValue.approved) {
+      project.setStatus('completed');
+      project.setLastReviewSubmittedAt(new Date().toISOString());
+      await deps.projectRepo.save(project);
+      return;
+    }
+
+    // Snapshot the prior status + review timestamp so we can roll the
+    // project out of `composing` if the queue add fails — otherwise the
+    // UI would see an in-flight status with no worker behind it. Same
+    // shape as `extendPanels` / `regeneratePanel`.
+    const priorStatus = currentStatus;
+    const priorReviewSubmittedAt = project.getLastReviewSubmittedAt();
+    project.setStatus(COMPOSING_STATUS);
+    project.setLastReviewSubmittedAt(new Date().toISOString());
+    await deps.projectRepo.save(project);
+
+    try {
+      await deps.taskQueue.add(
+        'compose-final-page',
+        {
+          projectId,
+          regenFeedback:
+            feedbackValue.comment ||
+            feedbackValue.regenerationHint ||
+            undefined,
+          composeFlavor,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: true,
+        }
+      );
+    } catch (enqueueErr) {
+      project.setStatus(priorStatus);
+      project.setLastReviewSubmittedAt(priorReviewSubmittedAt);
+      try {
+        await deps.projectRepo.save(project);
+      } catch (rollbackErr) {
+        deps.logger.error(
+          `[submitReview/final] Rollback save failed for project ${projectId}: ` +
+            (rollbackErr instanceof Error
+              ? rollbackErr.message
+              : String(rollbackErr))
+        );
+      }
+      throw enqueueErr;
+    }
+    return;
+  }
+
+  // Cover-review HITL branch. Mirrors the final-review path:
+  //  - approval lands the project back at `completed` (the new cover URL
+  //    has already been written to the row by the worker — approval just
+  //    confirms it)
+  //  - rejection re-enqueues regenerate-cover with the user's feedback,
+  //    transitioning back to `regenerating_cover` for another roll
+  if (isCoverReview) {
+    const feedbackValue = feedbackResult.value!.getValue();
+    if (feedbackValue.approved) {
+      project.setStatus('completed');
+      project.setLastReviewSubmittedAt(new Date().toISOString());
+      await deps.projectRepo.save(project);
+      return;
+    }
+
+    const priorStatus = currentStatus;
+    const priorReviewSubmittedAt = project.getLastReviewSubmittedAt();
+    project.setStatus(REGENERATING_COVER_STATUS);
+    project.setLastReviewSubmittedAt(new Date().toISOString());
+    await deps.projectRepo.save(project);
+
+    try {
+      await deps.taskQueue.add(
+        'regenerate-cover',
+        {
+          projectId,
+          regenFeedback:
+            feedbackValue.comment ||
+            feedbackValue.regenerationHint ||
+            undefined,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: true,
+        }
+      );
+    } catch (enqueueErr) {
+      project.setStatus(priorStatus);
+      project.setLastReviewSubmittedAt(priorReviewSubmittedAt);
+      try {
+        await deps.projectRepo.save(project);
+      } catch (rollbackErr) {
+        deps.logger.error(
+          `[submitReview/cover] Rollback save failed for project ${projectId}: ` +
+            (rollbackErr instanceof Error
+              ? rollbackErr.message
+              : String(rollbackErr))
+        );
+      }
+      throw enqueueErr;
+    }
     return;
   }
 
@@ -281,5 +417,86 @@ export async function regeneratePanel(
 
   deps.logger.info(
     `[regeneratePanel] Enqueued panel ${panelIndex} regeneration for project ${projectId}`
+  );
+}
+
+interface RegenerateCoverDeps {
+  projectRepo: RelationalDbPort;
+  taskQueue: JobQueuePort;
+  logger: LoggerPort;
+}
+
+/**
+ * Enqueue a fresh cover render for a completed project. The handler
+ * mirrors `regeneratePanel`: validates the project, sets status to
+ * `processing` so the polling UI stays active while the worker runs,
+ * and rolls back on enqueue failure. The worker (in `comic-worker.ts`)
+ * calls `imageGenPort.generateCover` with optional reviewer `feedback`
+ * appended to the prompt and writes the result to the same Supabase
+ * storage path the original cover used, so existing signed URLs and
+ * downstream consumers transparently see the new image.
+ */
+export async function regenerateCover(
+  projectId: string,
+  feedback: string | undefined,
+  deps: RegenerateCoverDeps
+): Promise<void> {
+  const project = await deps.projectRepo.load(projectId);
+  if (!project) {
+    throw new NotFoundError(`Project ${projectId} not found`, projectId);
+  }
+
+  const status = project.getStatus();
+  // Restrict to the two settled cover lifecycle states: `completed`
+  // (first regen on a project, or after the user previously approved the
+  // last cover), and `pending_review_cover` (the user rejected the last
+  // cover via the HITL surface and is asking for another roll). Any
+  // other state has either the LangGraph thread or another out-of-graph
+  // worker mid-operation, and squeezing a cover regen into that window
+  // would race those workers on the project's status flag.
+  if (status !== 'completed' && status !== PENDING_REVIEW_COVER_STATUS) {
+    throw new ValidationError(
+      `Cannot regenerate cover while project is "${status}" — only ` +
+        `completed projects (or those at "${PENDING_REVIEW_COVER_STATUS}") ` +
+        `accept cover regeneration.`,
+      'status',
+      status
+    );
+  }
+
+  // Snapshot the prior status so we can restore it on enqueue failure.
+  const originalStatus = status;
+
+  project.setStatus(REGENERATING_COVER_STATUS);
+  await deps.projectRepo.save(project);
+
+  try {
+    await deps.taskQueue.add(
+      'regenerate-cover',
+      { projectId, regenFeedback: feedback },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+      }
+    );
+  } catch (err) {
+    project.setStatus(originalStatus);
+    try {
+      await deps.projectRepo.save(project);
+    } catch (rollbackErr) {
+      deps.logger.error(
+        `[regenerateCover] Rollback save failed for project ${projectId}: ` +
+          (rollbackErr instanceof Error
+            ? rollbackErr.message
+            : String(rollbackErr))
+      );
+    }
+    throw err;
+  }
+
+  deps.logger.info(
+    `[regenerateCover] Enqueued cover regeneration for project ${projectId}` +
+      (feedback ? ' (with feedback)' : '')
   );
 }

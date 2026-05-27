@@ -1,6 +1,18 @@
+import sharp from 'sharp';
 import type { ImageGenerationPort } from '../../application/ports/out/image-generation.out-port.js';
 import type { GeneratePanelCommand } from '../../application/commands/GeneratePanelCommand.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+
+// Standard US comic book aspect ratio (6.625" × 10.25" ≈ 0.6463). We
+// target 1024×1536 explicitly as the post-processing crop's destination
+// box. The xAI images/generations endpoint does NOT accept a `size`
+// parameter — it returns 400 "Argument not supported: size" — so the
+// model itself is given only the prompt-level directive to render in
+// portrait, and sharp enforces the aspect ratio afterwards regardless
+// of what the model actually returns.
+const COVER_WIDTH = 1024;
+const COVER_HEIGHT = 1536;
+const COVER_ASPECT_TOLERANCE = 0.02;
 
 interface XaiImageResponse {
   data: Array<{ url: string; revised_prompt?: string }>;
@@ -117,6 +129,7 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     prompt: string;
     style?: unknown;
     characterBible?: unknown;
+    regenFeedback?: string;
   }): Promise<Buffer> {
     if (!this.apiKey)
       throw new Error('XAI_API_KEY environment variable is not set');
@@ -127,7 +140,26 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     const characterDesc = options.characterBible
       ? `Characters: ${JSON.stringify(options.characterBible)}`
       : '';
-    const fullPrompt = `Comic book cover for story: ${options.prompt}. ${styleDesc} ${characterDesc}. Professional comic cover, bold title, vibrant colors, dynamic composition.`;
+    // Reviewer feedback is appended to the prompt for this call only.
+    // The base prompt (story + style + characters) is never mutated so a
+    // subsequent regeneration without feedback returns to the original
+    // direction unless new feedback is supplied.
+    const feedbackDesc = options.regenFeedback
+      ? ` Reviewer feedback for this regeneration: ${options.regenFeedback}.`
+      : '';
+    // Repeat the portrait-orientation directive at the start AND end of
+    // the prompt: image models weight tokens near the boundaries more
+    // heavily, and a single "portrait" instruction buried in the middle
+    // of a long prompt is often ignored. The post-processing step still
+    // crops to 2:3 if the model returns a square anyway.
+    const fullPrompt =
+      `Portrait-orientation comic book cover (taller than wide, ` +
+      `standard 2:3 page aspect ratio) for story: ${options.prompt}. ` +
+      `${styleDesc} ${characterDesc}. Professional comic cover, bold ` +
+      `title at the top, vibrant colors, dynamic composition framed for ` +
+      `a vertical poster. The image MUST be portrait orientation — taller ` +
+      `than it is wide. Do not return a square or landscape image.` +
+      `${feedbackDesc}`;
 
     const response = await fetchWithTimeout(this.generateEndpoint, {
       method: 'POST',
@@ -157,7 +189,41 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     const imageResponse = await fetchWithTimeout(imageUrl, {});
     if (!imageResponse.ok)
       throw new Error('Failed to fetch generated cover image');
-    return Buffer.from(await imageResponse.arrayBuffer());
+    const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    return this.cropCoverToPortrait(rawBuffer);
+  }
+
+  /**
+   * Force the cover Buffer into a 2:3 portrait box. xAI's Grok Imagine
+   * returns square (1:1) covers by default and silently ignores the
+   * OpenAI-style `size` hint, so without post-processing the UI
+   * letterboxes the cover inside its portrait frame and the page-level
+   * composition loop sees inconsistent dimensions. We center-crop to 2:3
+   * with sharp's "attention" position heuristic so the kept slice is the
+   * most visually salient horizontal band (typically the subject), then
+   * re-encode as WebP for size/parity with the storage convention.
+   *
+   * If the source is already within tolerance of 2:3 we pass it through
+   * untouched so re-encoding artifacts don't accumulate across runs.
+   */
+  private async cropCoverToPortrait(buffer: Buffer): Promise<Buffer> {
+    const pipeline = sharp(buffer);
+    const meta = await pipeline.metadata();
+    if (!meta.width || !meta.height) return buffer;
+    const targetRatio = COVER_WIDTH / COVER_HEIGHT;
+    const actualRatio = meta.width / meta.height;
+    if (Math.abs(actualRatio - targetRatio) < COVER_ASPECT_TOLERANCE) {
+      return buffer;
+    }
+    return pipeline
+      .resize({
+        width: COVER_WIDTH,
+        height: COVER_HEIGHT,
+        fit: 'cover',
+        position: 'attention',
+      })
+      .webp({ quality: 90 })
+      .toBuffer();
   }
 
   async generatePreview(

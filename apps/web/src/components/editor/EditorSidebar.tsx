@@ -5,6 +5,7 @@ import { LayoutChooserSection } from './sidebar/LayoutChooserSection';
 import { RecommendedLayoutsSection } from './sidebar/RecommendedLayoutsSection';
 import { WorkflowProgressSection } from './sidebar/WorkflowProgressSection';
 import { CoverSection } from './sidebar/CoverSection';
+import { FinalCompositionSection } from './sidebar/FinalCompositionSection';
 import { StoryPromptSection } from './sidebar/StoryPromptSection';
 import { GenresAndTonesSection } from './sidebar/GenresAndTonesSection';
 import {
@@ -52,6 +53,12 @@ interface EditorSidebarProps {
   tones?: string[];
   characterBible?: SidebarCharacterBible | null;
   styleReferences?: SidebarStyleReferences | null;
+
+  // Final AI composition pass — sidebar shows just the thumbnail; the
+  // Compose / Regenerate action lives in the editor footer for
+  // discoverability (this section gets pushed down by the layout
+  // accordion and was easy to miss).
+  composedImageUrl?: string | null;
 }
 
 /**
@@ -86,6 +93,7 @@ export function EditorSidebar({
   tones,
   characterBible,
   styleReferences,
+  composedImageUrl,
 }: EditorSidebarProps) {
   // Any in-flight swap/extend/shrink action blocks the Recommended Layouts
   // tiles to prevent stacking conflicting reconfigurations.
@@ -113,6 +121,12 @@ export function EditorSidebar({
         panelCount={panelCount}
         progressPercent={progressPercent}
       />
+      {status && (
+        <FinalCompositionSection
+          status={status}
+          composedImageUrl={composedImageUrl}
+        />
+      )}
       <CoverSection coverImageUrl={coverImageUrl} />
       <StoryPromptSection prompt={prompt} />
       <GenresAndTonesSection genres={genres} tones={tones} />

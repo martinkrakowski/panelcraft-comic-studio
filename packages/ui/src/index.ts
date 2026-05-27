@@ -18,6 +18,7 @@ export * from './components/elements/textarea';
 export * from './components/modules/carousel';
 export * from './components/modules/dialog';
 export * from './components/modules/confirm-dialog';
+export * from './components/modules/feedback-regenerate-dialog';
 export * from './components/modules/toast';
 
 // Sections

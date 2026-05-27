@@ -39,11 +39,22 @@ function useCarousel(): CarouselContextValue {
 
 const ANNOUNCE_DEBOUNCE_MS = 300;
 
-interface CarouselProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CarouselProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'onSelect'
+> {
   /** Embla options passed to `useEmblaCarousel`. */
   options?: CarouselOptions;
   /** Accessible label for the carousel region (D7). Defaults to "Carousel". */
   ariaLabel?: string;
+  /**
+   * Fired with the active slide index whenever it changes (mount + on every
+   * Embla `select`/`reInit`). Enables consumers outside the `<Carousel>`
+   * subtree — e.g. a footer button that downloads the currently-visible
+   * slide's asset — to react to slide changes without subscribing to the
+   * Embla API directly.
+   */
+  onSelect?: (index: number) => void;
 }
 
 /**
@@ -76,6 +87,7 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
       className,
       children,
       onKeyDown: consumerOnKeyDown,
+      onSelect,
       ...props
     },
     ref
@@ -92,11 +104,21 @@ const Carousel = React.forwardRef<HTMLDivElement, CarouselProps>(
     const [announcement, setAnnouncement] = React.useState('');
     const slideLabels = React.useRef<Map<number, string>>(new Map());
 
+    // Keep the latest `onSelect` in a ref so the `sync` callback's identity
+    // doesn't churn every render — a fresh `sync` would re-bind Embla's
+    // listeners on every parent re-render.
+    const onSelectRef = React.useRef(onSelect);
+    React.useEffect(() => {
+      onSelectRef.current = onSelect;
+    }, [onSelect]);
+
     const sync = React.useCallback((api: NonNullable<CarouselApi>) => {
-      setSelectedIndex(api.selectedScrollSnap());
+      const idx = api.selectedScrollSnap();
+      setSelectedIndex(idx);
       setSlideCount(api.scrollSnapList().length);
       setCanScrollPrev(api.canScrollPrev());
       setCanScrollNext(api.canScrollNext());
+      onSelectRef.current?.(idx);
     }, []);
 
     React.useEffect(() => {

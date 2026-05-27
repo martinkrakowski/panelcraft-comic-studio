@@ -22,6 +22,7 @@ export interface ComicProjectProps {
     artDirectionNotes?: string;
   } | null;
   coverImageUrl?: string | null;
+  composedImageUrl?: string | null;
   selectedLayout?: string | null;
   layoutOptions?: string[] | null;
   status: string;
@@ -45,6 +46,7 @@ export class ComicProject {
     artDirectionNotes?: string;
   } | null;
   private coverImageUrl: string | null;
+  private composedImageUrl: string | null;
   private selectedLayout: string | null;
   private layoutOptions: string[] | null;
   private status: string;
@@ -68,6 +70,7 @@ export class ComicProject {
         }
       : null;
     this.coverImageUrl = props.coverImageUrl || null;
+    this.composedImageUrl = props.composedImageUrl || null;
     this.selectedLayout = props.selectedLayout || null;
     this.layoutOptions = props.layoutOptions ? [...props.layoutOptions] : null;
     this.status = props.status;
@@ -148,6 +151,12 @@ export class ComicProject {
   setCoverImageUrl(url: string | null): void {
     this.coverImageUrl = url;
   }
+  getComposedImageUrl(): string | null {
+    return this.composedImageUrl;
+  }
+  setComposedImageUrl(url: string | null): void {
+    this.composedImageUrl = url;
+  }
   getSelectedLayout(): string | null {
     return this.selectedLayout;
   }
@@ -204,6 +213,7 @@ export class ComicProject {
           }
         : null,
       coverImageUrl: this.coverImageUrl,
+      composedImageUrl: this.composedImageUrl,
       selectedLayout: this.selectedLayout,
       layoutOptions: this.layoutOptions ? [...this.layoutOptions] : null,
       status: this.status,

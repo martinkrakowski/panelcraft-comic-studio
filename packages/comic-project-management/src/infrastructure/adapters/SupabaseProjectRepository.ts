@@ -103,8 +103,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       id: row.id,
       prompt: row.prompt,
       panelCount: row.panel_count,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      panels: ((row as any).panels as ComicProjectJSON['panels']) || [],
+      panels: (row.panels as unknown as ComicProjectJSON['panels']) || [],
       characterBible: row.character_bible
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (row.character_bible as any)
@@ -116,6 +115,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
           (row.style_references as any)
         : null,
       coverImageUrl: row.cover_image_url,
+      composedImageUrl: row.composed_image_url,
       selectedLayout: row.selected_layout,
       layoutOptions: row.layout_options,
       status: row.status || 'pending_creation',
@@ -146,6 +146,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
           (json.styleReferences as any)
         : null,
       cover_image_url: json.coverImageUrl || null,
+      composed_image_url: json.composedImageUrl || null,
       selected_layout: json.selectedLayout || null,
       layout_options: json.layoutOptions || null,
       status: json.status || 'pending_creation',
@@ -155,11 +156,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       // FK to auth.users and NOT NULL are dropped temporarily in migration
       // 20260525160702_make_user_id_nullable.sql — re-add once auth is live.
       user_id: null as unknown as string,
-      // panels column added in migration 20260525164758_add_panels_column.sql.
-      // Cast through unknown because generated Database types haven't been
-      // regenerated yet; safe because the column accepts jsonb.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      panels: (json.panels ?? []) as any,
-    } as ProjectRow;
+      panels: (json.panels ?? []) as unknown as ProjectRow['panels'],
+    };
   }
 }

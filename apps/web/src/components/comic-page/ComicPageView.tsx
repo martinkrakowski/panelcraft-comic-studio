@@ -93,15 +93,146 @@ function waitForImage(img: HTMLImageElement): Promise<void> {
  * @param props.projectId - The ID of the project to view.
  * @returns A React element representing the comic page viewer.
  */
+/**
+ * Stable slide identifiers. Drives which export path runs when the user
+ * presses Download — bitmap slides (AI composition) take a faster Blob
+ * pathway, DOM slides (CSS grid composed page) run through html-to-image.
+ */
+type SlideKind = 'cover' | 'composed-grid' | 'composed-ai';
+
+interface SlideDescriptor {
+  kind: SlideKind;
+  label: string;
+}
+
 export function ComicPageView({ projectId }: ComicPageViewProps) {
   const { toast } = useToast();
   const { project, loading, error } = useProject(projectId);
   const pageRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  // Slide descriptors are derived during render — `slidesRef` mirrors them
+  // so the imperative download handler reads the same snapshot the user
+  // sees, without re-deriving from props mid-flight.
+  const slidesRef = useRef<SlideDescriptor[]>([]);
+  // When an AI composition exists the CSS-grid composition is hidden by
+  // default — the AI render is the "real" comic page and the deterministic
+  // grid is supplementary debug context. The footer checkbox flips this
+  // on. When no AI composition exists the CSS grid is the only option, so
+  // the toggle is forced on and disabled (handled below in `cssEnabled`).
+  const [cssLayoutEnabled, setCssLayoutEnabled] = useState(false);
+
+  /**
+   * Fetch a remote image as a Blob and trigger a browser download.
+   *
+   * Anchor `download` on a cross-origin URL often opens the image in a
+   * new tab instead of saving — even with the attribute set — because
+   * the browser disregards `download` when the source isn't same-origin
+   * and lacks a CORS-friendly response. Routing the bytes through
+   * `URL.createObjectURL` sidesteps that entirely.
+   *
+   * Returns `false` (and surfaces a toast) on failure so the caller can
+   * decide whether to fall back to a different export pipeline.
+   */
+  const downloadImageBlob = async (
+    src: string,
+    filename: string
+  ): Promise<boolean> => {
+    try {
+      const response = await fetch(src);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      try {
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = objectUrl;
+        link.click();
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+      return true;
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Direct download failed',
+        description:
+          err instanceof Error ? err.message : 'Could not fetch the image.',
+      });
+      return false;
+    }
+  };
 
   const onDownload = async () => {
-    if (!pageRef.current || exporting) return;
+    if (exporting) return;
     setExporting(true);
+    try {
+      const safeName =
+        project?.prompt?.slice(0, 40).replace(/[^a-z0-9]+/gi, '-') || projectId;
+      const slidesNow = slidesRef.current;
+      const safeIndex = Math.min(
+        Math.max(activeSlideIndex, 0),
+        Math.max(slidesNow.length - 1, 0)
+      );
+      const activeKind = slidesNow[safeIndex]?.kind;
+
+      // Bitmap slides (cover, AI composition) bypass html-to-image —
+      // they're already single images, so we just fetch the bytes and
+      // hand them to a Blob-backed download. The DOM-export pipeline
+      // (`exportPageAsPng`) captures `pageRef`, which is the CSS-grid
+      // ComposedPage div; without this branch the cover slide would
+      // silently export the CSS grid instead of the visible cover.
+      if (activeKind === 'cover' && project?.coverImageUrl) {
+        const ok = await downloadImageBlob(
+          project.coverImageUrl,
+          `${safeName}-cover.png`
+        );
+        if (ok) {
+          toast({
+            variant: 'success',
+            title: 'Downloaded',
+            description: 'Cover saved.',
+          });
+          return;
+        }
+        // Bitmap fetch failed (CORS, expired signed URL). Don't fall
+        // through to the DOM export — it'd capture the wrong slide.
+        // The downloadImageBlob() toast already explained the failure.
+        return;
+      }
+
+      if (activeKind === 'composed-ai' && project?.composedImageUrl) {
+        const ok = await downloadImageBlob(
+          project.composedImageUrl,
+          `${safeName}-ai.png`
+        );
+        if (ok) {
+          toast({
+            variant: 'success',
+            title: 'Downloaded',
+            description: 'AI composition saved.',
+          });
+          return;
+        }
+        return;
+      }
+
+      // CSS-grid slide (composed-grid) or fallback — capture the DOM.
+      await exportPageAsPng(safeName);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  /**
+   * Internal helper that captures the CSS-grid composed page as a PNG via
+   * `html-to-image`. Kept as a closure (not extracted) because it reads
+   * `pageRef` / `toast` / `project` from the component scope.
+   */
+  const exportPageAsPng = async (safeName: string) => {
+    if (!pageRef.current) return;
     // html-to-image can hang indefinitely when a cross-origin image fails to
     // load (no CORS headers); without this race the button gets stuck on
     // "Exporting…" with no way to recover short of a refresh.
@@ -147,8 +278,6 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
       });
       const dataUrl = await Promise.race([exportPromise, timeoutPromise]);
       const link = document.createElement('a');
-      const safeName =
-        project?.prompt?.slice(0, 40).replace(/[^a-z0-9]+/gi, '-') || projectId;
       link.download = `${safeName}.png`;
       link.href = dataUrl;
       link.click();
@@ -168,7 +297,6 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
       // Always restore the visible srcs so the page keeps using the direct
       // (non-proxied) URL — the proxy is only meant for the export pipeline.
       for (const { img, src } of originalSrcs) img.src = src;
-      setExporting(false);
     }
   };
 
@@ -267,6 +395,22 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
     renderablePanels.length
   );
 
+  // The CSS-grid slide is only forced visible when there's no AI render
+  // to fall back to; otherwise the user opts in via the footer checkbox.
+  const hasAiComposition = Boolean(project.composedImageUrl);
+  const cssEnabled = !hasAiComposition || cssLayoutEnabled;
+
+  // Build the slide list ahead of time so we can correlate the
+  // carousel's `selectedIndex` (purely visual) back to the kind of asset
+  // shown on that slide for the download path.
+  const slides: SlideDescriptor[] = [];
+  if (project.coverImageUrl) slides.push({ kind: 'cover', label: 'Cover' });
+  if (cssEnabled)
+    slides.push({ kind: 'composed-grid', label: 'Composed page' });
+  if (hasAiComposition)
+    slides.push({ kind: 'composed-ai', label: 'AI final composition' });
+  slidesRef.current = slides;
+
   return (
     <AppCanvasOnePane
       topStrip={
@@ -299,7 +443,12 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
               Dashboard
             </Link>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <CssLayoutToggle
+              checked={cssEnabled}
+              disabled={!hasAiComposition}
+              onChange={setCssLayoutEnabled}
+            />
             <Button
               type="button"
               variant="outline"
@@ -323,26 +472,37 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
       }
     >
       <div className="px-4 py-6">
-        {project.coverImageUrl ? (
+        {slides.length > 1 ? (
           <Carousel
             ariaLabel="Comic preview"
             className="mx-auto w-full max-w-3xl"
+            onSelect={setActiveSlideIndex}
           >
             <CarouselViewport>
-              <CarouselSlide label="Cover">
-                <CoverSlide
-                  src={project.coverImageUrl}
-                  prompt={project.prompt}
-                  corsCapable={isCorsCapableHost(project.coverImageUrl)}
-                />
-              </CarouselSlide>
-              <CarouselSlide label="Composed page">
-                <ComposedPage
-                  pageRef={pageRef}
-                  layout={layout}
-                  panels={renderablePanels}
-                />
-              </CarouselSlide>
+              {slides.map((slide) => (
+                <CarouselSlide key={slide.kind} label={slide.label}>
+                  {slide.kind === 'cover' && project.coverImageUrl && (
+                    <CoverSlide
+                      src={project.coverImageUrl}
+                      prompt={project.prompt}
+                      corsCapable={isCorsCapableHost(project.coverImageUrl)}
+                    />
+                  )}
+                  {slide.kind === 'composed-grid' && (
+                    <ComposedPage
+                      pageRef={pageRef}
+                      layout={layout}
+                      panels={renderablePanels}
+                    />
+                  )}
+                  {slide.kind === 'composed-ai' && project.composedImageUrl && (
+                    <AiCompositionSlide
+                      src={project.composedImageUrl}
+                      corsCapable={isCorsCapableHost(project.composedImageUrl)}
+                    />
+                  )}
+                </CarouselSlide>
+              ))}
             </CarouselViewport>
             <div className="flex items-center justify-between pt-4">
               <CarouselPrev />
@@ -351,12 +511,33 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
             </div>
           </Carousel>
         ) : (
+          // Single-slide fallback. The kind depends on which slides
+          // survived the build above (e.g. a project with only an AI
+          // composition and the CSS toggle off would land here with just
+          // `composed-ai`). Render whatever's actually in `slides[0]`
+          // rather than hard-coding `ComposedPage`, which would silently
+          // show the wrong asset.
           <div className="mx-auto w-full max-w-3xl">
-            <ComposedPage
-              pageRef={pageRef}
-              layout={layout}
-              panels={renderablePanels}
-            />
+            {slides[0]?.kind === 'cover' && project.coverImageUrl && (
+              <CoverSlide
+                src={project.coverImageUrl}
+                prompt={project.prompt}
+                corsCapable={isCorsCapableHost(project.coverImageUrl)}
+              />
+            )}
+            {slides[0]?.kind === 'composed-grid' && (
+              <ComposedPage
+                pageRef={pageRef}
+                layout={layout}
+                panels={renderablePanels}
+              />
+            )}
+            {slides[0]?.kind === 'composed-ai' && project.composedImageUrl && (
+              <AiCompositionSlide
+                src={project.composedImageUrl}
+                corsCapable={isCorsCapableHost(project.composedImageUrl)}
+              />
+            )}
           </div>
         )}
       </div>
@@ -407,6 +588,77 @@ function ComposedPage({ pageRef, layout, panels }: ComposedPageProps) {
           />
         </div>
       ))}
+    </div>
+  );
+}
+
+interface CssLayoutToggleProps {
+  checked: boolean;
+  disabled: boolean;
+  onChange: (next: boolean) => void;
+}
+
+/**
+ * Footer checkbox that controls whether the CSS-grid composition slide
+ * is included in the carousel. Disabled and forced-on when no AI
+ * composition exists, since hiding the CSS grid in that case would leave
+ * the carousel with only the cover (or nothing at all on cover-less
+ * projects). Forced-on state is communicated visually via `disabled`
+ * styling rather than a separate badge so the disabled affordance is
+ * unambiguous to keyboard / screen-reader users.
+ */
+function CssLayoutToggle({
+  checked,
+  disabled,
+  onChange,
+}: CssLayoutToggleProps) {
+  return (
+    <label
+      className={`inline-flex items-center gap-2 text-xs ${
+        disabled
+          ? 'text-slate-500 cursor-not-allowed'
+          : 'text-slate-300 cursor-pointer hover:text-white'
+      }`}
+      title={
+        disabled
+          ? 'CSS layout is the only available rendering until an AI composition is generated.'
+          : 'Show the deterministic CSS-grid composition alongside the AI render.'
+      }
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 rounded border border-slate-600 bg-slate-900 accent-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
+      />
+      Enable CSS layout
+    </label>
+  );
+}
+
+interface AiCompositionSlideProps {
+  src: string;
+  corsCapable: boolean;
+}
+
+/**
+ * AI-rendered composition slide. The underlying asset is already a single
+ * bitmap of the entire page, so we render it as a portrait-aspect tile
+ * without any per-panel grid scaffolding — that's the whole point.
+ */
+function AiCompositionSlide({ src, corsCapable }: AiCompositionSlideProps) {
+  return (
+    <div className="relative w-full aspect-[2/3] overflow-hidden rounded-xl border border-violet-700/50 bg-slate-950 shadow-2xl shadow-black/40">
+      <ImageWithFallback
+        src={src}
+        alt="AI-composed comic page"
+        className="absolute inset-0 w-full h-full object-contain"
+        crossOrigin={corsCapable}
+      />
+      <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-violet-600/90 text-white text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 shadow-md">
+        AI Composition
+      </div>
     </div>
   );
 }
