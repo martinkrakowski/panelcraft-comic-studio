@@ -2,16 +2,28 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Sparkles } from 'lucide-react';
+import {
+  MobileSidebarTrigger,
+  MobileSidebarDrawer,
+  type MobileSidebarNavLink,
+} from '@panelcraft/ui';
+import { BrandMark } from './BrandMark';
 
 interface WorkspaceShellProps {
   children: React.ReactNode;
 }
 
+const NAV_LINKS: MobileSidebarNavLink[] = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/new', label: 'New Comic' },
+];
+
 /**
  * Main application workspace shell wrapper that structures the layout grid.
- * Houses global navigation header, top bar metadata badge, and project footer.
+ * Houses global navigation header, top bar metadata badge, project footer,
+ * and the mobile drawer (rendered after `<main>` so portal targets from
+ * `AppCanvasTwoPane` resolve in document order).
  *
  * @component
  * @param props - Component props containing the children React elements.
@@ -19,36 +31,18 @@ interface WorkspaceShellProps {
  */
 export function WorkspaceShell({ children }: WorkspaceShellProps) {
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-950 via-slate-950 to-black text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className="h-dvh overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-950 via-slate-950 to-black text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
       {/* Background ambient lighting */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute top-10 right-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Header Shell */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md transition-all duration-300">
-        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center">
-          <Link
-            href="/"
-            scroll={false}
-            className="flex items-center space-x-3 group"
-          >
-            <div className="flex items-center justify-center w-10 h-10">
-              <Image
-                src="/varo-ai.svg"
-                alt=""
-                width={40}
-                height={40}
-                className="h-10 w-10"
-              />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent group-hover:text-indigo-400 transition-colors duration-300">
-                Varo AI
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider leading-none">
-                PanelCraft
-              </span>
-            </div>
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-2">
+          {/* Mobile-only hamburger; renders to the left of the brand. */}
+          <MobileSidebarTrigger />
+          <Link href="/" scroll={false} className="group">
+            <BrandMark />
           </Link>
         </div>
       </header>
@@ -70,6 +64,24 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
           </p>
         </div>
       </footer>
+
+      {/* Mobile drawer. Owns the portal slot that `AppCanvasTwoPane` uses
+          on < lg viewports. Rendered once, after the rest of the shell so
+          its z-50 sits above the sticky z-40 header. */}
+      <MobileSidebarDrawer
+        brandMark={<BrandMark />}
+        navLinks={NAV_LINKS}
+        renderNavLink={(link, onSelect) => (
+          <Link
+            href={link.href}
+            scroll={false}
+            onClick={onSelect}
+            className="block px-3 py-2 rounded-md text-base font-medium text-slate-200 hover:bg-slate-800/60 hover:text-white"
+          >
+            {link.label}
+          </Link>
+        )}
+      />
     </div>
   );
 }

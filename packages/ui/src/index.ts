@@ -17,6 +17,7 @@ export * from './components/elements/textarea';
 // Modules
 export * from './components/modules/carousel';
 export * from './components/modules/dialog';
+export * from './components/modules/dropdown-menu';
 export * from './components/modules/confirm-dialog';
 export * from './components/modules/feedback-regenerate-dialog';
 export * from './components/modules/toast';

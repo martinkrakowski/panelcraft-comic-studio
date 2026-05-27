@@ -31,7 +31,7 @@ export const ContentPanelFooter = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'flex-shrink-0 flex items-center justify-between gap-3 px-4 py-4 border-t border-slate-800/60 bg-slate-900/40',
+      'flex-shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-t border-slate-800/60 bg-slate-900/40',
       className
     )}
     {...props}

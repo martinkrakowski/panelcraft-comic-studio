@@ -16,6 +16,19 @@
   }
 }
 
+html,
+body {
+  /* Lock the document to the dynamic visible viewport. WorkspaceShell is
+     `h-dvh overflow-hidden`, and the page-level scrolling lives inside
+     each AppCanvas* pane (`flex-1 overflow-y-auto`). Without this, mobile
+     browsers can produce a phantom body scroll when `100vh` is measured
+     against the large viewport (URL bar collapsed) while the visible
+     viewport is shorter — scrolling then shifts the sticky header off
+     the top or hides the footer off the bottom. */
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   color: hsl(var(--foreground));
   background-color: #030712;
