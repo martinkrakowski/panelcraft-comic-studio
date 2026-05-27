@@ -632,7 +632,7 @@ function CssLayoutToggle({
         onChange={(e) => onChange(e.target.checked)}
         className="h-4 w-4 rounded border border-slate-600 bg-slate-900 accent-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
       />
-      Enable CSS layout
+      Show CSS composite
     </label>
   );
 }
