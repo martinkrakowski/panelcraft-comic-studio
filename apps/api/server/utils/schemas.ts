@@ -42,3 +42,13 @@ export const SelectLayoutSchema = z.object({
   selectedLayout: z.string().min(1, 'Layout selection required'),
   layoutId: z.string().optional(), // Layout template ID (e.g., 'classic-flow', 'splash-full')
 });
+
+export const ExtendPanelsSchema = z.object({
+  targetPanelCount: z.number().int().min(2).max(4),
+  selectedLayout: z.string().min(1, 'Layout selection required'),
+});
+
+export const ShrinkPanelsSchema = z.object({
+  keepIndices: z.array(z.number().int().min(0)).min(1).max(4),
+  selectedLayout: z.string().min(1, 'Layout selection required'),
+});

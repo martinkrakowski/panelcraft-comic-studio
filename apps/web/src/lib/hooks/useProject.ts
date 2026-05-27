@@ -85,13 +85,16 @@ export function useProject(id: string) {
   // Poll while the project is in any in-flight state. The workflow churns
   // through pending_creation → processing → pending_layout → pending_review
   // (between HITL gates) → completed; polling stops once a terminal state
-  // is reached.
+  // is reached. `extending` / `pending_review_extend` are the post-completion
+  // extend pipeline's analogues to processing / pending_review.
   const inFlightStatuses = new Set([
     'created',
     'processing',
     'pending_creation',
     'pending_layout',
     'pending_review',
+    'extending',
+    'pending_review_extend',
   ]);
   const isGenerating = !!(project && inFlightStatuses.has(project.status));
 

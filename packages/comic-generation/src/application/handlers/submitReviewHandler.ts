@@ -5,6 +5,10 @@ import {
 import { NotFoundError, ValidationError, LoggerPort } from '@panelcraft/shared';
 import type { RelationalDbPort } from '../ports/out/relational-db.out-port.js';
 import type { JobQueuePort } from '../ports/out/job-queue.out-port.js';
+import {
+  PENDING_REVIEW_EXTEND_STATUS,
+  EXTENDING_STATUS,
+} from './panelReconfigureHandler.js';
 
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -39,18 +43,24 @@ export async function submitReview(
     throw new NotFoundError(`Project ${projectId} not found`, projectId);
   }
 
+  const currentStatus = project.getStatus();
+  const isExtendReview = currentStatus === PENDING_REVIEW_EXTEND_STATUS;
   const isStuckProcessing =
-    project.getStatus() === 'processing' &&
+    currentStatus === 'processing' &&
     project.getLastReviewSubmittedAt() &&
     Date.now() - new Date(project.getLastReviewSubmittedAt()!).getTime() >
       PROCESSING_TIMEOUT_MS;
 
-  if (project.getStatus() !== 'pending_review' && !isStuckProcessing) {
+  if (
+    currentStatus !== 'pending_review' &&
+    !isExtendReview &&
+    !isStuckProcessing
+  ) {
     throw new ValidationError(
-      `Cannot submit review for project in status "${project.getStatus()}". ` +
-        `Project must be in "pending_review" status.`,
+      `Cannot submit review for project in status "${currentStatus}". ` +
+        `Project must be in "pending_review" or "${PENDING_REVIEW_EXTEND_STATUS}" status.`,
       'status',
-      project.getStatus()
+      currentStatus
     );
   }
 
@@ -60,6 +70,87 @@ export async function submitReview(
         `${Math.round((Date.now() - new Date(project.getLastReviewSubmittedAt()!).getTime()) / 1000)}s. ` +
         `Allowing retry.`
     );
+  }
+
+  // Extend mode bypasses LangGraph. Each approval marks the freshly-generated
+  // extension panel as completed and either kicks off the worker for the next
+  // pending slot or settles the project back to `completed`. Rejection routes
+  // through the same extend-next-panel job with the feedback attached so the
+  // worker regenerates that panel before pausing for review again.
+  if (isExtendReview) {
+    const panels = project.getPanels();
+    const generatedIndex = panels.findIndex(
+      (p) => p.getStatus().getValue() === 'generated'
+    );
+    if (generatedIndex === -1) {
+      throw new ValidationError(
+        `Extend-mode review submitted but no 'generated' panel found on ` +
+          `project ${projectId}.`,
+        'panels',
+        panels.map((p) => p.getStatus().getValue())
+      );
+    }
+
+    const feedbackValue = feedbackResult.value!.getValue();
+    if (feedbackValue.approved) {
+      const completedStatus = PanelStatus.create('completed');
+      if (!completedStatus.success || !completedStatus.value) {
+        throw new ValidationError('Failed to construct completed PanelStatus');
+      }
+      panels[generatedIndex]!.setStatus(completedStatus.value);
+      project.setPanels(panels);
+
+      const hasMorePending = panels.some(
+        (p) => p.getStatus().getValue() === 'pending'
+      );
+      if (hasMorePending) {
+        project.setStatus(EXTENDING_STATUS);
+        project.setLastReviewSubmittedAt(new Date().toISOString());
+        await deps.projectRepo.save(project);
+        await deps.taskQueue.add(
+          'extend-next-panel',
+          { projectId },
+          {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 2000 },
+            removeOnComplete: true,
+          }
+        );
+      } else {
+        project.setStatus('completed');
+        project.setLastReviewSubmittedAt(new Date().toISOString());
+        await deps.projectRepo.save(project);
+      }
+      return;
+    }
+
+    // Rejected with feedback — regenerate the same panel under the user's
+    // notes. The worker reads `regenFeedback` and appends it to the prompt
+    // for this regeneration only.
+    const pendingStatus = PanelStatus.create('pending');
+    if (!pendingStatus.success || !pendingStatus.value) {
+      throw new ValidationError('Failed to construct pending PanelStatus');
+    }
+    panels[generatedIndex]!.setStatus(pendingStatus.value);
+    project.setPanels(panels);
+    project.setStatus(EXTENDING_STATUS);
+    project.setLastReviewSubmittedAt(new Date().toISOString());
+    await deps.projectRepo.save(project);
+
+    await deps.taskQueue.add(
+      'extend-next-panel',
+      {
+        projectId,
+        regenFeedback:
+          feedbackValue.comment || feedbackValue.regenerationHint || undefined,
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+      }
+    );
+    return;
   }
 
   project.setStatus('processing');

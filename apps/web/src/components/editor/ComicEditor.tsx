@@ -48,9 +48,15 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
 
   const {
     onSelectLayout,
+    onSwapLayout,
+    onExtendPanels,
+    onShrinkPanels,
     onRegeneratePanel,
     onSubmitReview,
     selectingLayout,
+    swappingLayout,
+    extendingPanels,
+    shrinkingPanels,
     regeneratingPanelIndex,
     submittingReview,
   } = useEditorActions({
@@ -76,11 +82,15 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
 
   // Only surface HITL review when project is in pending_review (otherwise
   // panels that finished generating in a completed comic would resurrect
-  // the review form and trigger 400s on the next approve click).
-  const activeReviewPanel =
-    project.status === 'pending_review'
-      ? project.panels.find((p) => p.status === 'generated')
-      : undefined;
+  // the review form and trigger 400s on the next approve click). The
+  // extend pipeline emits `pending_review_extend` for the same purpose on
+  // newly-added extension panels — same UI, different backend routing.
+  const isReviewablePanelState =
+    project.status === 'pending_review' ||
+    project.status === 'pending_review_extend';
+  const activeReviewPanel = isReviewablePanelState
+    ? project.panels.find((p) => p.status === 'generated')
+    : undefined;
   const completedPanelCount = project.panels.filter(
     (p) => p.status === 'completed'
   ).length;
@@ -96,11 +106,19 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           completedPanelCount={completedPanelCount}
           panelCount={project.panelCount}
           progressPercent={progressPercent}
+          panels={project.panels}
+          status={project.status}
           characterBible={project.characterBible}
           layoutOptions={project.layoutOptions}
           selectingLayout={selectingLayout}
           selectedLayout={project.selectedLayout}
           onSelectLayout={onSelectLayout}
+          swappingLayout={swappingLayout}
+          extendingPanels={extendingPanels}
+          shrinkingPanels={shrinkingPanels}
+          onSwapLayout={onSwapLayout}
+          onExtendPanels={onExtendPanels}
+          onShrinkPanels={onShrinkPanels}
           prompt={project.prompt}
           coverImageUrl={project.coverImageUrl}
           genres={project.genres}
@@ -171,6 +189,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
         )}
         <PanelsGrid
           panels={project.panels}
+          selectedLayout={project.selectedLayout}
           // Only expose per-panel regenerate once the comic is done — while
           // a panel is mid-HITL the user reviews via the top card, and
           // letting them double-trigger generation would race the worker.

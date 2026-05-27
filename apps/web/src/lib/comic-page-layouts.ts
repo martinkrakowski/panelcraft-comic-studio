@@ -1,14 +1,20 @@
 /**
  * Comic-page layout templates that arrange approved panels on a single page.
  *
- * The LLM in `suggestLayouts` returns free-form labels like "4-panel 2x2 grid"
- * or "Full-page splash with 2 insets". Rather than parse those strings at
- * render time, we match against a small set of known templates and fall back
- * to a sensible grid sized to the panel count.
+ * Two layout sources feed `selectedLayout`:
+ *  1. The Recommended-Layouts catalog (`layout-templates-data.ts`) — picked
+ *     in the wizard's Step 0 sidebar or swapped in the HITL editor. Persisted
+ *     as a stable template ID like `"splash-full"` or `"grid-2x2-variable"`,
+ *     so we can derive cell placements directly from the template's panel
+ *     rects (rich, non-ambiguous).
+ *  2. The LLM's `suggestLayouts` free-form labels like "4-panel 2x2 grid" or
+ *     "Full-page splash with 2 insets". Matched against substring heuristics
+ *     below for projects that never used a catalog template.
  *
- * Each template returns CSS grid configuration plus optional per-cell
- * placement so we can support feature layouts like splash + insets.
+ * We try template-ID lookup first so new projects render via the rich
+ * template grid; legacy projects fall through to the substring matcher.
  */
+import { getLayoutById, type LayoutTemplate } from './layout-templates';
 
 export interface ComicPageGridConfig {
   /** CSS `grid-template-columns` value. */
@@ -46,6 +52,50 @@ export function inferPanelCountFromLayout(
 }
 
 /**
+ * Convert a `LayoutTemplate` (rect-based, 4x4 abstract grid) into a CSS-grid
+ * config the composed page can render. Each rect becomes a `grid-area`
+ * shorthand referencing fractional column/row tracks so panels keep their
+ * original proportions even when the template uses non-integer widths.
+ *
+ * Implementation note: we derive the column/row track counts from the
+ * smallest distinct rect coordinates so that fractional sizes like 1.33 still
+ * produce a valid grid (each unique edge becomes a track boundary).
+ */
+function gridConfigFromTemplate(template: LayoutTemplate): ComicPageGridConfig {
+  // Build sorted unique edge positions for columns and rows.
+  const colEdges = new Set<number>();
+  const rowEdges = new Set<number>();
+  for (const p of template.panels) {
+    colEdges.add(p.x);
+    colEdges.add(p.x + p.width);
+    rowEdges.add(p.y);
+    rowEdges.add(p.y + p.height);
+  }
+  const cols = Array.from(colEdges).sort((a, b) => a - b);
+  const rows = Array.from(rowEdges).sort((a, b) => a - b);
+
+  // Track sizes are the diffs between consecutive edges.
+  const colTracks = cols.slice(1).map((edge, i) => edge - cols[i]!);
+  const rowTracks = rows.slice(1).map((edge, i) => edge - rows[i]!);
+
+  const cellPlacements = template.panels.map((p) => {
+    const colStart = cols.indexOf(p.x) + 1;
+    const colEnd = cols.indexOf(p.x + p.width) + 1;
+    const rowStart = rows.indexOf(p.y) + 1;
+    const rowEnd = rows.indexOf(p.y + p.height) + 1;
+    return `${rowStart} / ${colStart} / ${rowEnd} / ${colEnd}`;
+  });
+
+  return {
+    columns: colTracks.map((t) => `${t}fr`).join(' '),
+    rows: rowTracks.map((t) => `${t}fr`).join(' '),
+    cellPlacements,
+    aspectRatio: '2 / 3',
+    label: template.name,
+  };
+}
+
+/**
  * Match a free-form layout string to a known template. Returns a sensible
  * default if no template matches the label exactly.
  */
@@ -53,6 +103,13 @@ export function resolveComicPageLayout(
   selectedLayout: string | null | undefined,
   panelCount: number
 ): ComicPageGridConfig {
+  // Prefer rich template lookup: when `selectedLayout` matches a catalog ID
+  // we have authoritative panel rects and can produce an exact grid.
+  if (selectedLayout) {
+    const template = getLayoutById(selectedLayout);
+    if (template) return gridConfigFromTemplate(template);
+  }
+
   const label = (selectedLayout || '').toLowerCase();
 
   if (label.includes('splash') && label.includes('inset')) {

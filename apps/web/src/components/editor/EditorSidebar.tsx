@@ -2,6 +2,7 @@
 
 import { WizardSidebar } from '@panelcraft/ui';
 import { LayoutChooserSection } from './sidebar/LayoutChooserSection';
+import { RecommendedLayoutsSection } from './sidebar/RecommendedLayoutsSection';
 import { WorkflowProgressSection } from './sidebar/WorkflowProgressSection';
 import { CoverSection } from './sidebar/CoverSection';
 import { StoryPromptSection } from './sidebar/StoryPromptSection';
@@ -14,18 +15,35 @@ import {
   StyleSection,
   type SidebarStyleReferences,
 } from './sidebar/StyleSection';
+import type { PanelDTO, ProjectStatus } from '@panelcraft/types';
 
 interface EditorSidebarProps {
   // Workflow status
   completedPanelCount: number;
   panelCount: number;
   progressPercent: number;
+  panels: PanelDTO[];
+  status?: ProjectStatus;
 
   // Layout chooser (conditional — only when pending_layout)
   layoutOptions?: string[] | null;
   selectingLayout?: boolean;
   selectedLayout?: string | null;
   onSelectLayout?: (layout: string) => void;
+
+  // Persistent Recommended Layouts catalog (shown post-layout-selection)
+  swappingLayout?: boolean;
+  extendingPanels?: boolean;
+  shrinkingPanels?: boolean;
+  onSwapLayout?: (layout: string) => void | Promise<void>;
+  onExtendPanels?: (
+    layout: string,
+    targetPanelCount: number
+  ) => void | Promise<void>;
+  onShrinkPanels?: (
+    layout: string,
+    keepIndices: number[]
+  ) => void | Promise<void>;
 
   // Wizard-collected reference data for HITL review
   prompt?: string;
@@ -50,10 +68,18 @@ export function EditorSidebar({
   completedPanelCount,
   panelCount,
   progressPercent,
+  panels,
+  status,
   layoutOptions,
   selectingLayout,
   selectedLayout,
   onSelectLayout,
+  swappingLayout,
+  extendingPanels,
+  shrinkingPanels,
+  onSwapLayout,
+  onExtendPanels,
+  onShrinkPanels,
   prompt,
   coverImageUrl,
   genres,
@@ -61,6 +87,9 @@ export function EditorSidebar({
   characterBible,
   styleReferences,
 }: EditorSidebarProps) {
+  // Any in-flight swap/extend/shrink action blocks the Recommended Layouts
+  // tiles to prevent stacking conflicting reconfigurations.
+  const swapBusy = !!(swappingLayout || extendingPanels || shrinkingPanels);
   return (
     <WizardSidebar variant="flex" title="Project" className="pt-20">
       <LayoutChooserSection
@@ -68,6 +97,16 @@ export function EditorSidebar({
         selectingLayout={selectingLayout}
         selectedLayout={selectedLayout}
         onSelectLayout={onSelectLayout}
+      />
+      <RecommendedLayoutsSection
+        panelCount={panelCount}
+        panels={panels}
+        status={status}
+        selectedLayout={selectedLayout}
+        swapBusy={swapBusy}
+        onSwapLayout={onSwapLayout}
+        onExtendPanels={onExtendPanels}
+        onShrinkPanels={onShrinkPanels}
       />
       <WorkflowProgressSection
         completedPanelCount={completedPanelCount}

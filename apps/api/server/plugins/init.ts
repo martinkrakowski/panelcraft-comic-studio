@@ -130,7 +130,8 @@ export default defineNitroPlugin(async (nitroApp) => {
       bullMQQueue,
       logger,
       getSupabaseClient(),
-      imageGenPort
+      imageGenPort,
+      llmClient
     );
   }
 

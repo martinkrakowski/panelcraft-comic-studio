@@ -17,8 +17,10 @@ function getActiveStep(status: string): number {
     case 'processing':
     case 'pending_creation':
     case 'pending_layout':
+    case 'extending':
       return 1;
     case 'pending_review':
+    case 'pending_review_extend':
       return 2;
     case 'completed':
       return 3;
@@ -64,7 +66,9 @@ export function ProjectStatusStrip({
         {STATUS_STEPS.map((label, i) => {
           const isCurrent = i === activeStep;
           const isTerminal = i === STATUS_STEPS.length - 1;
-          const isComplete = i < activeStep || (isTerminal && activeStep === STATUS_STEPS.length - 1);
+          const isComplete =
+            i < activeStep ||
+            (isTerminal && activeStep === STATUS_STEPS.length - 1);
           const isFailedTerminal = status === 'failed' && isTerminal;
 
           return (
