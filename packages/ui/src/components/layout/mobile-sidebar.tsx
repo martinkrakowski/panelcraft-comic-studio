@@ -227,19 +227,23 @@ export function MobileSidebarDrawer({
             </DialogPrimitive.Close>
           </div>
 
-          {/* Nav links — always rendered when provided. */}
+          {/* Nav links — always rendered when provided. Inlined in a
+              single row with each item sharing the available width
+              equally, so a short top-level nav reads as a button group
+              rather than a stacked list. The portaled per-route sidebar
+              below this nav supplies the rest of the navigation surface. */}
           {navLinks && navLinks.length > 0 && (
             <nav className="px-4 py-4 border-b border-slate-800/60 shrink-0">
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-row gap-2">
                 {navLinks.map((link) => (
-                  <li key={link.href}>
+                  <li key={link.href} className="flex-1">
                     {renderNavLink ? (
                       renderNavLink(link, handleSelect)
                     ) : (
                       <a
                         href={link.href}
                         onClick={handleSelect}
-                        className="block px-3 py-2 rounded-md text-base font-medium text-slate-200 hover:bg-slate-800/60 hover:text-white"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-slate-200 text-center hover:bg-slate-800/60 hover:text-white"
                       >
                         {link.label}
                       </a>

@@ -76,7 +76,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
             href={link.href}
             scroll={false}
             onClick={onSelect}
-            className="block px-3 py-2 rounded-md text-base font-medium text-slate-200 hover:bg-slate-800/60 hover:text-white"
+            className="block px-3 py-2 rounded-md text-base font-medium text-slate-200 text-center hover:bg-slate-800/60 hover:text-white"
           >
             {link.label}
           </Link>

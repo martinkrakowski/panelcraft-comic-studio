@@ -78,7 +78,7 @@ export function EditorErrorState({ message }: { message?: string }) {
               scroll={false}
               className={buttonVariants({ variant: 'outline', size: 'sm' })}
             >
-              Back to Dashboard
+              Dashboard
             </Link>
           </div>
         </Alert>
