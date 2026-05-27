@@ -12,10 +12,15 @@ interface SidebarProps {
   variant?: 'fixed' | 'flex';
 }
 
+// `overflow-y-scroll` (rather than `overflow-y-auto`) keeps the
+// vertical scrollbar visible even when content fits inside the viewport.
+// Without it, expanding/collapsing sidebar accordions toggles overflow
+// on and off, which makes the scrollbar appear/disappear and shifts the
+// inner content width by a few pixels each time — a visible jump.
 const fixedClasses =
-  'fixed left-0 top-0 h-screen w-64 bg-slate-900 border-r border-slate-700 z-30 overflow-y-auto';
+  'fixed left-0 top-0 h-screen w-64 bg-slate-900 border-r border-slate-700 z-30 overflow-y-scroll';
 const flexClasses =
-  'w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 grow-0 bg-transparent border-0 overflow-y-auto';
+  'w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 grow-0 bg-transparent border-0 overflow-y-scroll';
 
 /**
  * Layout/navigation container rendered as a semantic `<aside>`. Forwards a
