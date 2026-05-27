@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import {
   Card,
   CardHeader,
@@ -91,11 +92,16 @@ export function PanelsGrid({
   // is half the container, and each card only fills its own content
   // height). Letting rows auto-size to content produces an evenly-spread
   // editor grid where each pair sits flush against the next.
-  const gridStyle = useLayoutGrid
-    ? {
-        gridTemplateColumns: layout!.columns,
-        gridAutoRows: 'auto',
-      }
+  //
+  // The template's `gridTemplateColumns` value (e.g. `1fr 1fr 1fr`) is
+  // a dynamic string, so Tailwind JIT can't statically resolve a class
+  // like `lg:grid-cols-[1fr_1fr_1fr]`. Pass it via a CSS custom property
+  // and reference it from a Tailwind arbitrary property at `lg+`; below
+  // `lg` the column track stays at `grid-cols-1` so panels stack full-
+  // width (a 3-col HITL layout is illegible at phone widths). The user
+  // can still see the chosen layout's preview in the editor sidebar.
+  const gridStyle: CSSProperties | undefined = useLayoutGrid
+    ? ({ '--panels-grid-cols': layout!.columns } as CSSProperties)
     : undefined;
 
   return (
@@ -118,7 +124,7 @@ export function PanelsGrid({
               // height instead of inflating to fill a tall cell (splash rows,
               // dominant-panel layouts, etc. would otherwise leave dead
               // space below the image / prompt / actions).
-              'grid gap-4 w-full items-start'
+              'grid grid-cols-1 lg:[grid-template-columns:var(--panels-grid-cols)] gap-4 w-full items-start'
             : 'grid grid-cols-1 md:grid-cols-2 gap-6'
         }
         style={gridStyle}
@@ -142,12 +148,19 @@ export function PanelsGrid({
           return (
             <Card
               key={panel.id}
+              // `lg:[grid-area:...]` only applies the template's cell
+              // placement at `lg+` — below `lg` the card flows in source
+              // order in a single-column stack, ignoring the template grid.
               className={`bg-slate-900/20 overflow-hidden flex flex-col justify-between ${
                 isBusy
                   ? 'border-transparent animate-panel-busy'
                   : 'border-slate-700/60 hover:border-indigo-400/60'
-              }`}
-              style={cellPlacement ? { gridArea: cellPlacement } : undefined}
+              }${cellPlacement ? ' lg:[grid-area:var(--panel-grid-area)]' : ''}`}
+              style={
+                cellPlacement
+                  ? ({ '--panel-grid-area': cellPlacement } as CSSProperties)
+                  : undefined
+              }
             >
               <CardHeader className="p-4 border-b border-slate-800/30 flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-sm font-bold text-white">
