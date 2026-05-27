@@ -20,14 +20,14 @@ export interface TileConfig {
 export const TILES: TileConfig[] = [
   {
     id: 'brainstorm',
-    label: 'Brainstorm an Idea',
+    label: 'Brainstorm',
     badgeLabel: 'AI-Assisted',
     Icon: Lightbulb,
     accent: { r: 139, g: 92, b: 246 },
   },
   {
     id: 'load-existing',
-    label: 'Load Existing Project',
+    label: 'Explore Projects',
     badgeLabel: 'Continue',
     Icon: FolderOpen,
     accent: { r: 236, g: 72, b: 153 },

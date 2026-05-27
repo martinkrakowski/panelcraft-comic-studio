@@ -46,7 +46,16 @@ export function OnboardingScreen({ className }: OnboardingScreenProps) {
   }
 
   return (
-    <AppCanvasCenter className={className}>
+    // On mobile, anchor the column at the top of the canvas with `pt-24` so
+    // the hero clears the sticky 64px header without relying on a margin
+    // that flex `items-center` would only half-apply. `overflow-y-auto` is
+    // a safety net for viewports too short to fit the column (e.g. small
+    // phones in landscape) — content scrolls instead of being clipped by
+    // CanvasBase's `overflow: hidden`. At `sm+` restore the original
+    // centered layout where the column fits comfortably.
+    <AppCanvasCenter
+      className={`!items-start pt-24 overflow-y-auto sm:!items-center sm:pt-0 sm:overflow-visible ${className ?? ''}`}
+    >
       <motion.div
         className={`${styles.container} relative z-10`}
         variants={containerVariants}
@@ -58,7 +67,7 @@ export function OnboardingScreen({ className }: OnboardingScreenProps) {
             and an inner content shield holding the actual hero image + copy. */}
         <motion.div
           variants={itemVariants}
-          className={`${styles.heroContainer} mb-6`}
+          className={`${styles.heroContainer} mb-3 md:mb-6`}
         >
           <div className={styles.heroBorderGradient} aria-hidden />
           <div className={styles.heroInner}>
@@ -79,10 +88,14 @@ export function OnboardingScreen({ className }: OnboardingScreenProps) {
 
         {/* Tile grid — flex + justify-center so removing tiles keeps the
             remaining ones centered; each tile claims an equal share up to a
-            sensible max so two tiles don't blow up to full-row width. */}
+            sensible max so two tiles don't blow up to full-row width.
+            `min-w-[140px]` sized so the two tiles still fit side-by-side
+            on a 430px-class phone viewport (the AppCanvasCenter content
+            area is ~355px after the container's `max-w-[90%]` + `px-4`
+            padding); anything larger forced them to wrap onto two rows. */}
         <div className="flex flex-wrap justify-center gap-2.5 w-full">
           {TILES.map((tile, i) => (
-            <div key={tile.id} className="flex-1 min-w-[200px] max-w-xs">
+            <div key={tile.id} className="flex-1 min-w-[140px] max-w-xs">
               <OnboardingTile {...tile} index={i} onSelect={handleTileClick} />
             </div>
           ))}
