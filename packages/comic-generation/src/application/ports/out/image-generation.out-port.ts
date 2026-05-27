@@ -12,13 +12,19 @@ export interface ImageGenerationPort {
   generatePanel(command: GeneratePanelCommand): Promise<string>;
 
   /**
-   * Generates a cover image using the configured provider
+   * Generates a cover image using the configured provider.
+   *
+   * `regenFeedback`, when present, is appended to the prompt for this
+   * call only — it must not be persisted on the project. Used by the
+   * cover-regeneration worker job to steer a re-roll with user notes.
+   *
    * @returns Image buffer of the generated cover
    */
   generateCover(options: {
     prompt: string;
     style?: unknown;
     characterBible?: unknown;
+    regenFeedback?: string;
   }): Promise<Buffer>;
 
   /**

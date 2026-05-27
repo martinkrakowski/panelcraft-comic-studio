@@ -4,9 +4,11 @@ import {
   ComicGenerationUseCase,
   LangGraphOrchestrationAdapter,
   ImageGenerationAdapter,
+  GeminiImageCompositionAdapter,
 } from '@panelcraft/comic-generation';
 import type {
   ImageGenerationPort,
+  ImageCompositionPort,
   GeneratePanelCommand,
 } from '@panelcraft/comic-generation';
 import { SupabaseProjectRepository } from '@panelcraft/comic-project-management';
@@ -101,6 +103,17 @@ export default defineNitroPlugin(async (nitroApp) => {
         }
       : new ImageGenerationAdapter();
 
+  // Final-composition adapter is opt-in. Gated by FEATURE_FINAL_COMPOSITION
+  // because the endpoint is hidden behind the same flag and because the
+  // adapter assumes GOOGLE_GENERATIVE_AI_API_KEY is set. When the flag is
+  // off we pass `null` to the worker so any stray compose-final-page job
+  // (e.g. queued before the flag was disabled) surfaces a descriptive
+  // error instead of dispatching to an unconfigured backend.
+  const imageCompositionPort: ImageCompositionPort | null =
+    process.env.FEATURE_FINAL_COMPOSITION === 'true'
+      ? new GeminiImageCompositionAdapter()
+      : null;
+
   const langGraphAdapter = new LangGraphOrchestrationAdapter(
     imageGenPort,
     llmClient,
@@ -131,7 +144,8 @@ export default defineNitroPlugin(async (nitroApp) => {
       logger,
       getSupabaseClient(),
       imageGenPort,
-      llmClient
+      llmClient,
+      imageCompositionPort
     );
   }
 

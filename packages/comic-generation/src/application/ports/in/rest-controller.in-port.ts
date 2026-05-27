@@ -19,7 +19,19 @@ export interface ProjectData {
     // `extending` is the in-flight phase while the worker generates a new
     // panel; `pending_review_extend` is the HITL pause between additions.
     | 'extending'
-    | 'pending_review_extend';
+    | 'pending_review_extend'
+    // End-of-workflow AI composition pipeline (see `finalCompositionHandler.ts`):
+    // `composing` is the in-flight phase while the worker renders the
+    // single-bitmap final page; `pending_review_final` is the HITL pause
+    // where the user approves or rejects the AI composition.
+    | 'composing'
+    | 'pending_review_final'
+    // Cover regeneration HITL pipeline (see `regenerate-cover` worker
+    // job): `regenerating_cover` is the in-flight phase while the worker
+    // re-renders the cover bitmap; `pending_review_cover` is the HITL
+    // pause where the user approves or rejects the new cover.
+    | 'regenerating_cover'
+    | 'pending_review_cover';
   createdAt: string;
   panels?: Array<{
     id: string;
@@ -38,6 +50,7 @@ export interface ProjectData {
     artDirectionNotes?: string;
   };
   coverImageUrl?: string | null;
+  composedImageUrl?: string | null;
   selectedLayout?: string | null;
   layoutOptions?: string[] | null;
 }
@@ -82,12 +95,17 @@ export interface RestControllerPort {
 
   /**
    * Resumes the generation thread with HITL approval/rejection feedback.
+   *
+   * `composeFlavor` is only meaningful at the `pending_review_final` gate;
+   * when set, a rejection re-enqueues `compose-final-page` with the chosen
+   * flavor. It is ignored for the per-panel and extend-mode review gates.
    */
   submitReview(
     projectId: string,
     approved: boolean,
     comment?: string,
-    regenerationHint?: string
+    regenerationHint?: string,
+    composeFlavor?: 'composite-true' | 'repaint'
   ): Promise<void>;
 
   /**
@@ -152,4 +170,26 @@ export interface RestControllerPort {
     keepIndices: number[],
     selectedLayout: string
   ): Promise<void>;
+
+  /**
+   * Queue the AI-rendered final composition for a completed project. Worker
+   * renders a single bitmap of the page from the approved panels and pauses
+   * at `pending_review_final` for HITL approval. `regenFeedback` is applied
+   * to the current run only when retrying after rejection. `composeFlavor`
+   * controls how aggressively the model alters approved panels: defaults to
+   * `composite-true` (preserve subjects, harmonize seams) or `repaint`
+   * (treat panels as style references and repaint for maximum cohesion).
+   */
+  composeFinalPage(
+    projectId: string,
+    regenFeedback?: string,
+    composeFlavor?: 'composite-true' | 'repaint'
+  ): Promise<void>;
+
+  /**
+   * Queue a fresh cover render for a `completed` project. Optional
+   * `feedback` is appended to the cover prompt for this run only and is
+   * not persisted on the project.
+   */
+  regenerateCover(projectId: string, feedback?: string): Promise<void>;
 }

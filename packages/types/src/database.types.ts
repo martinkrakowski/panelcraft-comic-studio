@@ -42,15 +42,17 @@ export type Database = {
       comic_projects: {
         Row: {
           character_bible: Json | null;
+          composed_image_url: string | null;
           cover_image_url: string | null;
           created_at: string | null;
           genres: string[] | null;
           id: string;
           layout_options: string[] | null;
           panel_count: number;
+          panels: Json;
           prompt: string;
           selected_layout: string | null;
-          status: string | null;
+          status: string;
           style_references: Json | null;
           tones: string[] | null;
           updated_at: string | null;
@@ -58,15 +60,17 @@ export type Database = {
         };
         Insert: {
           character_bible?: Json | null;
+          composed_image_url?: string | null;
           cover_image_url?: string | null;
           created_at?: string | null;
           genres?: string[] | null;
           id?: string;
           layout_options?: string[] | null;
           panel_count: number;
+          panels?: Json;
           prompt: string;
           selected_layout?: string | null;
-          status?: string | null;
+          status?: string;
           style_references?: Json | null;
           tones?: string[] | null;
           updated_at?: string | null;
@@ -74,15 +78,17 @@ export type Database = {
         };
         Update: {
           character_bible?: Json | null;
+          composed_image_url?: string | null;
           cover_image_url?: string | null;
           created_at?: string | null;
           genres?: string[] | null;
           id?: string;
           layout_options?: string[] | null;
           panel_count?: number;
+          panels?: Json;
           prompt?: string;
           selected_layout?: string | null;
-          status?: string | null;
+          status?: string;
           style_references?: Json | null;
           tones?: string[] | null;
           updated_at?: string | null;

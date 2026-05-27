@@ -19,6 +19,8 @@ export function getProjectStatusVariant(status: ProjectStatus) {
       return 'success';
     case 'pending_review':
     case 'pending_review_extend':
+    case 'pending_review_final':
+    case 'pending_review_cover':
       return 'warning';
     case 'failed':
       return 'destructive';
@@ -27,6 +29,8 @@ export function getProjectStatusVariant(status: ProjectStatus) {
     case 'processing':
     case 'pending_layout':
     case 'extending':
+    case 'composing':
+    case 'regenerating_cover':
       return 'default';
     default:
       return 'secondary';
@@ -57,6 +61,14 @@ export function formatProjectStatus(status: ProjectStatus): string {
       return 'Review New Panel';
     case 'extending':
       return 'Adding Panels';
+    case 'composing':
+      return 'Composing Page';
+    case 'pending_review_final':
+      return 'Review Final Page';
+    case 'regenerating_cover':
+      return 'Regenerating Cover';
+    case 'pending_review_cover':
+      return 'Review New Cover';
     case 'completed':
       return 'Completed';
     case 'failed':

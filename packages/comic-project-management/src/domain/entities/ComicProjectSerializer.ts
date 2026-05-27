@@ -23,6 +23,7 @@ export interface ComicProjectJSON {
     artDirectionNotes?: string;
   } | null;
   coverImageUrl?: string | null;
+  composedImageUrl?: string | null;
   selectedLayout?: string | null;
   layoutOptions?: string[] | null;
   status: string;
@@ -73,6 +74,7 @@ export class ComicProjectSerializer {
       tones: Array.isArray(json.tones) ? json.tones : [],
       styleReferences: json.styleReferences || null,
       coverImageUrl: json.coverImageUrl || null,
+      composedImageUrl: json.composedImageUrl || null,
       selectedLayout: json.selectedLayout || null,
       layoutOptions: Array.isArray(json.layoutOptions)
         ? json.layoutOptions

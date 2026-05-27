@@ -16,6 +16,9 @@
       "path": "../shared"
     },
     {
+      "path": "../types"
+    },
+    {
       "path": "../comic-project-management"
     }
   ],

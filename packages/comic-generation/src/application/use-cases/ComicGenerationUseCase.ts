@@ -8,11 +8,13 @@ import {
   submitReview,
   enqueueResumeComic,
   regeneratePanel,
+  regenerateCover,
 } from '../handlers/submitReviewHandler.js';
 import {
   extendPanels,
   shrinkPanels,
 } from '../handlers/panelReconfigureHandler.js';
+import { composeFinalPage } from '../handlers/finalCompositionHandler.js';
 import { updateProjectPaths } from '../handlers/updateProjectPathsHandler.js';
 
 /**
@@ -80,13 +82,21 @@ export class ComicGenerationUseCase implements RestControllerPort {
     projectId: string,
     approved: boolean,
     comment?: string,
-    regenerationHint?: string
+    regenerationHint?: string,
+    composeFlavor?: 'composite-true' | 'repaint'
   ): Promise<void> {
-    return submitReview(projectId, approved, comment, regenerationHint, {
-      projectRepo: this.projectRepo,
-      taskQueue: this.taskQueue,
-      logger: this.logger,
-    });
+    return submitReview(
+      projectId,
+      approved,
+      comment,
+      regenerationHint,
+      composeFlavor,
+      {
+        projectRepo: this.projectRepo,
+        taskQueue: this.taskQueue,
+        logger: this.logger,
+      }
+    );
   }
 
   async selectLayout(projectId: string, selectedLayout: string): Promise<void> {
@@ -198,6 +208,47 @@ export class ComicGenerationUseCase implements RestControllerPort {
   ): Promise<void> {
     return updateProjectPaths(projectId, paths, {
       projectRepo: this.projectRepo,
+    });
+  }
+
+  /**
+   * Queue the AI-rendered final composition pass for a completed project.
+   * The worker renders a single bitmap of the comic page from the approved
+   * panel images and pauses at `pending_review_final` for HITL approval.
+   *
+   * @param projectId - UUID of the project to compose.
+   * @param regenFeedback - Optional reviewer feedback applied to this run
+   *   only (not persisted on the project). Used by the regen-with-feedback
+   *   flow when the user rejects the AI composition.
+   * @throws NotFoundError if the project doesn't exist.
+   * @throws ValidationError if the project isn't `completed` /
+   *   `pending_review_final`, has no panels, or has unfinished panels.
+   */
+  async composeFinalPage(
+    projectId: string,
+    regenFeedback?: string,
+    composeFlavor?: 'composite-true' | 'repaint'
+  ): Promise<void> {
+    return composeFinalPage(projectId, regenFeedback, composeFlavor, {
+      projectRepo: this.projectRepo,
+      taskQueue: this.taskQueue,
+      logger: this.logger,
+    });
+  }
+
+  /**
+   * Enqueue a fresh cover render for a `completed` project. Optional
+   * `feedback` is appended to the cover prompt for this run only and is
+   * not persisted on the project.
+   *
+   * @throws NotFoundError if the project doesn't exist.
+   * @throws ValidationError if the project isn't `completed`.
+   */
+  async regenerateCover(projectId: string, feedback?: string): Promise<void> {
+    return regenerateCover(projectId, feedback, {
+      projectRepo: this.projectRepo,
+      taskQueue: this.taskQueue,
+      logger: this.logger,
     });
   }
 }

@@ -34,7 +34,19 @@ export type ProjectStatus =
   // while the worker generates a freshly-added panel; `pending_review_extend`
   // is the HITL pause between extension panels.
   | 'extending'
-  | 'pending_review_extend';
+  | 'pending_review_extend'
+  // End-of-workflow AI composition pipeline. `composing` is the in-flight
+  // phase while the worker renders a single bitmap of the whole page from
+  // approved panels; `pending_review_final` is the HITL pause where the
+  // user approves or rejects the AI-rendered composition.
+  | 'composing'
+  | 'pending_review_final'
+  // Cover regeneration HITL pipeline. `regenerating_cover` is the
+  // in-flight phase while the worker re-renders the cover bitmap;
+  // `pending_review_cover` is the HITL pause where the user approves or
+  // rejects the new cover.
+  | 'regenerating_cover'
+  | 'pending_review_cover';
 
 export interface PanelDTO {
   id: string;
@@ -59,6 +71,7 @@ export interface ComicProjectDTO {
     artDirectionNotes?: string;
   } | null;
   coverImageUrl?: string | null;
+  composedImageUrl?: string | null;
   selectedLayout?: string | null;
   layoutOptions?: string[] | null;
   status: ProjectStatus;
@@ -81,9 +94,22 @@ export interface CreateProjectInput {
   referenceImages?: string[]; // Relative paths to Supabase Storage
 }
 
+/**
+ * Final-composition flavor controls how aggressively the model alters
+ * approved panels when composing the final page. See
+ * `ImageCompositionPort.composeFinalPage` for semantic details.
+ */
+export type CompositionFlavor = 'composite-true' | 'repaint';
+
 export interface SubmitReviewInput {
   approved: boolean;
   comment?: string;
+  /**
+   * When rejecting at the `pending_review_final` HITL gate, forwards the
+   * user's choice of composition flavor (verbatim layout vs full re-paint)
+   * to the next compose-final-page run. Ignored for other review gates.
+   */
+  composeFlavor?: CompositionFlavor;
 }
 
 /**

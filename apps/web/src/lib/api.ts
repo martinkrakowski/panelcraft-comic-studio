@@ -236,5 +236,46 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  /**
+   * Queue the AI-rendered final composition pass for a completed project.
+   * Returns 202; the project transitions to `composing` and then
+   * `pending_review_final` once the worker has produced the composite.
+   * Pass `regenFeedback` and `composeFlavor` when re-running after a
+   * rejection from the HITL review surface.
+   */
+  async composeFinalPage(
+    id: string,
+    options: {
+      regenFeedback?: string;
+      composeFlavor?: 'composite-true' | 'repaint';
+    } = {}
+  ): Promise<{ message: string }> {
+    return request<{ message: string }>(`/api/projects/${id}/compose`, {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  },
+
+  /**
+   * Enqueue a fresh cover render for a `completed` project. Optional
+   * `feedback` is appended to the cover prompt for this run only — it
+   * is not persisted, so the next regen reverts to the original
+   * direction unless new feedback is supplied. Returns 202; project
+   * status transitions to `processing` while the worker runs and back
+   * to `completed` when finished.
+   */
+  async regenerateCover(
+    id: string,
+    feedback?: string
+  ): Promise<{ message: string }> {
+    const body = feedback?.trim()
+      ? JSON.stringify({ feedback: feedback.trim() })
+      : undefined;
+    return request<{ message: string }>(
+      `/api/projects/${id}/cover/regenerate`,
+      { method: 'POST', body }
+    );
+  },
 };
 export default api;

@@ -13,3 +13,16 @@ export {
   PENDING_REVIEW_EXTEND_STATUS,
   EXTENDING_STATUS,
 } from './application/handlers/panelReconfigureHandler.js';
+
+// Surface final-composition status constants for the same reason.
+export {
+  COMPOSING_STATUS,
+  PENDING_REVIEW_FINAL_STATUS,
+} from './application/handlers/finalCompositionHandler.js';
+
+// Surface cover-regen status constants — emitted by the regenerate-cover
+// handler and worker, and detected by the cover HITL routing.
+export {
+  REGENERATING_COVER_STATUS,
+  PENDING_REVIEW_COVER_STATUS,
+} from './application/handlers/submitReviewHandler.js';

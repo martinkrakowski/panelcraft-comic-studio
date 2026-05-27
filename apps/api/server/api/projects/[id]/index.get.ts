@@ -30,17 +30,17 @@ export default defineEventHandler(async (event) => {
   // Storage paths persisted in DB must be exchanged for short-lived signed
   // URLs before reaching the browser — `next/image` rejects relative paths.
   const moodBoardPaths: string[] = j.styleReferences?.moodBoardImages || [];
-  const [coverImageUrl, panelImageUrls, moodBoardImageUrls] = await Promise.all(
-    [
+  const [coverImageUrl, composedImageUrl, panelImageUrls, moodBoardImageUrls] =
+    await Promise.all([
       toSignedUrlIfPath(j.coverImageUrl),
+      toSignedUrlIfPath(j.composedImageUrl),
       Promise.all(
         (j.panels || []).map((p: PanelJSON) =>
           toSignedUrlIfPath(p.generatedImageUrl)
         )
       ),
       Promise.all(moodBoardPaths.map((p) => toSignedUrlIfPath(p))),
-    ]
-  );
+    ]);
 
   const styleReferences = j.styleReferences
     ? {
@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
       tones: j.tones,
       styleReferences,
       coverImageUrl,
+      composedImageUrl,
       selectedLayout: j.selectedLayout,
       layoutOptions: j.layoutOptions,
       // Panels

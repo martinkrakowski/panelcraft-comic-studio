@@ -3,15 +3,25 @@ import { Command } from '@langchain/langgraph';
 import type {
   LangGraphOrchestrationAdapter,
   ImageGenerationPort,
+  ImageCompositionPort,
   LLMClientPort,
 } from '@panelcraft/comic-generation';
-import { PENDING_REVIEW_EXTEND_STATUS } from '@panelcraft/comic-generation';
+import {
+  PENDING_REVIEW_EXTEND_STATUS,
+  PENDING_REVIEW_FINAL_STATUS,
+  PENDING_REVIEW_COVER_STATUS,
+} from '@panelcraft/comic-generation';
 import type { RelationalDbPort } from '@panelcraft/comic-generation';
 import {
   ComicProject,
   PanelStatus,
 } from '@panelcraft/comic-project-management';
 import type { LoggerPort } from '@panelcraft/shared';
+import {
+  getLayoutById,
+  DEFAULT_FALLBACK_LAYOUT,
+  type LayoutTemplate,
+} from '@panelcraft/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface ComicJobData {
@@ -29,6 +39,11 @@ interface ComicJobData {
    * field above which carries the full review payload.
    */
   regenFeedback?: string;
+  /**
+   * Composition flavor forwarded to the final-page adapter when running
+   * `compose-final-page`. Defaults to `composite-true` when omitted.
+   */
+  composeFlavor?: 'composite-true' | 'repaint';
 }
 
 interface CharacterBibleEntry {
@@ -90,7 +105,8 @@ export function initComicWorker(
   logger: LoggerPort,
   supabase: SupabaseClient,
   imageGenPort: ImageGenerationPort,
-  llmClient: LLMClientPort
+  llmClient: LLMClientPort,
+  imageCompositionPort: ImageCompositionPort | null
 ) {
   const graph = langGraphAdapter.getGraph();
 
@@ -383,6 +399,54 @@ export function initComicWorker(
             `[Worker] Panel ${panelIndex} regenerated; project status set to ` +
               `${project.getStatus()}`
           );
+        } else if (job.name === 'regenerate-cover') {
+          // Out-of-graph cover regeneration. The handler validates that the
+          // project is `completed` and flips status to `processing` before
+          // enqueue; here we render a new cover image with the same
+          // prompt/style/character bible as the original (plus optional
+          // reviewer feedback), upload it to the same storage path so
+          // existing signed URLs keep working, and restore status to
+          // `completed` so the polling UI settles.
+          const { regenFeedback } = job.data;
+          const feedbackText =
+            typeof regenFeedback === 'string' && regenFeedback.trim().length > 0
+              ? regenFeedback.trim()
+              : undefined;
+
+          logger.info(
+            `[Worker] Regenerating cover for project ${projectId}` +
+              (feedbackText ? ' with feedback' : '')
+          );
+
+          const coverBuffer = await imageGenPort.generateCover({
+            prompt: project.getPrompt().getValue(),
+            style: project.getStyleReferences() ?? undefined,
+            characterBible: project.getCharacterBible()?.getValue() ?? null,
+            regenFeedback: feedbackText,
+          });
+
+          // Mirror the in-graph cover path so a single storage location
+          // owns the cover for the project's whole lifecycle.
+          const storagePath = `comics/${projectId}/covers/front.webp`;
+          const { error: uploadError } = await supabase.storage
+            .from('comics')
+            .upload(storagePath, coverBuffer, {
+              contentType: 'image/webp',
+              upsert: true,
+            });
+          if (uploadError) {
+            throw new Error(
+              `[Worker] Failed to upload regenerated cover: ${uploadError.message}`
+            );
+          }
+
+          project.setCoverImageUrl(storagePath);
+          project.setStatus(PENDING_REVIEW_COVER_STATUS);
+          await projectRepo.save(project);
+
+          logger.info(
+            `[Worker] Cover regenerated for project ${projectId}; paused at "${PENDING_REVIEW_COVER_STATUS}" for HITL approval.`
+          );
         } else if (job.name === 'extend-next-panel') {
           // Out-of-graph extend pipeline. The project was a completed comic
           // until the user picked a higher-count layout in HITL; we walk
@@ -567,6 +631,123 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
             `[Worker] Extend panel ${nextPendingIndex} generated; project ${projectId} ` +
               `paused for HITL review.`
           );
+        } else if (job.name === 'compose-final-page') {
+          // AI-rendered final composition. Runs entirely out-of-graph because
+          // the LangGraph thread already finalized for the original
+          // generation. We pull each approved panel image as a Buffer, hand
+          // them to the composition adapter together with the resolved layout
+          // template, and stage the result back to Supabase. The project is
+          // left at `pending_review_final` so the user can approve or reject
+          // the composite via the existing review endpoint.
+          if (!imageCompositionPort) {
+            throw new Error(
+              `[Worker] compose-final-page job received but no ` +
+                `imageCompositionPort is configured (set ` +
+                `GOOGLE_GENERATIVE_AI_API_KEY and ` +
+                `FEATURE_FINAL_COMPOSITION=true).`
+            );
+          }
+          const { regenFeedback, composeFlavor } = job.data;
+          const panels = project.getPanels();
+          if (panels.length === 0) {
+            throw new Error(
+              `[Worker] Project ${projectId} has no panels — cannot compose.`
+            );
+          }
+
+          // Resolve layout. Fall back to the default 2x2 if the persisted
+          // selectedLayout was never set or references a legacy free-form
+          // string from before the layout catalog existed.
+          const layoutId = project.getSelectedLayout();
+          let layoutTemplate: LayoutTemplate | undefined = layoutId
+            ? getLayoutById(layoutId)
+            : undefined;
+          if (!layoutTemplate) {
+            logger.warn(
+              `[Worker] Project ${projectId} selectedLayout="${layoutId}" ` +
+                `not in catalog — falling back to ` +
+                `"${DEFAULT_FALLBACK_LAYOUT.id}".`
+            );
+            layoutTemplate = DEFAULT_FALLBACK_LAYOUT;
+          }
+
+          // Fetch each panel image as a Buffer. Generated panels are stored
+          // as storage paths once staged, but the original CDN URL is kept
+          // as a fallback for panels that failed to stage. Sign storage
+          // paths in parallel — most projects have 1-4 panels so this is
+          // cheap.
+          logger.info(
+            `[Worker] Composing final page for project ${projectId} ` +
+              `(${panels.length} panel(s), layout="${layoutTemplate.id}")`
+          );
+          const panelImages: Buffer[] = await Promise.all(
+            panels.map(async (panel, idx) => {
+              const stored = panel.getGeneratedImageUrl();
+              if (!stored) {
+                throw new Error(
+                  `[Worker] Panel ${idx} on project ${projectId} has no ` +
+                    `image URL — cannot compose.`
+                );
+              }
+              let fetchUrl = stored;
+              if (!/^https?:\/\//i.test(stored)) {
+                const { data: signedUrlData, error: signError } =
+                  await supabase.storage
+                    .from('comics')
+                    .createSignedUrl(stored, 3600);
+                if (signError || !signedUrlData?.signedUrl) {
+                  throw new Error(
+                    `[Worker] Failed to sign panel ${idx} (${stored}): ` +
+                      (signError?.message || 'no signed URL returned')
+                  );
+                }
+                fetchUrl = signedUrlData.signedUrl;
+              }
+              const res = await fetch(fetchUrl);
+              if (!res.ok) {
+                throw new Error(
+                  `[Worker] Failed to fetch panel ${idx}: HTTP ${res.status}`
+                );
+              }
+              return Buffer.from(await res.arrayBuffer());
+            })
+          );
+
+          const composedBuffer = await imageCompositionPort.composeFinalPage({
+            layoutTemplate,
+            panelImages,
+            // Prompt is built inside the adapter from layoutTemplate +
+            // storyPrompt + flavor; pass an empty marker to satisfy the
+            // port shape so callers that don't override get the default
+            // composition behavior.
+            prompt: '',
+            storyPrompt: project.getPrompt().getValue(),
+            characterBible: project.getCharacterBible()?.getValue() ?? null,
+            regenFeedback,
+            composeFlavor,
+          });
+
+          const composedPath = `comics/${projectId}/composed/final.webp`;
+          const { error: uploadError } = await supabase.storage
+            .from('comics')
+            .upload(composedPath, composedBuffer, {
+              contentType: 'image/webp',
+              upsert: true,
+            });
+          if (uploadError) {
+            throw new Error(
+              `[Worker] Failed to upload composed page: ${uploadError.message}`
+            );
+          }
+
+          project.setComposedImageUrl(composedPath);
+          project.setStatus(PENDING_REVIEW_FINAL_STATUS);
+          await projectRepo.save(project);
+
+          logger.info(
+            `[Worker] Final composition ready for project ${projectId}; ` +
+              `paused at "${PENDING_REVIEW_FINAL_STATUS}".`
+          );
         }
       } catch (error) {
         logger.error(
@@ -616,6 +797,17 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
                     project.setPanels(panels);
                   }
                 }
+                project.setStatus('completed');
+              } else if (job.name === 'compose-final-page') {
+                // Composition failed. Keep any previously-composed image
+                // around (so /view still has something to show) and drop
+                // back to `completed` so the sidebar button re-arms for
+                // another attempt.
+                project.setStatus('completed');
+              } else if (job.name === 'regenerate-cover') {
+                // Cover regen failed. Keep the existing cover image
+                // around and revert to `completed` so the footer button
+                // re-arms.
                 project.setStatus('completed');
               } else if (currentStatus === 'processing') {
                 project.setStatus('pending_review');
