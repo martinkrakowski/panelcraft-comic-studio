@@ -1,7 +1,31 @@
 'use client';
 
-import React, { useId, useState } from 'react';
+import React, { useContext, useId, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+
+/**
+ * Broadcast channel used by an ancestor container to set every nested
+ * `CollapsibleSection`'s open state at once (e.g., the WizardSidebar's
+ * expand-all / collapse-all toggle). `version` increments on each
+ * broadcast so consuming sections can detect a fresh request even if
+ * `open` happens to match the prior target — bumping the counter is the
+ * signal, not the value.
+ */
+export interface AccordionBroadcast {
+  version: number;
+  open: boolean;
+}
+
+const AccordionBroadcastContext =
+  React.createContext<AccordionBroadcast | null>(null);
+
+/**
+ * Provider for the broadcast channel. Wrap any subtree whose
+ * CollapsibleSections should respond to programmatic expand/collapse
+ * commands. Sections outside the provider fall back to purely local
+ * (uncontrolled) state, preserving the original behavior.
+ */
+export const AccordionBroadcastProvider = AccordionBroadcastContext.Provider;
 
 /** Props for CollapsibleSection component */
 interface CollapsibleSectionProps {
@@ -37,6 +61,21 @@ export const CollapsibleSection = React.forwardRef<
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const id = useId();
   const contentId = `collapsible-content-${id}`;
+
+  // Subscribe to the parent's broadcast channel (if one is mounted).
+  // When the broadcast `version` changes we sync local state to the
+  // broadcast `open` value. This is React's "Adjusting State Based on
+  // Props" pattern — guarded by a ref-stored last-seen version so the
+  // setter only fires once per broadcast and not on every re-render.
+  const broadcast = useContext(AccordionBroadcastContext);
+  const lastBroadcastVersionRef = useRef<number | null>(null);
+  if (
+    broadcast !== null &&
+    broadcast.version !== lastBroadcastVersionRef.current
+  ) {
+    lastBroadcastVersionRef.current = broadcast.version;
+    setIsOpen(broadcast.open);
+  }
 
   return (
     <div ref={ref} className={`border-b border-slate-700 ${className || ''}`}>
