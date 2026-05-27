@@ -19,6 +19,7 @@ import {
   ReviewSubmitStep,
   LayoutChooserStep,
 } from './steps';
+import styles from './NewComicWizard.module.css';
 
 interface WizardStepContentProps {
   activeStep: number;
@@ -98,29 +99,15 @@ export function WizardStepContent(props: WizardStepContentProps) {
           className="w-full"
         >
           {activeStep === 0 && (
-            <>
-              <div className="px-4 pb-8 flex justify-center">
-                <img
-                  src="/tell-your-story.svg"
-                  alt="Tell your story"
-                  className="rounded-lg"
-                  style={{
-                    maxWidth: '392px',
-                    width: '100%',
-                    maxHeight: '100%',
-                  }}
-                />
-              </div>
-              <StoryPromptStep
-                control={control}
-                register={register}
-                errors={errors}
-                setValue={setValue}
-                isAnalyzing={isAnalyzing}
-                handleAnalyzePrompt={handleAnalyzePrompt}
-                saveToIndexedDB={saveToIndexedDB}
-              />
-            </>
+            <StoryPromptStep
+              control={control}
+              register={register}
+              errors={errors}
+              setValue={setValue}
+              isAnalyzing={isAnalyzing}
+              handleAnalyzePrompt={handleAnalyzePrompt}
+              saveToIndexedDB={saveToIndexedDB}
+            />
           )}
           {activeStep === 1 && (
             <CharacterBibleStep
