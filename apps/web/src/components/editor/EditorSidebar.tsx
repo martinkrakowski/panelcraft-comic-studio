@@ -99,7 +99,7 @@ export function EditorSidebar({
   // tiles to prevent stacking conflicting reconfigurations.
   const swapBusy = !!(swappingLayout || extendingPanels || shrinkingPanels);
   return (
-    <WizardSidebar variant="flex" title="Project" className="pt-20">
+    <WizardSidebar variant="flex" title="Project" className="lg:pt-20">
       <LayoutChooserSection
         layoutOptions={layoutOptions}
         selectingLayout={selectingLayout}

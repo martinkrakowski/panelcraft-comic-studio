@@ -15,10 +15,16 @@ import {
   buttonVariants,
   AppCanvasTwoPane,
   ContentPanelFooter,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@panelcraft/ui';
 import {
   ArrowLeft,
   BookOpen,
+  ChevronDown,
   Sparkles,
   RefreshCw,
   Loader2,
@@ -154,7 +160,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
           {/* Title row: prompt + status badge + ID. Back/View nav lives in footer. */}
           <div className="flex-shrink-0 px-4 pt-4 pb-3 flex flex-col gap-1 border-b border-slate-800/60">
             <div className="flex items-center space-x-3">
-              <h1 className="text-2xl font-bold tracking-tight text-white line-clamp-1">
+              <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white line-clamp-1">
                 {project.prompt}
               </h1>
               <ProjectStatusBadge status={project.status} />
@@ -180,46 +186,13 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Link>
-          <div className="flex items-center gap-2">
-            {/* Cover button: visible on settled `completed` projects (so
-                the user can kick off a regen) and during the
-                `regenerating_cover` worker phase (as a disabled spinner).
-                Hidden once status reaches `pending_review_cover` because
-                the review surface in the main editor area owns the
-                Approve / Regenerate actions at that point. */}
-            {(project.status === 'completed' ||
-              project.status === 'regenerating_cover' ||
-              regeneratingCover) &&
-              project.coverImageUrl && (
-                <CoverFooterButton
-                  regenerating={
-                    regeneratingCover || project.status === 'regenerating_cover'
-                  }
-                  onClick={() => setCoverDialogOpen(true)}
-                />
-              )}
-            {(project.status === 'completed' ||
-              project.status === 'pending_review_final' ||
-              project.status === 'composing') && (
-              <ComposeFooterButton
-                hasComposition={Boolean(project.composedImageUrl)}
-                composing={project.status === 'composing' || composingFinalPage}
-                onClick={() => setComposeDialogOpen(true)}
-              />
-            )}
-            {(project.status === 'completed' ||
-              project.status === 'pending_review_final' ||
-              project.status === 'pending_review_cover') && (
-              <Link
-                href={`/projects/${project.id}/view`}
-                scroll={false}
-                className={`${buttonVariants({ size: 'sm' })} bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1.5`}
-              >
-                <BookOpen className="h-4 w-4" />
-                View comic page
-              </Link>
-            )}
-          </div>
+          <CompositionActionsMenu
+            project={project}
+            regeneratingCover={regeneratingCover}
+            composingFinalPage={composingFinalPage}
+            onCoverClick={() => setCoverDialogOpen(true)}
+            onComposeClick={() => setComposeDialogOpen(true)}
+          />
         </ContentPanelFooter>
       }
     >
@@ -332,99 +305,131 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
   );
 }
 
-interface CoverFooterButtonProps {
-  regenerating: boolean;
-  onClick: () => void;
+interface CompositionActionsMenuProps {
+  project: NonNullable<ReturnType<typeof useProject>['project']>;
+  regeneratingCover: boolean;
+  composingFinalPage: boolean;
+  onCoverClick: () => void;
+  onComposeClick: () => void;
 }
 
 /**
- * Footer CTA for re-rolling the cover. Mirrors the composition button's
- * visual language: a disabled spinner while regeneration is in flight,
- * an indigo-tinted refresh button otherwise. Hidden when there's no
- * existing cover to regenerate (handled by the parent's render guard).
+ * Editor footer's right-side action menu. Collapses cover regen, final
+ * composition, and "View comic page" into one dropdown so the footer fits
+ * on narrow viewports (three flex-row buttons used to overflow ~430px
+ * mobile widths). Items are conditionally listed based on project status,
+ * mirroring the visibility rules of the original three discrete buttons:
+ *
+ * - Cover regen: shown when `completed` or `regenerating_cover` (or the
+ *   action is currently in flight via the `regeneratingCover` flag), and
+ *   only when a cover already exists.
+ * - Compose: shown when `completed`, `pending_review_final`, or `composing`
+ *   — label flips to "Regenerate composition" once a `composedImageUrl`
+ *   exists.
+ * - View comic page: shown when the comic is presentable
+ *   (`completed`, `pending_review_final`, `pending_review_cover`).
+ *
+ * While an action is mid-flight the trigger shows a spinner and the
+ * corresponding item is replaced with a disabled progress label. When no
+ * items qualify, the entire menu is omitted from the footer.
  */
-function CoverFooterButton({ regenerating, onClick }: CoverFooterButtonProps) {
-  if (regenerating) {
-    return (
-      <Button
-        type="button"
-        disabled
-        size="sm"
-        className="bg-slate-700/60 text-white inline-flex items-center gap-1.5"
-      >
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Regenerating cover…
-      </Button>
-    );
-  }
-  return (
-    <Button
-      type="button"
-      onClick={onClick}
-      size="sm"
-      variant="outline"
-      className="inline-flex items-center gap-1.5"
-    >
-      <RefreshCw className="h-4 w-4" />
-      Regenerate cover
-    </Button>
-  );
-}
+function CompositionActionsMenu({
+  project,
+  regeneratingCover,
+  composingFinalPage,
+  onCoverClick,
+  onComposeClick,
+}: CompositionActionsMenuProps) {
+  const coverInFlight =
+    regeneratingCover || project.status === 'regenerating_cover';
+  const composeInFlight = composingFinalPage || project.status === 'composing';
 
-interface ComposeFooterButtonProps {
-  hasComposition: boolean;
-  composing: boolean;
-  onClick: () => void;
-}
+  const showCoverItem =
+    (project.status === 'completed' || coverInFlight) &&
+    Boolean(project.coverImageUrl);
+  const showComposeItem =
+    project.status === 'completed' ||
+    project.status === 'pending_review_final' ||
+    composeInFlight;
+  const showViewItem =
+    project.status === 'completed' ||
+    project.status === 'pending_review_final' ||
+    project.status === 'pending_review_cover';
 
-/**
- * Footer CTA for the AI final composition. Moved here from the sidebar
- * because the sidebar section gets pushed below the layout accordion and
- * was easy to overlook. Label flips between Compose / Regenerate based on
- * whether a composition already exists, and the button is replaced by a
- * non-interactive spinner state while the worker is mid-run.
- */
-function ComposeFooterButton({
-  hasComposition,
-  composing,
-  onClick,
-}: ComposeFooterButtonProps) {
-  if (composing) {
-    return (
-      <Button
-        type="button"
-        disabled
-        size="sm"
-        className="bg-violet-600/50 text-white inline-flex items-center gap-1.5"
-      >
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Composing…
-      </Button>
-    );
-  }
+  const hasAnyItem = showCoverItem || showComposeItem || showViewItem;
+  if (!hasAnyItem) return null;
+
+  const anyInFlight = coverInFlight || composeInFlight;
+  const hasComposition = Boolean(project.composedImageUrl);
+
   return (
-    <Button
-      type="button"
-      onClick={onClick}
-      size="sm"
-      className={
-        hasComposition
-          ? 'bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-1.5'
-          : 'bg-violet-600 hover:bg-violet-500 text-white inline-flex items-center gap-1.5'
-      }
-    >
-      {hasComposition ? (
-        <>
-          <RefreshCw className="h-4 w-4" />
-          Regenerate composition
-        </>
-      ) : (
-        <>
-          <Sparkles className="h-4 w-4" />
-          Compose final page
-        </>
-      )}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="sm"
+          className="bg-violet-600 hover:bg-violet-500 text-white inline-flex items-center gap-1.5"
+        >
+          {anyInFlight ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          Composition Actions
+          <ChevronDown className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[14rem]">
+        {showCoverItem &&
+          (coverInFlight ? (
+            <DropdownMenuItem disabled>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Regenerating cover…
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onSelect={onCoverClick}>
+              <RefreshCw className="h-4 w-4" />
+              Regenerate cover
+            </DropdownMenuItem>
+          ))}
+        {showComposeItem &&
+          (composeInFlight ? (
+            <DropdownMenuItem disabled>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Composing…
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onSelect={onComposeClick}>
+              {hasComposition ? (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Regenerate composition
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Compose final page
+                </>
+              )}
+            </DropdownMenuItem>
+          ))}
+        {showViewItem && (showCoverItem || showComposeItem) && (
+          <DropdownMenuSeparator />
+        )}
+        {showViewItem && (
+          <DropdownMenuItem asChild>
+            <Link
+              href={`/projects/${project.id}/view`}
+              scroll={false}
+              className="cursor-pointer"
+            >
+              <BookOpen className="h-4 w-4" />
+              View comic page
+            </Link>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
