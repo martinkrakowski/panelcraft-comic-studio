@@ -357,7 +357,7 @@ export function ComicPageView({ projectId }: ComicPageViewProps) {
             scroll={false}
             className={buttonVariants({ variant: 'outline' })}
           >
-            Back to dashboard
+            Dashboard
           </Link>
         </div>
       </AppCanvasOnePane>

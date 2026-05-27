@@ -184,7 +184,7 @@ export function ComicEditor({ projectId }: ComicEditorProps) {
             className={`${buttonVariants({ variant: 'outline', size: 'sm' })} inline-flex items-center`}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            Dashboard
           </Link>
           <CompositionActionsMenu
             project={project}
