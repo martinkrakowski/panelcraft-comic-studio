@@ -84,7 +84,10 @@ export function WizardStepContent(props: WizardStepContentProps) {
   } = props;
 
   return (
-    <div className="mx-auto max-w-2xl px-4" style={{ paddingBottom: '8rem' }}>
+    <div
+      className="mx-auto max-w-2xl px-4 overflow-x-hidden"
+      style={{ paddingBottom: '8rem' }}
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={activeStep}

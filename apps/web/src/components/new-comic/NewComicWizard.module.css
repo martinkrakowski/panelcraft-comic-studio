@@ -132,6 +132,39 @@
   }
 }
 
+/* Mobile: tighten the prompt-card glow so its painted halo stays inside
+   the viewport. At sm and up the card has room to breathe; below 640px
+   the page sits at viewport - 16px and the original 38–40px shadow blur
+   pokes past the right edge, triggering horizontal scroll. */
+@media (max-width: 639px) {
+  .promptGlow {
+    animation: promptGlowPulseMobile 3.5s ease-in-out infinite;
+  }
+
+  @keyframes promptGlowPulseMobile {
+    0%,
+    100% {
+      box-shadow:
+        0 0 4px rgba(129, 140, 248, 0.12),
+        0 0 8px rgba(192, 132, 252, 0.08);
+    }
+    50% {
+      box-shadow:
+        0 0 8px rgba(129, 140, 248, 0.32),
+        0 0 14px rgba(192, 132, 252, 0.2);
+    }
+  }
+}
+
+@media (max-width: 639px) and (prefers-reduced-motion: reduce) {
+  .promptGlow {
+    animation: none;
+    box-shadow:
+      0 0 6px rgba(129, 140, 248, 0.18),
+      0 0 12px rgba(192, 132, 252, 0.12);
+  }
+}
+
 /* Blue glow centered directly behind the "tell your story" hero illustration.
    Sized/positioned against an image-sized wrapper so it bleeds well past the
    SVG's edges and reads through the artwork's transparent regions. */
@@ -192,6 +225,16 @@
   box-shadow:
     0 0 0 1px #818cf8,
     0 0 40px rgba(129, 140, 248, 0.18);
+}
+
+/* Tighten the focused-state outer glow on mobile so it stops poking
+   past the right edge of narrow viewports. */
+@media (max-width: 639px) {
+  .promptCardFocused {
+    box-shadow:
+      0 0 0 1px #818cf8,
+      0 0 14px rgba(129, 140, 248, 0.22);
+  }
 }
 
 .promptCard::before {
