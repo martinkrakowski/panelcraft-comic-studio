@@ -19,7 +19,7 @@ export function EditorLoadingState() {
   return (
     <AppCanvasTwoPane
       sidebar={
-        <div className="w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 overflow-y-auto p-4 pt-20 space-y-4">
+        <div className="w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 overflow-y-auto p-4 lg:pt-20 space-y-4">
           <div className="h-9 rounded bg-slate-800/80 border-b border-slate-700" />
           <Skeleton className="h-28 w-full rounded-lg" />
           <Skeleton className="h-40 w-full rounded-lg" />
@@ -62,7 +62,7 @@ export function EditorErrorState({ message }: { message?: string }) {
   return (
     <AppCanvasTwoPane
       sidebar={
-        <div className="w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 pt-20" />
+        <div className="w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 lg:pt-20" />
       }
     >
       <div className="h-full flex items-center justify-center p-6">

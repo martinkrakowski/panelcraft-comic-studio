@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { WorkspaceProvider } from '../providers/WorkspaceProvider';
 import { WorkspaceShell } from '../components/workspace-shell/WorkspaceShell';
-import { Toaster } from '@panelcraft/ui';
+import { MobileSidebarProvider, Toaster } from '@panelcraft/ui';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -13,6 +13,10 @@ export const metadata: Metadata = {
 /**
  * Root application HTML/body layout shell component.
  * Wraps route content with workspace providers, navigation header chrome, and global toast notifications.
+ *
+ * The `MobileSidebarProvider` sits inside `WorkspaceProvider` so the
+ * shell header (trigger button), drawer, and every `AppCanvasTwoPane`
+ * downstream all share the same open/slot state.
  *
  * @component
  * @param props - Component properties.
@@ -28,7 +32,9 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <WorkspaceProvider>
-          <WorkspaceShell>{children}</WorkspaceShell>
+          <MobileSidebarProvider>
+            <WorkspaceShell>{children}</WorkspaceShell>
+          </MobileSidebarProvider>
           <Toaster />
         </WorkspaceProvider>
       </body>

@@ -19,8 +19,13 @@ interface SidebarProps {
 // inner content width by a few pixels each time — a visible jump.
 const fixedClasses =
   'fixed left-0 top-0 h-screen w-64 bg-slate-900 border-r border-slate-700 z-30 overflow-y-scroll';
+// On mobile (< lg) the sidebar lives inside the mobile drawer slot, which
+// owns scrolling — so we drop the `overflow-y-scroll` to avoid nested
+// scrollbars and the resulting jitter when the drawer's own scroll engages.
+// On desktop the `lg:overflow-y-scroll` keeps the always-visible scrollbar
+// behavior that prevents accordion-toggle width jumps.
 const flexClasses =
-  'w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 grow-0 bg-transparent border-0 overflow-y-scroll';
+  'w-full lg:w-[var(--panelcraft-sidebar-width,370px)] shrink-0 grow-0 bg-transparent border-0 lg:overflow-y-scroll';
 
 /**
  * Layout/navigation container rendered as a semantic `<aside>`. Forwards a

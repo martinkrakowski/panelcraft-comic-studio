@@ -1,4 +1,8 @@
+'use client';
+
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { useIsDesktop, useMobileSidebar } from './mobile-sidebar';
 
 /**
  * Shared viewport chrome: fixed inset dark background with two ambient
@@ -8,8 +12,13 @@ import type { ReactNode } from 'react';
  * @internal
  */
 function CanvasBase({ children }: { children: ReactNode }) {
+  // `max-w-[100dvw]` caps the width at the true content viewport. The fixed
+  // containing block otherwise resolves to `window.innerWidth`, which
+  // includes the scrollbar gutter on platforms with non-overlay scrollbars
+  // (and Chrome DevTools mobile emulation), inflating `scrollWidth` past
+  // the visible viewport.
   return (
-    <div className="fixed inset-0 bg-slate-950 overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950 overflow-hidden max-w-[100dvw]">
       <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
       {children}
@@ -109,6 +118,23 @@ export function AppCanvasOnePane({
  * the scroll area, not under the sidebar) — typically a `<ContentPanelFooter>`
  * carrying back/next navigation.
  *
+ * ## Mobile portal behavior
+ *
+ * On viewports < lg (1024px) the same `sidebar` React node is moved into
+ * the mobile drawer via `createPortal`. This avoids double-mounting the
+ * sidebar tree (which would duplicate `useEffect`s, IndexedDB writers,
+ * and accordion state). The decision is gated on three signals:
+ *
+ * 1. A `MobileSidebarProvider` is in scope (`ctx !== null`),
+ * 2. The viewport is below `lg` (`useIsDesktop()` returned false),
+ * 3. The drawer slot is currently mounted (`ctx.hasSlot` is true — i.e.
+ *    the user has opened the drawer at least once and Radix has the
+ *    content mounted, OR Radix' `forceMount` would keep it mounted).
+ *
+ * When all three hold, the inline sidebar render is suppressed and the
+ * sidebar is portaled into the drawer's slot div instead. Otherwise the
+ * sidebar renders inline as it always has.
+ *
  * @param clearHeader - When true (default), applies `mt-16` to the content
  *   pane to reserve space under the sticky header. Set false for full-bleed
  *   two-pane experiences.
@@ -127,10 +153,46 @@ export function AppCanvasTwoPane({
   footer?: ReactNode;
   clearHeader?: boolean;
 }) {
+  const ctx = useMobileSidebar();
+  const isDesktop = useIsDesktop();
+
+  // Mobile-hide is done in CSS (`hidden lg:contents` wrapper) rather than
+  // JS — `useIsDesktop()` returns `true` during SSR, so a JS-only check
+  // would render the inline sidebar in the SSR HTML on mobile. The user
+  // would briefly see the sidebar's "Project" header row peeking through
+  // the translucent sticky header before hydration flips it. Pushing the
+  // decision into CSS means the SSR output is already hidden on `< lg`.
+  //
+  // The portal decision still uses JS (`useIsDesktop` + drawer state)
+  // because the portal target only exists when Radix has mounted the
+  // drawer Content (i.e., `hasSlot` is true).
+  //
+  // Skip the mobile-hide when no `MobileSidebarProvider` is mounted: in
+  // tests, Storybook stories, and anywhere the primitive is used in
+  // isolation there is no drawer to portal into, so hiding the inline
+  // sidebar would leave the user with no sidebar at all on `< lg`.
+  const shouldPortal =
+    !!ctx && !isDesktop && ctx.hasSlot && !!ctx.sidebarSlotRef.current;
+
+  const portaledSidebar =
+    shouldPortal && ctx
+      ? createPortal(sidebar, ctx.sidebarSlotRef.current!)
+      : null;
+
   return (
     <CanvasBase>
       <div className="relative h-full flex flex-col lg:flex-row gap-[var(--panelcraft-gutter-space)]">
-        {sidebar}
+        {/* Inline slot. `hidden lg:contents` keeps the sidebar tree in
+            React but hides it from the mobile DOM layout — `display:
+            contents` on desktop makes the wrapper invisible to the flex
+            container so the `<aside>` lays out as if the wrapper weren't
+            there. When `shouldPortal` flips, the inline slot renders
+            null and the portaled copy below takes over. Without a
+            provider, fall back to a plain `contents` wrapper so the
+            sidebar renders at every breakpoint. */}
+        <div className={ctx ? 'hidden lg:contents' : 'contents'}>
+          {shouldPortal ? null : sidebar}
+        </div>
         <div
           className={`flex-1 flex flex-col overflow-hidden rounded-xl bg-slate-900/50 backdrop-blur-sm relative ${clearHeader ? 'mt-16' : ''}`}
         >
@@ -139,6 +201,7 @@ export function AppCanvasTwoPane({
           {footer}
         </div>
       </div>
+      {portaledSidebar}
     </CanvasBase>
   );
 }

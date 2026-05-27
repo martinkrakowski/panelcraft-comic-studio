@@ -43,7 +43,7 @@ export function NewComicWizardSidebar(props: NewComicWizardSidebarProps) {
   } = props;
 
   return (
-    <WizardSidebar variant="flex" className="pt-20">
+    <WizardSidebar variant="flex" className="lg:pt-20">
       {activeStep === 0 && (
         <SidebarStep0
           control={control}
@@ -53,9 +53,7 @@ export function NewComicWizardSidebar(props: NewComicWizardSidebarProps) {
           saveToIndexedDB={saveToIndexedDB}
         />
       )}
-      {activeStep === 1 && (
-        <SidebarStep1 control={control} fields={fields} />
-      )}
+      {activeStep === 1 && <SidebarStep1 control={control} fields={fields} />}
       {activeStep === 2 && (
         <SidebarStep2
           control={control}

@@ -25,7 +25,20 @@ import { NoSemanticState } from '../../types';
  *   </DialogContent>
  * </Dialog>
  */
-const Dialog = DialogPrimitive.Root;
+/**
+ * Default `modal={false}` to bypass `react-remove-scroll`. Our WorkspaceShell
+ * already locks the body via `h-dvh overflow-hidden`, so we don't need Radix
+ * to inject its own scroll lock — and doing so triggers a layout-width
+ * restoration bug on iOS Safari that leaves the viewport permanently widened
+ * after the modal unmounts. Consumers can still pass `modal={true}` to opt in.
+ */
+const Dialog = ({
+  modal = false,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>) => (
+  <DialogPrimitive.Root modal={modal} {...props} />
+);
+Dialog.displayName = 'Dialog';
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
