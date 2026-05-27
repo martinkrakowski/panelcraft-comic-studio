@@ -199,8 +199,15 @@ export function MobileSidebarDrawer({
           // w-screen/h-dvh are redundant *and* can resolve to smaller values
           // than the visual viewport on browsers with animated chrome (iOS
           // URL bar). We rely on `inset-0` only.
+          //
+          // `max-w-[100dvw]` caps the width at the true content viewport.
+          // Without it, the fixed-position containing block uses
+          // `window.innerWidth`, which on platforms with non-overlay
+          // scrollbars (and Chrome DevTools mobile emulation) includes the
+          // scrollbar gutter — leaving the sheet ~17–62px wider than the
+          // visible viewport and pushing `document.scrollWidth` past 100vw.
           className={cn(
-            'fixed inset-0 z-50 bg-slate-950 flex flex-col',
+            'fixed inset-0 z-50 bg-slate-950 flex flex-col max-w-[100dvw]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
             'lg:hidden'

@@ -12,8 +12,13 @@ import { useIsDesktop, useMobileSidebar } from './mobile-sidebar';
  * @internal
  */
 function CanvasBase({ children }: { children: ReactNode }) {
+  // `max-w-[100dvw]` caps the width at the true content viewport. The fixed
+  // containing block otherwise resolves to `window.innerWidth`, which
+  // includes the scrollbar gutter on platforms with non-overlay scrollbars
+  // (and Chrome DevTools mobile emulation), inflating `scrollWidth` past
+  // the visible viewport.
   return (
-    <div className="fixed inset-0 bg-slate-950 overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950 overflow-hidden max-w-[100dvw]">
       <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
       {children}

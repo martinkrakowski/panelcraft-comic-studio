@@ -28,8 +28,15 @@ const ToastViewport = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitive.Viewport
     ref={ref}
+    // No explicit width: `inset-x-0 top-0` lets the fixed containing block
+    // do the sizing on mobile (spans the visible viewport), then `md:`
+    // switches to a right-anchored variant capped by `max-w-[420px]`. This
+    // avoids `right:0` and `100vw` resolving against different reference
+    // widths on platforms where they diverge (Chrome DevTools mobile
+    // emulation, some non-overlay scrollbar setups), which previously
+    // pushed an empty toast `<ol>` off the right edge.
     className={cn(
-      'fixed top-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 md:max-w-[420px]',
+      'fixed inset-x-0 top-0 z-[100] flex max-h-screen flex-col-reverse p-4 md:inset-x-auto md:right-0 md:max-w-[420px]',
       className
     )}
     {...props}
