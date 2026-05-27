@@ -101,11 +101,11 @@ export function WizardStepContent(props: WizardStepContentProps) {
             <>
               <div className="px-4 pb-8 flex justify-center">
                 <img
-                  src="/tell-your-story.jpg"
+                  src="/tell-your-story.svg"
                   alt="Tell your story"
                   className="rounded-lg"
                   style={{
-                    maxWidth: '784px',
+                    maxWidth: '392px',
                     width: '100%',
                     maxHeight: '100%',
                   }}
