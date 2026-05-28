@@ -28,14 +28,18 @@ export function DashboardSplash() {
   const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
 
   useEffectOnce(() => {
+    // Bail before touching the DOM when the splash won't show this session —
+    // otherwise we'd leave a global keydown listener installed for nothing
+    // (common now that the login flow pre-marks the splash seen).
+    if (hasSeenSplash()) return;
+    markSplashSeen();
+    setVisible(true);
+
+    // Escape-to-dismiss is only needed while the splash can be visible.
     onKeyRef.current = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && visibleRef.current) setVisible(false);
     };
     window.addEventListener('keydown', onKeyRef.current);
-
-    if (hasSeenSplash()) return;
-    markSplashSeen();
-    setVisible(true);
   });
 
   useUnmountEffect(() => {
