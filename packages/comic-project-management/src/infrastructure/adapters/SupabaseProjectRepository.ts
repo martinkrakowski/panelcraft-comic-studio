@@ -8,6 +8,7 @@ import { createLogger } from '@panelcraft/shared';
 const logger = createLogger('SupabaseProjectRepository');
 
 type ProjectRow = Database['public']['Tables']['comic_projects']['Row'];
+type ProjectInsert = Database['public']['Tables']['comic_projects']['Insert'];
 
 /**
  * Supabase-backed implementation of the RelationalDbPort.
@@ -19,14 +20,20 @@ export class SupabaseProjectRepository implements RelationalDbPort {
 
   /**
    * Save or upsert a comic project to the database.
-   * Maps the domain entity to the database row format and calls UPSERT.
+   *
+   * `ownerId` is only set on creation. On updates it is omitted from the upsert
+   * payload so the existing `user_id` is preserved rather than overwritten —
+   * the worker and HITL handlers call save() without an owner.
    */
-  async save(project: ComicProject): Promise<void> {
+  async save(project: ComicProject, ownerId?: string): Promise<void> {
     const row = this.projectToRow(project);
+    const payload = (ownerId
+      ? { ...row, user_id: ownerId }
+      : row) as unknown as ProjectInsert;
 
     const { error } = await this.supabase
       .from('comic_projects')
-      .upsert(row, { onConflict: 'id' });
+      .upsert(payload, { onConflict: 'id' });
 
     if (error) {
       logger.error(
@@ -96,6 +103,42 @@ export class SupabaseProjectRepository implements RelationalDbPort {
   }
 
   /**
+   * List only the projects owned by the given user id.
+   */
+  async listByOwner(ownerId: string): Promise<ComicProject[]> {
+    const { data, error } = await this.supabase
+      .from('comic_projects')
+      .select('*')
+      .eq('user_id', ownerId);
+
+    if (error) {
+      logger.error(`Failed to list projects for owner: ${error.message}`);
+      throw new Error(`Failed to list projects: ${error.message}`);
+    }
+
+    return data.map((row) => this.rowToProject(row));
+  }
+
+  /**
+   * Return the owning user id for a project, or null if the project is missing
+   * or has no owner (legacy rows created before auth was wired).
+   */
+  async getOwnerId(id: string): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from('comic_projects')
+      .select('user_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      logger.error(`Failed to read owner for project ${id}: ${error.message}`);
+      throw new Error(`Failed to read project owner: ${error.message}`);
+    }
+
+    return data?.user_id ?? null;
+  }
+
+  /**
    * Convert a database row to a domain ComicProject entity.
    */
   private rowToProject(row: ProjectRow): ComicProject {
@@ -127,9 +170,11 @@ export class SupabaseProjectRepository implements RelationalDbPort {
   }
 
   /**
-   * Convert a domain ComicProject entity to a database row.
+   * Convert a domain ComicProject entity to a database row, excluding
+   * `user_id` — ownership is applied separately in save() so updates never
+   * clobber the existing owner.
    */
-  private projectToRow(project: ComicProject): ProjectRow {
+  private projectToRow(project: ComicProject): Omit<ProjectRow, 'user_id'> {
     const json = project.toJSON();
     return {
       id: json.id,
@@ -152,10 +197,6 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       status: json.status || 'pending_creation',
       created_at: json.createdAt,
       updated_at: new Date().toISOString(),
-      // Null until frontend auth wires a real authenticated user_id through.
-      // FK to auth.users and NOT NULL are dropped temporarily in migration
-      // 20260525160702_make_user_id_nullable.sql — re-add once auth is live.
-      user_id: null as unknown as string,
       panels: (json.panels ?? []) as unknown as ProjectRow['panels'],
     };
   }

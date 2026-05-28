@@ -6,7 +6,23 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { buttonVariants, useToast } from '@panelcraft/ui';
 import { useEffectOnce } from '../../../lib/hooks';
+import { POST_LOGIN_RETURN_KEY } from '../../../lib/auth-client';
 import { useAuth } from '../../../providers/AuthProvider';
+
+/** Pop the post-login destination stashed by the login screen (default '/'). */
+function takeReturnTo(): string {
+  try {
+    const stored = window.sessionStorage.getItem(POST_LOGIN_RETURN_KEY);
+    if (stored) {
+      window.sessionStorage.removeItem(POST_LOGIN_RETURN_KEY);
+      // Only honour in-app paths to avoid open-redirects.
+      if (stored.startsWith('/') && !stored.startsWith('//')) return stored;
+    }
+  } catch {
+    // sessionStorage unavailable — fall through to default.
+  }
+  return '/';
+}
 
 function CallbackStatus({
   icon,
@@ -66,7 +82,7 @@ function CallbackInner() {
           title: `Welcome back, ${firstName}`,
           description: 'Varo is ready.',
         });
-        router.replace('/');
+        router.replace(takeReturnTo());
       } catch (err) {
         const message =
           err instanceof Error

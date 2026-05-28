@@ -35,6 +35,12 @@ export interface AuthSessionResult {
 /** Top-level navigation target that begins the OAuth redirect dance. */
 export const authLoginUrl = `${API_BASE}/api/auth/login`;
 
+/**
+ * sessionStorage key used to carry the post-login destination across the
+ * cross-origin OAuth hop (login screen -> provider -> /auth/callback).
+ */
+export const POST_LOGIN_RETURN_KEY = 'postLoginReturnTo';
+
 async function authRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,

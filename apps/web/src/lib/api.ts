@@ -26,6 +26,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const isFormData = options?.body instanceof FormData;
   const response = await fetch(url, {
     ...options,
+    // Send the httpOnly session cookie so the API can authorize the request
+    // and scope projects to the signed-in user.
+    credentials: 'include',
     headers: {
       // Only set JSON content type if not sending FormData
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),

@@ -2,6 +2,7 @@ import { defineEventHandler } from 'h3';
 import { ok } from '../../utils/envelope.js';
 import { getComicUseCase } from '../../utils/dependencies.js';
 import { toSignedUrlIfPath } from '../../utils/supabase.js';
+import { requireUser, deriveOwnerId } from '../../utils/auth-session.js';
 
 /**
  * GET /api/projects
@@ -12,7 +13,8 @@ import { toSignedUrlIfPath } from '../../utils/supabase.js';
  * @returns 200 with array of projects (id, prompt summary, panelCount, status, createdAt, coverImageUrl?)
  */
 export default defineEventHandler(async (event) => {
-  const projects = await getComicUseCase(event).listProjects();
+  const ownerId = deriveOwnerId(requireUser(event));
+  const projects = await getComicUseCase(event).listProjectsByOwner(ownerId);
   const summaries = await Promise.all(
     projects.map(async (p) => {
       const j = p.toJSON();

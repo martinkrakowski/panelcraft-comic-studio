@@ -4,6 +4,7 @@ import { parseBody } from '../../utils/validation.js';
 import { PreviewStyleSchema } from '../../utils/schemas.js';
 import { getImageGenerationClient } from '../../utils/dependencies.js';
 import { uploadToStorage } from '../../utils/supabase.js';
+import { requireUser } from '../../utils/auth-session.js';
 
 /**
  * POST /api/wizard/preview-style
@@ -12,6 +13,7 @@ import { uploadToStorage } from '../../utils/supabase.js';
  * @returns { previewImageUrl: string }
  */
 export default defineEventHandler(async (event) => {
+  requireUser(event);
   // Rate limiting handled globally by server/middleware/rate-limit.ts (image: 12 RPM)
   const { stylePrompt, preset, moodBoardImages } = parseBody(
     PreviewStyleSchema,

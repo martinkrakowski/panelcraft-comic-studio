@@ -29,22 +29,26 @@ export class ComicGenerationUseCase implements RestControllerPort {
     private readonly logger: LoggerPort
   ) {}
 
-  async createProject(options: {
-    prompt: string;
-    panelCount: number;
-    genres?: string[];
-    tones?: string[];
-    characterBible?: Record<string, unknown>;
-    styleReferences?: {
-      globalStylePrompt: string;
-      moodBoardPreset: string;
-      moodBoardImages: string[];
-      artDirectionNotes?: string;
-    };
-    referenceImagePaths?: string[];
-  }): Promise<string> {
+  async createProject(
+    options: {
+      prompt: string;
+      panelCount: number;
+      genres?: string[];
+      tones?: string[];
+      characterBible?: Record<string, unknown>;
+      styleReferences?: {
+        globalStylePrompt: string;
+        moodBoardPreset: string;
+        moodBoardImages: string[];
+        artDirectionNotes?: string;
+      };
+      referenceImagePaths?: string[];
+    },
+    ownerId?: string
+  ): Promise<string> {
     return createProject(options, {
       projectRepo: this.projectRepo,
+      ownerId,
     });
   }
 
@@ -76,6 +80,14 @@ export class ComicGenerationUseCase implements RestControllerPort {
 
   async listProjects(): Promise<ComicProject[]> {
     return this.projectRepo.listAll();
+  }
+
+  async listProjectsByOwner(ownerId: string): Promise<ComicProject[]> {
+    return this.projectRepo.listByOwner(ownerId);
+  }
+
+  async getProjectOwnerId(id: string): Promise<string | null> {
+    return this.projectRepo.getOwnerId(id);
   }
 
   async submitReview(

@@ -16,6 +16,8 @@ import type { RelationalDbPort } from '../ports/out/relational-db.out-port.js';
 
 interface CreateProjectDeps {
   projectRepo: RelationalDbPort;
+  /** Owning user id to stamp on the new project (ownership scoping). */
+  ownerId?: string;
 }
 
 export async function createProject(
@@ -117,7 +119,7 @@ export async function createProject(
     createdAt: new Date().toISOString(),
   });
 
-  await deps.projectRepo.save(project);
+  await deps.projectRepo.save(project, deps.ownerId);
 
   return projectId;
 }

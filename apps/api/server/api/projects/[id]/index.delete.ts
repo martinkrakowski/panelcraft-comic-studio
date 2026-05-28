@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, setResponseStatus } from 'h3';
 import { fail, ok } from '../../../utils/envelope.js';
 import { z, ZodError } from 'zod';
 import { getSupabaseClient } from '../../../utils/supabase.js';
+import { requireProjectOwner } from '../../../utils/require-owner.js';
 
 /**
  * DELETE /api/projects/[id]
@@ -34,6 +35,8 @@ export default defineEventHandler(async (event) => {
         : 'Invalid request'
     );
   }
+
+  await requireProjectOwner(event, projectId);
 
   const cleanupErrors: Array<{ step: string; message: string }> = [];
 

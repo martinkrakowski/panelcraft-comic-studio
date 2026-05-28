@@ -7,6 +7,9 @@
  * production deployment should sign or encrypt it (e.g. JWT with `JWT_SECRET`).
  */
 
+import { getCookie, createError, type H3Event } from 'h3';
+import { createHash } from 'node:crypto';
+
 export const SESSION_COOKIE = 'auth_session';
 export const STATE_COOKIE = 'auth_oauth_state';
 
@@ -76,6 +79,60 @@ export function isSessionExpired(session: AuthSession): boolean {
   return (
     typeof session.expiresAt === 'number' && session.expiresAt < Date.now()
   );
+}
+
+/** The current signed-in user, or null when there's no valid session. */
+export function getSessionUser(event: H3Event): AuthUser | null {
+  const session = readSession(getCookie(event, SESSION_COOKIE));
+  if (!session || isSessionExpired(session)) return null;
+  return session.user;
+}
+
+/**
+ * Require an authenticated user. Throws a 401 the central error handler turns
+ * into `{ code: 'UNAUTHORIZED' }` when there's no valid session.
+ */
+export function requireUser(event: H3Event): AuthUser {
+  const user = getSessionUser(event);
+  if (!user) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Authentication required',
+      data: { code: 'UNAUTHORIZED' },
+    });
+  }
+  return user;
+}
+
+// Fixed namespace for deriving owner ids (RFC 4122 v5). Constant so the same
+// identity always maps to the same id across restarts.
+const OWNER_NAMESPACE = '6f9619ff-8b86-d011-b42d-00cf4fc964ff';
+
+function uuidToBytes(uuid: string): Buffer {
+  return Buffer.from(uuid.replace(/-/g, ''), 'hex');
+}
+
+function bytesToUuid(b: Buffer): string {
+  const h = b.toString('hex');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+
+/**
+ * Map an OAuth identity to a stable, valid UUID for the `comic_projects.user_id`
+ * column. External subs (Google/Adobe) aren't Supabase auth UUIDs, so we hash
+ * `provider:id` into a deterministic v5 UUID instead of migrating the column.
+ */
+export function deriveOwnerId(user: AuthUser): string {
+  const name = `${user.provider}:${user.id}`;
+  const hash = createHash('sha1')
+    .update(
+      Buffer.concat([uuidToBytes(OWNER_NAMESPACE), Buffer.from(name, 'utf8')])
+    )
+    .digest();
+  const bytes = hash.subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50; // version 5
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC 4122 variant
+  return bytesToUuid(Buffer.from(bytes));
 }
 
 const ONE_DAY_SECONDS = 60 * 60 * 24;

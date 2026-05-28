@@ -11,6 +11,7 @@ import { ok, fail } from '../../../../utils/envelope.js';
 import { parseParams, parseBody } from '../../../../utils/validation.js';
 import { RegenerateCoverSchema } from '../../../../utils/schemas.js';
 import { getComicUseCase } from '../../../../utils/dependencies.js';
+import { requireProjectOwner } from '../../../../utils/require-owner.js';
 
 /**
  * POST /api/projects/:id/cover/regenerate
@@ -25,6 +26,7 @@ export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), {
     id: getRouterParam(event, 'id'),
   });
+  await requireProjectOwner(event, id);
   // Body is optional — calling without feedback is a "re-roll the cover
   // with the same prompt" affordance, so `undefined` is a valid input.
   // A malformed body (Content-Type: application/json + bad JSON) is a

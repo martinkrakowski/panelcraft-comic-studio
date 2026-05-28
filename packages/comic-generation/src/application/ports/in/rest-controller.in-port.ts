@@ -61,20 +61,24 @@ export interface RestControllerPort {
    * @param options - Project creation options including wizard data
    * @returns The generated project ID.
    */
-  createProject(options: {
-    prompt: string;
-    panelCount: number;
-    genres?: string[];
-    tones?: string[];
-    characterBible?: Record<string, unknown>;
-    styleReferences?: {
-      globalStylePrompt: string;
-      moodBoardPreset: string;
-      moodBoardImages: string[];
-      artDirectionNotes?: string;
-    };
-    referenceImagePaths?: string[];
-  }): Promise<string>;
+  createProject(
+    options: {
+      prompt: string;
+      panelCount: number;
+      genres?: string[];
+      tones?: string[];
+      characterBible?: Record<string, unknown>;
+      styleReferences?: {
+        globalStylePrompt: string;
+        moodBoardPreset: string;
+        moodBoardImages: string[];
+        artDirectionNotes?: string;
+      };
+      referenceImagePaths?: string[];
+    },
+    /** Owning user id, persisted on the new project for ownership scoping. */
+    ownerId?: string
+  ): Promise<string>;
 
   /**
    * Queues the comic generation workflow for a previously-created project.
@@ -89,9 +93,20 @@ export interface RestControllerPort {
   getProject(id: string): Promise<ComicProject>;
 
   /**
-   * Lists all projects.
+   * Lists all projects (unscoped).
    */
   listProjects(): Promise<ComicProject[]>;
+
+  /**
+   * Lists only the projects owned by `ownerId`.
+   */
+  listProjectsByOwner(ownerId: string): Promise<ComicProject[]>;
+
+  /**
+   * Returns the owning user id for a project, or null if missing/unowned.
+   * Used by the API layer to authorize per-project operations.
+   */
+  getProjectOwnerId(id: string): Promise<string | null>;
 
   /**
    * Resumes the generation thread with HITL approval/rejection feedback.

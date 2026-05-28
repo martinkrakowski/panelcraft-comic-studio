@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { ok } from '../../../../../utils/envelope.js';
 import { parseParams, parseBody } from '../../../../../utils/validation.js';
 import { getComicUseCase } from '../../../../../utils/dependencies.js';
+import { requireProjectOwner } from '../../../../../utils/require-owner.js';
 
 const regenerateBodySchema = z.object({
   feedback: z.string().trim().min(1).max(2000).optional(),
@@ -36,6 +37,7 @@ export default defineEventHandler(async (event) => {
       index: getRouterParam(event, 'index'),
     }
   );
+  await requireProjectOwner(event, id);
 
   // Body is optional for back-compat with the no-feedback regenerate flow.
   const rawBody = await readBody(event).catch(() => undefined);

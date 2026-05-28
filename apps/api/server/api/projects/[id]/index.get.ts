@@ -4,6 +4,7 @@ import { ok } from '../../../utils/envelope.js';
 import { parseParams } from '../../../utils/validation.js';
 import { getComicUseCase } from '../../../utils/dependencies.js';
 import { toSignedUrlIfPath } from '../../../utils/supabase.js';
+import { requireProjectOwner } from '../../../utils/require-owner.js';
 
 interface PanelJSON {
   id: string;
@@ -24,6 +25,7 @@ export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), {
     id: getRouterParam(event, 'id'),
   });
+  await requireProjectOwner(event, id);
   const project = await getComicUseCase(event).getProject(id);
   const j = project.toJSON();
 

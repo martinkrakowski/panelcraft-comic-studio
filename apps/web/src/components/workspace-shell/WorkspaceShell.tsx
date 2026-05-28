@@ -10,6 +10,7 @@ import {
 } from '@panelcraft/ui';
 import { BrandMark } from './BrandMark';
 import { AuthControl } from './AuthControl';
+import { RequireAuth } from './RequireAuth';
 
 interface WorkspaceShellProps {
   children: React.ReactNode;
@@ -54,7 +55,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        {children}
+        <RequireAuth>{children}</RequireAuth>
       </main>
 
       {/* Footer */}

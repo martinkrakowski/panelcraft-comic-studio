@@ -11,6 +11,7 @@ import { ok, fail } from '../../../utils/envelope.js';
 import { parseParams, parseBody } from '../../../utils/validation.js';
 import { ComposeFinalPageSchema } from '../../../utils/schemas.js';
 import { getComicUseCase } from '../../../utils/dependencies.js';
+import { requireProjectOwner } from '../../../utils/require-owner.js';
 
 /**
  * POST /api/projects/:id/compose
@@ -36,6 +37,7 @@ export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), {
     id: getRouterParam(event, 'id'),
   });
+  await requireProjectOwner(event, id);
   // The body is optional (empty payload is a valid "re-roll with the
   // existing prompt" call), but a malformed JSON payload is a client
   // error we should surface as 400 rather than silently swallowing into

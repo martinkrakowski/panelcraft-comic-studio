@@ -3,6 +3,7 @@ import { ok } from '../../utils/envelope.js';
 import { parseBody } from '../../utils/validation.js';
 import { ExtractCharactersSchema } from '../../utils/schemas.js';
 import { getLLMClient } from '../../utils/dependencies.js';
+import { requireUser } from '../../utils/auth-session.js';
 
 /**
  * POST /api/wizard/extract-characters
@@ -11,6 +12,7 @@ import { getLLMClient } from '../../utils/dependencies.js';
  * @returns { characters: CharacterValue[] }
  */
 export default defineEventHandler(async (event) => {
+  requireUser(event);
   // Rate limiting handled globally by server/middleware/rate-limit.ts
   const { prompt, genres, tones } = parseBody(
     ExtractCharactersSchema,

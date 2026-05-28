@@ -9,6 +9,7 @@ import { getComicUseCase } from '../../utils/dependencies.js';
 import { createLogger } from '@panelcraft/shared';
 import { getSupabaseClient, uploadToStorage } from '../../utils/supabase.js';
 import { formatLayoutSuggestions } from '../../utils/layout-suggestions.js';
+import { requireUser, deriveOwnerId } from '../../utils/auth-session.js';
 import sharp from 'sharp';
 
 const logger = createLogger('projects.post');
@@ -20,6 +21,8 @@ const logger = createLogger('projects.post');
  * @returns 201 with project data + signed URLs for uploaded images
  */
 export default defineEventHandler(async (event) => {
+  const ownerId = deriveOwnerId(requireUser(event));
+
   const formData = await readMultipartFormData(event);
   if (!formData) {
     setResponseStatus(event, 400);
@@ -103,22 +106,25 @@ export default defineEventHandler(async (event) => {
   const validated = validationResult.data;
 
   // Step 1: Create project first to get the ID
-  const projectId = await getComicUseCase(event).createProject({
-    prompt: validated.prompt,
-    panelCount: validated.panelCount,
-    genres: validated.genres,
-    tones: validated.tones,
-    characterBible: validated.characterBible
-      ? JSON.parse(validated.characterBible)
-      : undefined,
-    styleReferences: {
-      globalStylePrompt: validated.globalStylePrompt || '',
-      moodBoardPreset: validated.moodBoardPreset || '',
-      moodBoardImages: [],
-      artDirectionNotes: validated.artDirectionNotes,
+  const projectId = await getComicUseCase(event).createProject(
+    {
+      prompt: validated.prompt,
+      panelCount: validated.panelCount,
+      genres: validated.genres,
+      tones: validated.tones,
+      characterBible: validated.characterBible
+        ? JSON.parse(validated.characterBible)
+        : undefined,
+      styleReferences: {
+        globalStylePrompt: validated.globalStylePrompt || '',
+        moodBoardPreset: validated.moodBoardPreset || '',
+        moodBoardImages: [],
+        artDirectionNotes: validated.artDirectionNotes,
+      },
+      referenceImagePaths: [],
     },
-    referenceImagePaths: [],
-  });
+    ownerId
+  );
 
   // Step 2: Process and upload files with correct project ID.
   // Atomicity: if any upload (or the subsequent path update) fails, compensate

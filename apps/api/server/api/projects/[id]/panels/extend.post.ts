@@ -10,6 +10,7 @@ import { ok, fail } from '../../../../utils/envelope.js';
 import { parseParams, parseBody } from '../../../../utils/validation.js';
 import { ExtendPanelsSchema } from '../../../../utils/schemas.js';
 import { getComicUseCase } from '../../../../utils/dependencies.js';
+import { requireProjectOwner } from '../../../../utils/require-owner.js';
 
 /**
  * POST /api/projects/:id/panels/extend
@@ -23,6 +24,7 @@ export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), {
     id: getRouterParam(event, 'id'),
   });
+  await requireProjectOwner(event, id);
   const { targetPanelCount, selectedLayout } = parseBody(
     ExtendPanelsSchema,
     await readBody(event)
