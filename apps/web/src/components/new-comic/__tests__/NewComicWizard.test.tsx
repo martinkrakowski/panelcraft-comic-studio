@@ -81,6 +81,14 @@ vi.mock('@panelcraft/ui', () => ({
       {children}
     </div>
   ),
+  ConfirmDialog: ({ open, children, title, description }: any) =>
+    open ? (
+      <div data-testid="confirm-dialog">
+        {title}
+        {description}
+        {children}
+      </div>
+    ) : null,
 }));
 
 vi.mock('framer-motion', () => ({
@@ -102,6 +110,13 @@ vi.mock('lucide-react', () => ({
   ChevronRight: () => <svg data-testid="chevron-right-icon" />,
   ChevronLeft: () => <svg data-testid="chevron-left-icon" />,
   Check: () => <svg data-testid="check-icon" />,
+  PenLine: () => <svg data-testid="pen-line-icon" />,
+  Eraser: () => <svg data-testid="eraser-icon" />,
+  Wand2: () => <svg data-testid="wand-icon" />,
+  Swords: () => <svg data-testid="swords-icon" />,
+  Ghost: () => <svg data-testid="ghost-icon" />,
+  FlaskConical: () => <svg data-testid="flask-icon" />,
+  Rocket: () => <svg data-testid="rocket-icon" />,
 }));
 
 vi.mock('../NewComicWizard.module.css', () => ({
@@ -404,7 +419,7 @@ describe('NewComicWizard Phase 1 Smoke Tests', () => {
     });
 
     expect(
-      screen.getByText(/Varo is dreaming up your world/i)
+      screen.getByText(/Generating cover and layout options/i)
     ).toBeInTheDocument();
 
     // Advance timers by 2000ms to trigger the first poll (processing)

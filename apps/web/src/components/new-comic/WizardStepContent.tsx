@@ -19,7 +19,6 @@ import {
   ReviewSubmitStep,
   LayoutChooserStep,
 } from './steps';
-import styles from './NewComicWizard.module.css';
 
 interface WizardStepContentProps {
   activeStep: number;
