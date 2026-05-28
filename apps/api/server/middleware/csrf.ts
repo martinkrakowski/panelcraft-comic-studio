@@ -34,8 +34,13 @@ function allowedOrigins(): Set<string> {
   const set = new Set<string>(origins.map(String));
   // appBaseUrl is resolved at runtime (see getAuthConfig) — it isn't a build
   // arg, so the build-time runtimeConfig.auth would be the localhost default.
+  // Normalize to an origin: the allowlist is compared against the Origin header
+  // and the parsed Referer origin, which are always origin-only, so a trailing
+  // slash or path in APP_BASE_URL would otherwise never match and 403 valid
+  // mutating requests.
   const { appBaseUrl } = getAuthConfig();
-  if (appBaseUrl) set.add(appBaseUrl);
+  const appOrigin = appBaseUrl ? originFromUrl(appBaseUrl) : null;
+  if (appOrigin) set.add(appOrigin);
   return set;
 }
 
