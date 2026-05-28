@@ -12,7 +12,13 @@
  */
 const SPLASH_SEEN_KEY = 'varo:splashSeen';
 
-/** True when the chooser has already been shown (or pre-empted) this session. */
+/**
+ * Whether the chooser has already been shown (or pre-empted) this session.
+ *
+ * @returns True if the splash has been surfaced or pre-empted in this session;
+ *   false otherwise (including when sessionStorage is unavailable, so the
+ *   splash can still show).
+ */
 export function hasSeenSplash(): boolean {
   try {
     return window.sessionStorage.getItem(SPLASH_SEEN_KEY) === '1';
