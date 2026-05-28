@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { WorkspaceProvider } from '../providers/WorkspaceProvider';
+import { AuthProvider } from '../providers/AuthProvider';
 import { WorkspaceShell } from '../components/workspace-shell/WorkspaceShell';
 import { MobileSidebarProvider, Toaster } from '@panelcraft/ui';
 import './globals.css';
@@ -32,9 +33,11 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <WorkspaceProvider>
-          <MobileSidebarProvider>
-            <WorkspaceShell>{children}</WorkspaceShell>
-          </MobileSidebarProvider>
+          <AuthProvider>
+            <MobileSidebarProvider>
+              <WorkspaceShell>{children}</WorkspaceShell>
+            </MobileSidebarProvider>
+          </AuthProvider>
           <Toaster />
         </WorkspaceProvider>
       </body>

@@ -9,6 +9,7 @@ import {
   type MobileSidebarNavLink,
 } from '@panelcraft/ui';
 import { BrandMark } from './BrandMark';
+import { AuthControl } from './AuthControl';
 
 interface WorkspaceShellProps {
   children: React.ReactNode;
@@ -44,6 +45,10 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
           <Link href="/" scroll={false} className="group">
             <BrandMark />
           </Link>
+          {/* Auth affordance pinned to the right edge of the header. */}
+          <div className="ml-auto flex items-center">
+            <AuthControl />
+          </div>
         </div>
       </header>
 

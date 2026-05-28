@@ -39,5 +39,33 @@ export default {
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     },
+    // OAuth login. `provider` selects the active IdP (adobe | google). An IdP
+    // with empty clientId/clientSecret makes the auth routes report
+    // demoMode=true and the UI offers a mock login instead of redirecting out.
+    // Read once here so handlers don't touch process.env directly.
+    auth: {
+      provider: process.env.AUTH_PROVIDER ?? 'adobe',
+      appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
+      adobe: {
+        clientId: process.env.ADOBE_CLIENT_ID ?? '',
+        clientSecret: process.env.ADOBE_CLIENT_SECRET ?? '',
+        redirectUri:
+          process.env.ADOBE_REDIRECT_URI ??
+          'http://localhost:3000/auth/callback',
+        imsOrigin:
+          process.env.ADOBE_IMS_ORIGIN ?? 'https://ims-na1.adobelogin.com',
+        scopes: process.env.ADOBE_SCOPES ?? 'openid,AdobeID,profile,email',
+      },
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+        redirectUri:
+          process.env.GOOGLE_REDIRECT_URI ??
+          'http://localhost:3000/auth/callback',
+        // Unused for Google (endpoints are fixed) but kept for config symmetry.
+        imsOrigin: '',
+        scopes: process.env.GOOGLE_SCOPES ?? 'openid email profile',
+      },
+    },
   },
 };
