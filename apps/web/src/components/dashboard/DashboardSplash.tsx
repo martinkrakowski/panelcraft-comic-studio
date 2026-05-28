@@ -5,21 +5,18 @@ import Link from 'next/link';
 import { Button, buttonVariants } from '@panelcraft/ui';
 import { LayoutGrid, Sparkles } from 'lucide-react';
 import { useEffectOnce, useUnmountEffect } from '../../lib/hooks';
+import { hasSeenSplash, markSplashSeen } from '../../lib/splash';
 import styles from './DashboardSplash.module.css';
 
 /**
- * Module-level flag that survives client-side route changes (same JS
- * context) but resets on a real browser reload (fresh JS context). Keeps
- * the splash from re-firing when the user navigates back to the dashboard
- * within the same JS session.
- */
-let hasShownThisSession = false;
-
-/**
- * Splash overlay shown on any fresh page load of the dashboard — initial
- * navigation, browser reload, or back from an external page. In-app route
- * changes do not trigger it (module flag persists). Dismissed by the
+ * Splash overlay shown once per browser session for returning users who land
+ * on the dashboard with an existing session (skipping the login chooser).
+ * "Seen" state is tracked in sessionStorage (see lib/splash), so reloads no
+ * longer re-prompt and the login chooser can pre-empt it. Dismissed by the
  * buttons or Escape.
+ *
+ * @component
+ * @returns The modal splash overlay, or null when not visible.
  */
 export function DashboardSplash() {
   const [visible, setVisible] = useState(false);
@@ -31,14 +28,18 @@ export function DashboardSplash() {
   const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
 
   useEffectOnce(() => {
+    // Bail before touching the DOM when the splash won't show this session —
+    // otherwise we'd leave a global keydown listener installed for nothing
+    // (common now that the login flow pre-marks the splash seen).
+    if (hasSeenSplash()) return;
+    markSplashSeen();
+    setVisible(true);
+
+    // Escape-to-dismiss is only needed while the splash can be visible.
     onKeyRef.current = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && visibleRef.current) setVisible(false);
     };
     window.addEventListener('keydown', onKeyRef.current);
-
-    if (hasShownThisSession) return;
-    hasShownThisSession = true;
-    setVisible(true);
   });
 
   useUnmountEffect(() => {
