@@ -108,7 +108,7 @@ packages/
   ui/                           # @panelcraft/ui — see DESIGN.md for the contract
 ```
 
-Production builds via `docker compose up --build`; the GitHub Actions workflow at `.github/workflows/deploy.yml` rolls a new image to the VPS on merges to `main`.
+Production builds via `docker compose up --build`; the GitHub Actions workflow at `.github/workflows/deploy.yml` builds a fresh image and rolls it out to the VPS on every merge to `main` (and can also be run manually from the Actions tab via "Run workflow").
 
 ---
 
