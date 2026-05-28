@@ -47,6 +47,7 @@ export type Database = {
           created_at: string | null;
           genres: string[] | null;
           id: string;
+          is_shared: boolean;
           layout_options: string[] | null;
           panel_count: number;
           panels: Json;
@@ -65,6 +66,7 @@ export type Database = {
           created_at?: string | null;
           genres?: string[] | null;
           id?: string;
+          is_shared?: boolean;
           layout_options?: string[] | null;
           panel_count: number;
           panels?: Json;
@@ -83,6 +85,7 @@ export type Database = {
           created_at?: string | null;
           genres?: string[] | null;
           id?: string;
+          is_shared?: boolean;
           layout_options?: string[] | null;
           panel_count?: number;
           panels?: Json;

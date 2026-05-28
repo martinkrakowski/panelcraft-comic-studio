@@ -1,4 +1,8 @@
-import type { ComicProject } from '@panelcraft/comic-project-management';
+import type {
+  ComicProject,
+  ProjectShareState,
+  ProjectVisibilityRow,
+} from '@panelcraft/comic-project-management';
 
 /**
  * Project data structure returned by REST endpoints.
@@ -107,6 +111,27 @@ export interface RestControllerPort {
    * Used by the API layer to authorize per-project operations.
    */
   getProjectOwnerId(id: string): Promise<string | null>;
+
+  /**
+   * Lists the projects visible to `ownerId` — their own plus all shared
+   * projects — as a lightweight dashboard read-model.
+   */
+  listVisibleProjects(ownerId: string): Promise<ProjectVisibilityRow[]>;
+
+  /**
+   * Returns owner + sharing state for a project, or null if it doesn't exist.
+   * Used to authorize viewing a (possibly shared) project.
+   */
+  getProjectShareState(id: string): Promise<ProjectShareState | null>;
+
+  /** Toggle whether a project is shared to all users (owner-only at the API). */
+  setProjectShared(id: string, shared: boolean): Promise<void>;
+
+  /**
+   * One-time recovery: claim every ownerless project for `ownerId` and mark it
+   * shared. Returns the number of projects adopted.
+   */
+  adoptOrphanProjects(ownerId: string): Promise<number>;
 
   /**
    * Resumes the generation thread with HITL approval/rejection feedback.

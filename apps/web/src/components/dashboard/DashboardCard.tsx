@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Card, ProjectStatusBadge } from '@panelcraft/ui';
-import { Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Badge, Card, ProjectStatusBadge } from '@panelcraft/ui';
+import { Globe, Image as ImageIcon, Share2, Trash2 } from 'lucide-react';
 import type { ProjectSummaryDTO } from '@panelcraft/types';
 import { DeleteProjectDialog } from './DeleteProjectDialog';
 import { useDeleteProject } from './hooks/useDeleteProject';
+import { useShareProject } from './hooks/useShareProject';
 
 interface DashboardCardProps {
   project: ProjectSummaryDTO;
@@ -35,6 +36,7 @@ export function DashboardCard({ project }: DashboardCardProps) {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { deleteProject, deleting } = useDeleteProject();
+  const { setShared, updating } = useShareProject();
 
   return (
     <div className="relative group">
@@ -47,8 +49,9 @@ export function DashboardCard({ project }: DashboardCardProps) {
           <CardThumbnail
             coverImageUrl={project.coverImageUrl}
             status={project.status}
+            isShared={project.isShared}
           />
-          <div className="p-4 pr-12 space-y-1.5">
+          <div className="p-4 pr-20 space-y-1.5">
             <p className="text-sm font-medium text-white line-clamp-2 leading-snug min-h-[2.5rem]">
               {project.prompt || 'Untitled comic'}
             </p>
@@ -61,15 +64,41 @@ export function DashboardCard({ project }: DashboardCardProps) {
           </div>
         </Card>
       </Link>
-      <button
-        type="button"
-        aria-label={`Delete ${project.prompt || 'untitled comic'}`}
-        onClick={() => setDeleteOpen(true)}
-        disabled={deleting}
-        className="absolute bottom-3 right-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+      {/* Owner-only actions. Non-owners viewing a shared comic get a
+          read-only card (no share/delete affordances). */}
+      {project.isOwner && (
+        <>
+          <button
+            type="button"
+            aria-label={
+              project.isShared ? 'Stop sharing' : 'Share with everyone'
+            }
+            title={project.isShared ? 'Shared — click to unshare' : 'Share It'}
+            onClick={() => setShared(project.id, !project.isShared)}
+            disabled={updating}
+            className={`absolute bottom-3 right-12 inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60 ${
+              project.isShared
+                ? 'text-indigo-400 hover:bg-indigo-500/10'
+                : 'text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10'
+            }`}
+          >
+            {project.isShared ? (
+              <Globe className="h-4 w-4" />
+            ) : (
+              <Share2 className="h-4 w-4" />
+            )}
+          </button>
+          <button
+            type="button"
+            aria-label={`Delete ${project.prompt || 'untitled comic'}`}
+            onClick={() => setDeleteOpen(true)}
+            disabled={deleting}
+            className="absolute bottom-3 right-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </>
+      )}
       <DeleteProjectDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
@@ -84,13 +113,19 @@ export function DashboardCard({ project }: DashboardCardProps) {
 interface CardThumbnailProps {
   coverImageUrl?: string | null;
   status: ProjectSummaryDTO['status'];
+  isShared: boolean;
 }
 
 /**
- * 4:3 cover frame with status badge in the top-right. Gradient overlay at the
- * top ensures badge legibility regardless of cover image brightness.
+ * 4:3 cover frame with status badge in the top-right and a "Shared" badge in
+ * the top-left when applicable. Gradient overlay at the top ensures badge
+ * legibility regardless of cover image brightness.
  */
-function CardThumbnail({ coverImageUrl, status }: CardThumbnailProps) {
+function CardThumbnail({
+  coverImageUrl,
+  status,
+  isShared,
+}: CardThumbnailProps) {
   return (
     <div className="relative aspect-[4/3] bg-slate-950 overflow-hidden border-b border-slate-800/60">
       {coverImageUrl ? (
@@ -107,6 +142,14 @@ function CardThumbnail({ coverImageUrl, status }: CardThumbnailProps) {
         </div>
       )}
       <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+      {isShared && (
+        <div className="absolute top-2 left-2">
+          <Badge variant="secondary" className="gap-1">
+            <Globe className="h-3 w-3" />
+            Shared
+          </Badge>
+        </div>
+      )}
       <div className="absolute top-2 right-2">
         <ProjectStatusBadge status={status} />
       </div>

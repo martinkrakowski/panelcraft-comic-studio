@@ -143,6 +143,10 @@ export interface ProjectSummaryDTO {
    * dashboard can render a placeholder rather than break the row.
    */
   coverImageUrl?: string | null;
+  /** True when the project is shared to all users. */
+  isShared: boolean;
+  /** True when the signed-in user owns this project (can edit/delete/share). */
+  isOwner: boolean;
 }
 
 export interface ProjectListResponse {

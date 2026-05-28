@@ -1,4 +1,13 @@
-import type { ComicProject } from '@panelcraft/comic-project-management';
+import type {
+  ComicProject,
+  ProjectShareState,
+  ProjectVisibilityRow,
+} from '@panelcraft/comic-project-management';
+
+export type {
+  ProjectShareState,
+  ProjectVisibilityRow,
+} from '@panelcraft/comic-project-management';
 
 /**
  * RelationalDbPort defines the contract for project persistence.
@@ -36,4 +45,25 @@ export interface RelationalDbPort {
    * or has no owner (legacy rows). Used for ownership authorization checks.
    */
   getOwnerId(id: string): Promise<string | null>;
+
+  /**
+   * List the projects visible to `ownerId`: the ones they own plus every
+   * shared project. Returns a lightweight read-model for the dashboard.
+   */
+  listVisibleSummaries(ownerId: string): Promise<ProjectVisibilityRow[]>;
+
+  /**
+   * Owner + sharing state of a project, or null if it doesn't exist. Used to
+   * authorize viewing a (possibly shared) project.
+   */
+  getShareState(id: string): Promise<ProjectShareState | null>;
+
+  /** Toggle whether a project is shared to all users. */
+  setShared(id: string, shared: boolean): Promise<void>;
+
+  /**
+   * One-time recovery: claim every ownerless project (user_id IS NULL) for
+   * `ownerId` and mark it shared. Returns the number of projects adopted.
+   */
+  adoptOrphans(ownerId: string): Promise<number>;
 }

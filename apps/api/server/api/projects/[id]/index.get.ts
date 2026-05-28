@@ -1,10 +1,11 @@
 import { defineEventHandler, getRouterParam } from 'h3';
 import { z } from 'zod';
+import { NotFoundError } from '@panelcraft/shared';
 import { ok } from '../../../utils/envelope.js';
 import { parseParams } from '../../../utils/validation.js';
 import { getComicUseCase } from '../../../utils/dependencies.js';
 import { toSignedUrlIfPath } from '../../../utils/supabase.js';
-import { requireProjectOwner } from '../../../utils/require-owner.js';
+import { requireUser, deriveOwnerId } from '../../../utils/auth-session.js';
 
 interface PanelJSON {
   id: string;
@@ -25,7 +26,16 @@ export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), {
     id: getRouterParam(event, 'id'),
   });
-  await requireProjectOwner(event, id);
+
+  // Viewable if the caller owns it OR it's shared. Non-owners get read-only
+  // access (mutation routes still enforce owner-only).
+  const ownerId = deriveOwnerId(requireUser(event));
+  const share = await getComicUseCase(event).getProjectShareState(id);
+  if (!share || (share.ownerId !== ownerId && !share.isShared)) {
+    throw new NotFoundError(`Project ${id} not found`, id);
+  }
+  const isOwner = share.ownerId === ownerId;
+
   const project = await getComicUseCase(event).getProject(id);
   const j = project.toJSON();
 
@@ -69,6 +79,8 @@ export default defineEventHandler(async (event) => {
       composedImageUrl,
       selectedLayout: j.selectedLayout,
       layoutOptions: j.layoutOptions,
+      isShared: share.isShared,
+      isOwner,
       // Panels
       panels:
         j.panels?.map((p: PanelJSON, idx: number) => ({

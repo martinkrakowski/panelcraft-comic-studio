@@ -14,20 +14,20 @@ import { requireUser, deriveOwnerId } from '../../utils/auth-session.js';
  */
 export default defineEventHandler(async (event) => {
   const ownerId = deriveOwnerId(requireUser(event));
-  const projects = await getComicUseCase(event).listProjectsByOwner(ownerId);
+  // Owned projects plus every shared project. `isOwner` lets the dashboard
+  // show edit/share affordances only on the caller's own comics.
+  const rows = await getComicUseCase(event).listVisibleProjects(ownerId);
   const summaries = await Promise.all(
-    projects.map(async (p) => {
-      const j = p.toJSON();
-      const coverImageUrl = await toSignedUrlIfPath(j.coverImageUrl);
-      return {
-        id: j.id,
-        prompt: j.prompt.substring(0, 50),
-        panelCount: j.panelCount,
-        status: j.status,
-        createdAt: j.createdAt,
-        coverImageUrl,
-      };
-    })
+    rows.map(async (r) => ({
+      id: r.id,
+      prompt: r.prompt.substring(0, 50),
+      panelCount: r.panelCount,
+      status: r.status,
+      createdAt: r.createdAt,
+      coverImageUrl: await toSignedUrlIfPath(r.coverImageUrl),
+      isShared: r.isShared,
+      isOwner: r.ownerId === ownerId,
+    }))
   );
   return ok({ projects: summaries });
 });

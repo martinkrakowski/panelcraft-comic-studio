@@ -1,5 +1,9 @@
 import { RestControllerPort } from '../ports/in/rest-controller.in-port.js';
-import type { RelationalDbPort } from '../ports/out/relational-db.out-port.js';
+import type {
+  RelationalDbPort,
+  ProjectShareState,
+  ProjectVisibilityRow,
+} from '../ports/out/relational-db.out-port.js';
 import type { JobQueuePort } from '../ports/out/job-queue.out-port.js';
 import { ComicProject } from '@panelcraft/comic-project-management';
 import { NotFoundError, LoggerPort } from '@panelcraft/shared';
@@ -88,6 +92,22 @@ export class ComicGenerationUseCase implements RestControllerPort {
 
   async getProjectOwnerId(id: string): Promise<string | null> {
     return this.projectRepo.getOwnerId(id);
+  }
+
+  async listVisibleProjects(ownerId: string): Promise<ProjectVisibilityRow[]> {
+    return this.projectRepo.listVisibleSummaries(ownerId);
+  }
+
+  async getProjectShareState(id: string): Promise<ProjectShareState | null> {
+    return this.projectRepo.getShareState(id);
+  }
+
+  async setProjectShared(id: string, shared: boolean): Promise<void> {
+    return this.projectRepo.setShared(id, shared);
+  }
+
+  async adoptOrphanProjects(ownerId: string): Promise<number> {
+    return this.projectRepo.adoptOrphans(ownerId);
   }
 
   async submitReview(

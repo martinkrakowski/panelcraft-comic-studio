@@ -281,5 +281,28 @@ export const api = {
       { method: 'POST', body }
     );
   },
+
+  /**
+   * Toggle whether a project is shared to all users (owner-only on the API).
+   */
+  async shareProject(
+    id: string,
+    shared: boolean
+  ): Promise<{ id: string; isShared: boolean }> {
+    return request<{ id: string; isShared: boolean }>(
+      `/api/projects/${id}/share`,
+      { method: 'PATCH', body: JSON.stringify({ shared }) }
+    );
+  },
+
+  /**
+   * One-time recovery of pre-auth comics: claim all ownerless projects for the
+   * signed-in user and mark them shared. Returns the count adopted.
+   */
+  async adoptOrphans(): Promise<{ adopted: number }> {
+    return request<{ adopted: number }>('/api/projects/adopt-orphans', {
+      method: 'POST',
+    });
+  },
 };
 export default api;

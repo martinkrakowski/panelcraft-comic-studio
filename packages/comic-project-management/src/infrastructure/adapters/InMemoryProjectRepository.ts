@@ -1,4 +1,8 @@
-import { RelationalDbPort } from '../../application/ports/out/relational-db.out-port.js';
+import {
+  RelationalDbPort,
+  ProjectShareState,
+  ProjectVisibilityRow,
+} from '../../application/ports/out/relational-db.out-port.js';
 import { ComicProject } from '../../domain/entities/ComicProject.js';
 
 /**
@@ -8,6 +12,7 @@ import { ComicProject } from '../../domain/entities/ComicProject.js';
 export class InMemoryProjectRepository implements RelationalDbPort {
   private readonly projects = new Map<string, ComicProject>();
   private readonly owners = new Map<string, string>();
+  private readonly shared = new Set<string>();
 
   async save(project: ComicProject, ownerId?: string): Promise<void> {
     const id = project.getId().getValue();
@@ -37,6 +42,49 @@ export class InMemoryProjectRepository implements RelationalDbPort {
 
   async getOwnerId(id: string): Promise<string | null> {
     return this.owners.get(id) ?? null;
+  }
+
+  async listVisibleSummaries(ownerId: string): Promise<ProjectVisibilityRow[]> {
+    return Array.from(this.projects.entries())
+      .filter(([id]) => this.owners.get(id) === ownerId || this.shared.has(id))
+      .map(([id, project]) => {
+        const json = project.toJSON();
+        return {
+          id: json.id,
+          prompt: json.prompt,
+          panelCount: json.panelCount,
+          status: json.status,
+          createdAt: json.createdAt,
+          coverImageUrl: json.coverImageUrl ?? null,
+          ownerId: this.owners.get(id) ?? null,
+          isShared: this.shared.has(id),
+        };
+      });
+  }
+
+  async getShareState(id: string): Promise<ProjectShareState | null> {
+    if (!this.projects.has(id)) return null;
+    return {
+      ownerId: this.owners.get(id) ?? null,
+      isShared: this.shared.has(id),
+    };
+  }
+
+  async setShared(id: string, shared: boolean): Promise<void> {
+    if (shared) this.shared.add(id);
+    else this.shared.delete(id);
+  }
+
+  async adoptOrphans(ownerId: string): Promise<number> {
+    let count = 0;
+    for (const id of this.projects.keys()) {
+      if (!this.owners.has(id)) {
+        this.owners.set(id, ownerId);
+        this.shared.add(id);
+        count += 1;
+      }
+    }
+    return count;
   }
 
   async findById(id: string): Promise<ComicProject | null> {
