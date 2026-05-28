@@ -49,7 +49,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: XAI_API_KEY,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,LANGCHAIN_TRACING_V2,LANGCHAIN_API_KEY,LANGCHAIN_PROJECT,LANGCHAIN_ENDPOINT,NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY
+          envs: XAI_API_KEY,GOOGLE_GENERATIVE_AI_API_KEY,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,LANGCHAIN_TRACING_V2,LANGCHAIN_API_KEY,LANGCHAIN_PROJECT,LANGCHAIN_ENDPOINT,NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY
           script: "set -Eeuo pipefail\n\
             cd /opt/varo-ai-panelcraft\n\
             cat <<EOF > .env\n\
@@ -58,7 +58,9 @@ jobs:
             REDIS_HOST=\"redis\"\n\
             REDIS_PORT=\"6379\"\n\
             CORS_ORIGIN=\"https://varoai.martinkrakowski.com\"\n\
+            FEATURE_FINAL_COMPOSITION=\"true\"\n\
             XAI_API_KEY=\"$XAI_API_KEY\"\n\
+            GOOGLE_GENERATIVE_AI_API_KEY=\"$GOOGLE_GENERATIVE_AI_API_KEY\"\n\
             SUPABASE_URL=\"$SUPABASE_URL\"\n\
             SUPABASE_ANON_KEY=\"$SUPABASE_ANON_KEY\"\n\
             SUPABASE_SERVICE_ROLE_KEY=\"$SUPABASE_SERVICE_ROLE_KEY\"\n\
@@ -77,6 +79,7 @@ jobs:
             docker system prune -a -f --volumes"
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
