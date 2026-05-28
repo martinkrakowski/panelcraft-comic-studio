@@ -105,7 +105,8 @@ jobs:
             docker compose down
             docker compose up -d
             rm varo-ai-panelcraft.tar.gz
-            docker system prune -a -f --volumes
+            # Dangling images only — host-wide/volume pruning could wipe other apps on this shared VPS.
+            docker image prune -f
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
