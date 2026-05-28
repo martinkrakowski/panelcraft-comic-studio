@@ -1,17 +1,48 @@
 /**
  * Provider-agnostic session + cookie helpers for the OAuth login flow.
  *
- * The session is stored in a single httpOnly cookie so the access token never
- * reaches client-side JavaScript. The payload is base64url-encoded JSON (not
- * signed) — adequate for this demo since httpOnly already blocks JS access; a
- * production deployment should sign or encrypt it (e.g. JWT with `JWT_SECRET`).
+ * The session is stored in a single httpOnly cookie as `<payload>.<sig>`, where
+ * `payload` is base64url-encoded JSON and `sig` is an HMAC-SHA256 of the payload
+ * keyed by `SESSION_SECRET`. The signature makes the cookie unforgeable — a
+ * client cannot mint a valid session (and thus cannot impersonate a user)
+ * without the server secret. httpOnly additionally keeps the token out of JS.
  */
 
 import { getCookie, createError, type H3Event } from 'h3';
-import { createHash } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from 'node:crypto';
 
 export const SESSION_COOKIE = 'auth_session';
 export const STATE_COOKIE = 'auth_oauth_state';
+
+/**
+ * Key for signing session cookies. Prefer an explicit `SESSION_SECRET` (stable
+ * across restarts and multiple instances); otherwise fall back to a random
+ * per-process key — which invalidates sessions on restart but is never forgeable.
+ */
+const SESSION_SECRET =
+  process.env.SESSION_SECRET ||
+  process.env.JWT_SECRET ||
+  randomBytes(32).toString('hex');
+
+function signPayload(payload: string): string {
+  return createHmac('sha256', SESSION_SECRET)
+    .update(payload)
+    .digest('base64url');
+}
+
+/** Constant-time comparison of the supplied signature against the expected one. */
+function verifyPayload(payload: string, signature: string): boolean {
+  const expected = Buffer.from(signPayload(payload));
+  const provided = Buffer.from(signature);
+  return (
+    expected.length === provided.length && timingSafeEqual(expected, provided)
+  );
+}
 
 /** Display-oriented identity, independent of which IdP produced it. */
 export interface AuthUser {
@@ -51,14 +82,25 @@ export function createSession(
         ? Date.now() + token.expiresInMs
         : undefined,
   };
-  return Buffer.from(JSON.stringify(session), 'utf8').toString('base64url');
+  const payload = Buffer.from(JSON.stringify(session), 'utf8').toString(
+    'base64url'
+  );
+  return `${payload}.${signPayload(payload)}`;
 }
 
-/** Decode and validate a session cookie value. Returns null when unusable. */
+/**
+ * Decode and validate a signed session cookie value. Returns null when the
+ * signature is missing/invalid (forged or tampered) or the payload is unusable.
+ */
 export function readSession(raw: string | undefined): AuthSession | null {
   if (!raw) return null;
+  const parts = raw.split('.');
+  if (parts.length !== 2) return null;
+  const [payload, signature] = parts;
+  if (!verifyPayload(payload, signature)) return null;
+
   try {
-    const json = Buffer.from(raw, 'base64url').toString('utf8');
+    const json = Buffer.from(payload, 'base64url').toString('utf8');
     const parsed = JSON.parse(json) as unknown;
     if (
       parsed &&
