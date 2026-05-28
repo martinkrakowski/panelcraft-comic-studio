@@ -236,9 +236,16 @@ function googleProvider(cfg: ProviderConfig, appBaseUrl: string): AuthProvider {
  * client secret out of image layers.
  */
 export function getAuthConfig(): AuthRuntimeConfig {
+  // Trim stray whitespace/newlines (a common secret-manager artifact) and strip
+  // trailing slashes. appBaseUrl is concatenated with paths (e.g.
+  // `${appBaseUrl}/auth/callback`), so a trailing slash would yield `//`. Path
+  // prefixes are preserved — CSRF extracts the origin separately (see csrf.ts).
+  const appBaseUrl = (process.env.APP_BASE_URL ?? 'http://localhost:3000')
+    .trim()
+    .replace(/\/+$/, '');
   return {
     provider: process.env.AUTH_PROVIDER ?? 'adobe',
-    appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
+    appBaseUrl,
     adobe: {
       clientId: process.env.ADOBE_CLIENT_ID ?? '',
       clientSecret: process.env.ADOBE_CLIENT_SECRET ?? '',
