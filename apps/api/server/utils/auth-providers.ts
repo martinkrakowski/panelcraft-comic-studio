@@ -1,4 +1,3 @@
-import { useRuntimeConfig } from 'nitropack/runtime';
 import type { AuthUser, NormalizedToken } from './auth-session.js';
 
 /**
@@ -224,9 +223,47 @@ function googleProvider(cfg: ProviderConfig, appBaseUrl: string): AuthProvider {
   };
 }
 
+/**
+ * Resolve auth configuration from `process.env` at RUNTIME.
+ *
+ * Deliberately NOT via `useRuntimeConfig()`: Nitro evaluates the runtimeConfig
+ * literal in `nitro.config.ts` (`process.env.X ?? default`) at *build* time and
+ * freezes the result into the bundle. In the production Docker build the OAuth
+ * credentials aren't present, so they'd bake as empty and `demoMode` would be
+ * stuck on regardless of the deployed `.env`. The root `.env` is loaded into
+ * `process.env` at startup by the `0.env` plugin, so reading it here picks up
+ * the real per-deploy values without rebuilding the image — and keeps the
+ * client secret out of image layers.
+ */
+export function getAuthConfig(): AuthRuntimeConfig {
+  return {
+    provider: process.env.AUTH_PROVIDER ?? 'adobe',
+    appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
+    adobe: {
+      clientId: process.env.ADOBE_CLIENT_ID ?? '',
+      clientSecret: process.env.ADOBE_CLIENT_SECRET ?? '',
+      redirectUri:
+        process.env.ADOBE_REDIRECT_URI ?? 'http://localhost:3000/auth/callback',
+      imsOrigin:
+        process.env.ADOBE_IMS_ORIGIN ?? 'https://ims-na1.adobelogin.com',
+      scopes: process.env.ADOBE_SCOPES ?? 'openid,AdobeID,profile,email',
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      redirectUri:
+        process.env.GOOGLE_REDIRECT_URI ??
+        'http://localhost:3000/auth/callback',
+      // Unused for Google (endpoints are fixed) but kept for config symmetry.
+      imsOrigin: '',
+      scopes: process.env.GOOGLE_SCOPES ?? 'openid email profile',
+    },
+  };
+}
+
 /** Resolve the provider selected by `AUTH_PROVIDER` (defaults to Adobe). */
 export function getActiveProvider(): AuthProvider {
-  const { auth } = useRuntimeConfig() as unknown as { auth: AuthRuntimeConfig };
+  const auth = getAuthConfig();
   const selected = (auth.provider || 'adobe').toLowerCase();
   if (selected === 'google') {
     return googleProvider(auth.google, auth.appBaseUrl);
