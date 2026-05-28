@@ -1,12 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import api from '../api';
 import { ProjectListResponse } from '@panelcraft/types';
-import { useEffectOnce } from './useEffectOnce';
 
 /**
  * Custom React hook to retrieve and manage the list of all comic book projects.
- * Automatically initiates a project fetch request upon mounting via an internal callback `fetchProjects`.
  *
+ * The fetch is gated on `enabled` rather than firing on mount: the projects
+ * endpoint requires a session, and this provider lives in the root layout above
+ * the auth gate, so an on-mount fetch would race the OAuth code exchange and
+ * 401 before the session cookie lands (then never retry, since the layout
+ * provider doesn't remount on client navigation). Fetching on the
+ * unauthenticated→authenticated transition avoids that race.
+ *
+ * @param enabled - When true, load (and reload on each false→true transition).
+ *   Pass `status === 'authenticated'`.
  * @returns Object containing the lists and tracking parameters:
  * @returns.projects - Array of ProjectSummaryDTO objects, defaults to empty array.
  * @returns.loading - Boolean indicating whether a non-silent fetch is actively running.
@@ -14,7 +21,7 @@ import { useEffectOnce } from './useEffectOnce';
  * @returns.refetch - Function to trigger a manual, non-silent project reload (sets loading to true).
  * @returns.refreshSilent - Function to trigger a background, silent project reload (does not set loading to true).
  */
-export function useProjects() {
+export function useProjects(enabled = true) {
   const [data, setData] = useState<ProjectListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -34,9 +41,15 @@ export function useProjects() {
     }
   }, []);
 
-  useEffectOnce(() => {
-    fetchProjects();
-  });
+  // Fire on each false→true transition of `enabled` (initial authenticated
+  // mount, or a later sign-in) so re-login after logout reloads too.
+  const wasEnabled = useRef(false);
+  useEffect(() => {
+    if (enabled && !wasEnabled.current) {
+      void fetchProjects();
+    }
+    wasEnabled.current = enabled;
+  }, [enabled, fetchProjects]);
 
   return {
     projects: data?.projects || [],

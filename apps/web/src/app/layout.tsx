@@ -32,14 +32,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <WorkspaceProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <WorkspaceProvider>
             <MobileSidebarProvider>
               <WorkspaceShell>{children}</WorkspaceShell>
             </MobileSidebarProvider>
-          </AuthProvider>
-          <Toaster />
-        </WorkspaceProvider>
+            <Toaster />
+          </WorkspaceProvider>
+        </AuthProvider>
       </body>
     </html>
   );
