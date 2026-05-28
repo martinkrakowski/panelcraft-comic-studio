@@ -20,6 +20,7 @@ import { ConfirmDialog, SelectionChip, Textarea } from '@panelcraft/ui';
 import { WizardFormValues } from '../../../lib/validation/wizard-schemas';
 import { WizardPersistedState } from '../../../lib/hooks';
 import styles from '../NewComicWizard.module.css';
+import promptContent from './storyPromptStep.content.json';
 
 export interface StoryPromptStepProps {
   control: Control<WizardFormValues>;
@@ -31,14 +32,7 @@ export interface StoryPromptStepProps {
 
 const PROMPT_MAX = 1000;
 
-const RANDOM_PROMPTS = [
-  'A futuristic detective tracking down a rogue AI in a neon-drenched city where the boundary between virtual and reality has collapsed, and every suspect has a digital twin.',
-  'A retired dragon rider receives a mysterious egg that hatches into a creature not seen for a thousand years, drawing the attention of warring kingdoms and a secret society of mage-hunters.',
-  'In a world where dreams are mined as fuel, a young dreamwalker discovers a nightmare realm that threatens to consume both the sleeping and waking worlds.',
-  'A crew of scavengers finds an abandoned generation ship drifting between stars. Inside, time flows differently — and something has been waiting for visitors.',
-  'A street artist in near-future Tokyo discovers their graffiti portals actually open doorways to parallel dimensions, and a shadowy government agency will do anything to control them.',
-  'When the ocean begins to recede worldwide, revealing ancient underwater cities, a marine biologist and a deep-sea diver uncover a civilization that never went extinct.',
-];
+const RANDOM_PROMPTS = promptContent.randomPrompts;
 
 const STARTER_IDEAS: Array<{
   title: string;
