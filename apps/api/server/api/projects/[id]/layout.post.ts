@@ -4,6 +4,7 @@ import { parseBody } from '../../../utils/validation.js';
 import { SelectLayoutSchema, ParamIdSchema } from '../../../utils/schemas.js';
 import { createLogger } from '@panelcraft/shared';
 import { getComicUseCase } from '../../../utils/dependencies.js';
+import { requireProjectOwner } from '../../../utils/require-owner.js';
 
 const logger = createLogger('layout.post');
 
@@ -23,6 +24,7 @@ const logger = createLogger('layout.post');
  */
 export default defineEventHandler(async (event) => {
   const { id } = parseBody(ParamIdSchema, event.context.params);
+  await requireProjectOwner(event, id);
   const { selectedLayout } = parseBody(
     SelectLayoutSchema,
     await readBody(event)

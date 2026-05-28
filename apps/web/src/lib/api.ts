@@ -26,6 +26,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const isFormData = options?.body instanceof FormData;
   const response = await fetch(url, {
     ...options,
+    // Send the httpOnly session cookie so the API can authorize the request
+    // and scope projects to the signed-in user.
+    credentials: 'include',
     headers: {
       // Only set JSON content type if not sending FormData
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -277,6 +280,29 @@ export const api = {
       `/api/projects/${id}/cover/regenerate`,
       { method: 'POST', body }
     );
+  },
+
+  /**
+   * Toggle whether a project is shared to all users (owner-only on the API).
+   */
+  async shareProject(
+    id: string,
+    shared: boolean
+  ): Promise<{ id: string; isShared: boolean }> {
+    return request<{ id: string; isShared: boolean }>(
+      `/api/projects/${id}/share`,
+      { method: 'PATCH', body: JSON.stringify({ shared }) }
+    );
+  },
+
+  /**
+   * One-time recovery of pre-auth comics: claim all ownerless projects for the
+   * signed-in user and mark them shared. Returns the count adopted.
+   */
+  async adoptOrphans(): Promise<{ adopted: number }> {
+    return request<{ adopted: number }>('/api/projects/adopt-orphans', {
+      method: 'POST',
+    });
   },
 };
 export default api;

@@ -1,13 +1,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@panelcraft/types';
 import { ComicProject } from '../../domain/entities/ComicProject.js';
-import type { RelationalDbPort } from '../../application/ports/out/relational-db.out-port.js';
+import type { OwnerId } from '../../domain/value-objects/index.js';
+import type {
+  RelationalDbPort,
+  ProjectShareState,
+  ProjectVisibilityRow,
+} from '../../application/ports/out/relational-db.out-port.js';
 import type { ComicProjectJSON } from '../../domain/entities/ComicProjectSerializer.js';
 import { createLogger } from '@panelcraft/shared';
 
 const logger = createLogger('SupabaseProjectRepository');
 
 type ProjectRow = Database['public']['Tables']['comic_projects']['Row'];
+type ProjectInsert = Database['public']['Tables']['comic_projects']['Insert'];
 
 /**
  * Supabase-backed implementation of the RelationalDbPort.
@@ -19,14 +25,20 @@ export class SupabaseProjectRepository implements RelationalDbPort {
 
   /**
    * Save or upsert a comic project to the database.
-   * Maps the domain entity to the database row format and calls UPSERT.
+   *
+   * `ownerId` is only set on creation. On updates it is omitted from the upsert
+   * payload so the existing `user_id` is preserved rather than overwritten —
+   * the worker and HITL handlers call save() without an owner.
    */
-  async save(project: ComicProject): Promise<void> {
+  async save(project: ComicProject, ownerId?: OwnerId): Promise<void> {
     const row = this.projectToRow(project);
+    const payload = (ownerId
+      ? { ...row, user_id: ownerId.getValue() }
+      : row) as unknown as ProjectInsert;
 
     const { error } = await this.supabase
       .from('comic_projects')
-      .upsert(row, { onConflict: 'id' });
+      .upsert(payload, { onConflict: 'id' });
 
     if (error) {
       logger.error(
@@ -96,6 +108,121 @@ export class SupabaseProjectRepository implements RelationalDbPort {
   }
 
   /**
+   * List only the projects owned by the given user id.
+   */
+  async listByOwner(ownerId: OwnerId): Promise<ComicProject[]> {
+    const { data, error } = await this.supabase
+      .from('comic_projects')
+      .select('*')
+      .eq('user_id', ownerId.getValue());
+
+    if (error) {
+      logger.error(`Failed to list projects for owner: ${error.message}`);
+      throw new Error(`Failed to list projects: ${error.message}`);
+    }
+
+    return data.map((row) => this.rowToProject(row));
+  }
+
+  /**
+   * Return the owning user id for a project, or null if the project is missing
+   * or has no owner (legacy rows created before auth was wired).
+   */
+  async getOwnerId(id: string): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from('comic_projects')
+      .select('user_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      logger.error(`Failed to read owner for project ${id}: ${error.message}`);
+      throw new Error(`Failed to read project owner: ${error.message}`);
+    }
+
+    return data?.user_id ?? null;
+  }
+
+  /**
+   * List projects visible to the owner: their own plus all shared projects.
+   * Returns a lightweight read-model (no full entity hydration).
+   */
+  async listVisibleSummaries(
+    ownerId: OwnerId
+  ): Promise<ProjectVisibilityRow[]> {
+    const { data, error } = await this.supabase
+      .from('comic_projects')
+      .select(
+        'id, prompt, panel_count, status, created_at, cover_image_url, user_id, is_shared'
+      )
+      .or(`user_id.eq.${ownerId.getValue()},is_shared.eq.true`);
+
+    if (error) {
+      logger.error(`Failed to list visible projects: ${error.message}`);
+      throw new Error(`Failed to list projects: ${error.message}`);
+    }
+
+    return data.map((row) => ({
+      id: row.id,
+      prompt: row.prompt,
+      panelCount: row.panel_count,
+      status: row.status,
+      createdAt: row.created_at ?? new Date().toISOString(),
+      coverImageUrl: row.cover_image_url,
+      ownerId: row.user_id ?? null,
+      isShared: row.is_shared,
+    }));
+  }
+
+  /**
+   * Owner + sharing state for authorization, or null if the project is absent.
+   */
+  async getShareState(id: string): Promise<ProjectShareState | null> {
+    const { data, error } = await this.supabase
+      .from('comic_projects')
+      .select('user_id, is_shared')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      logger.error(`Failed to read share state for ${id}: ${error.message}`);
+      throw new Error(`Failed to read project: ${error.message}`);
+    }
+
+    if (!data) return null;
+    return { ownerId: data.user_id ?? null, isShared: data.is_shared };
+  }
+
+  /** Toggle whether a project is shared to all users. */
+  async setShared(id: string, shared: boolean): Promise<void> {
+    const { error } = await this.supabase
+      .from('comic_projects')
+      .update({ is_shared: shared })
+      .eq('id', id);
+
+    if (error) {
+      logger.error(`Failed to set shared=${shared} on ${id}: ${error.message}`);
+      throw new Error(`Failed to update sharing: ${error.message}`);
+    }
+  }
+
+  /** Claim all ownerless projects for `ownerId` and mark them shared. */
+  async adoptOrphans(ownerId: OwnerId): Promise<number> {
+    const { data, error } = await this.supabase
+      .from('comic_projects')
+      .update({ user_id: ownerId.getValue(), is_shared: true })
+      .is('user_id', null)
+      .select('id');
+
+    if (error) {
+      logger.error(`Failed to adopt orphan projects: ${error.message}`);
+      throw new Error(`Failed to adopt projects: ${error.message}`);
+    }
+
+    return data?.length ?? 0;
+  }
+
+  /**
    * Convert a database row to a domain ComicProject entity.
    */
   private rowToProject(row: ProjectRow): ComicProject {
@@ -127,9 +254,14 @@ export class SupabaseProjectRepository implements RelationalDbPort {
   }
 
   /**
-   * Convert a domain ComicProject entity to a database row.
+   * Convert a domain ComicProject entity to a database row, excluding the
+   * separately-managed columns `user_id` (set in save() on create) and
+   * `is_shared` (toggled via setShared/adoptOrphans, defaulted by the DB) so a
+   * routine save() never clobbers ownership or sharing.
    */
-  private projectToRow(project: ComicProject): ProjectRow {
+  private projectToRow(
+    project: ComicProject
+  ): Omit<ProjectRow, 'user_id' | 'is_shared'> {
     const json = project.toJSON();
     return {
       id: json.id,
@@ -152,10 +284,6 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       status: json.status || 'pending_creation',
       created_at: json.createdAt,
       updated_at: new Date().toISOString(),
-      // Null until frontend auth wires a real authenticated user_id through.
-      // FK to auth.users and NOT NULL are dropped temporarily in migration
-      // 20260525160702_make_user_id_nullable.sql — re-add once auth is live.
-      user_id: null as unknown as string,
       panels: (json.panels ?? []) as unknown as ProjectRow['panels'],
     };
   }

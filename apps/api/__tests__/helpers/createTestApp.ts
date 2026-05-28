@@ -6,8 +6,25 @@ import listProjectsHandler from '../../server/api/projects/index.get.js';
 import getProjectHandler from '../../server/api/projects/[id]/index.get.js';
 import createProjectHandler from '../../server/api/projects/index.post.js';
 import submitReviewHandler from '../../server/api/projects/[id]/review.post.js';
+import {
+  createSession,
+  SESSION_COOKIE,
+  type AuthUser,
+} from '../../server/utils/auth-session.js';
 import type { LoggerPort } from '@panelcraft/shared';
 import type { JobQueuePort } from '@panelcraft/comic-generation';
+
+// Fixed identity used to authenticate test requests. The project routes now
+// require a session; injecting a consistent user keeps ownership stable so
+// create -> list -> get -> review all resolve to the same owner.
+const TEST_USER: AuthUser = {
+  id: 'test-user',
+  name: 'Test User',
+  email: 'test@example.com',
+  demo: false,
+  provider: 'Test',
+};
+const TEST_SESSION_COOKIE = `${SESSION_COOKIE}=${createSession(TEST_USER, null)}`;
 
 /**
  * Mock job queue adapter for testing.
@@ -48,9 +65,14 @@ export function createTestApp(logger?: LoggerPort) {
   const router = createRouter();
 
   // Inject dependencies into request context (mirrors production init.ts behavior)
+  // and authenticate the request as the fixed test user unless the caller has
+  // supplied its own cookie (so a test can still exercise the logged-out path).
   app.use((event) => {
     event.context = event.context || {};
     event.context.comicUseCase = comicUseCase;
+    if (!event.node.req.headers.cookie) {
+      event.node.req.headers.cookie = TEST_SESSION_COOKIE;
+    }
   });
 
   // Mount all routes — h3 router resolves path params correctly

@@ -2,6 +2,7 @@ import { defineEventHandler } from 'h3';
 import { ok } from '../../utils/envelope.js';
 import { getComicUseCase } from '../../utils/dependencies.js';
 import { toSignedUrlIfPath } from '../../utils/supabase.js';
+import { requireUser, deriveOwnerId } from '../../utils/auth-session.js';
 
 /**
  * GET /api/projects
@@ -12,20 +13,22 @@ import { toSignedUrlIfPath } from '../../utils/supabase.js';
  * @returns 200 with array of projects (id, prompt summary, panelCount, status, createdAt, coverImageUrl?)
  */
 export default defineEventHandler(async (event) => {
-  const projects = await getComicUseCase(event).listProjects();
+  const ownerId = deriveOwnerId(requireUser(event));
+  // Owned projects plus every shared project. `isOwner` lets the dashboard
+  // show edit/share affordances only on the caller's own comics.
+  const rows = await getComicUseCase(event).listVisibleProjects(ownerId);
+  const ownerValue = ownerId.getValue();
   const summaries = await Promise.all(
-    projects.map(async (p) => {
-      const j = p.toJSON();
-      const coverImageUrl = await toSignedUrlIfPath(j.coverImageUrl);
-      return {
-        id: j.id,
-        prompt: j.prompt.substring(0, 50),
-        panelCount: j.panelCount,
-        status: j.status,
-        createdAt: j.createdAt,
-        coverImageUrl,
-      };
-    })
+    rows.map(async (r) => ({
+      id: r.id,
+      prompt: r.prompt.substring(0, 50),
+      panelCount: r.panelCount,
+      status: r.status,
+      createdAt: r.createdAt,
+      coverImageUrl: await toSignedUrlIfPath(r.coverImageUrl),
+      isShared: r.isShared,
+      isOwner: r.ownerId === ownerValue,
+    }))
   );
   return ok({ projects: summaries });
 });

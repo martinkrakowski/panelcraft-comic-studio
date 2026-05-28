@@ -4,6 +4,7 @@ import { ok, fail } from '../../../utils/envelope.js';
 import { parseBody } from '../../../utils/validation.js';
 import { SelectLayoutSchema, ParamIdSchema } from '../../../utils/schemas.js';
 import { getComicUseCase } from '../../../utils/dependencies.js';
+import { requireProjectOwner } from '../../../utils/require-owner.js';
 
 /**
  * PATCH /api/projects/[id]/layout
@@ -19,6 +20,7 @@ import { getComicUseCase } from '../../../utils/dependencies.js';
  */
 export default defineEventHandler(async (event) => {
   const { id } = parseBody(ParamIdSchema, event.context.params);
+  await requireProjectOwner(event, id);
   const { selectedLayout } = parseBody(
     SelectLayoutSchema,
     await readBody(event)

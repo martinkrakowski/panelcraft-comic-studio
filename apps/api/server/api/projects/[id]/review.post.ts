@@ -9,6 +9,7 @@ import { ok } from '../../../utils/envelope.js';
 import { parseBody, parseParams } from '../../../utils/validation.js';
 import { getComicUseCase } from '../../../utils/dependencies.js';
 import { SubmitReviewSchema } from '../../../utils/schemas.js';
+import { requireProjectOwner } from '../../../utils/require-owner.js';
 
 /**
  * POST /api/projects/:id/review
@@ -23,6 +24,7 @@ export default defineEventHandler(async (event) => {
   const { id } = parseParams(z.object({ id: z.string().uuid() }), {
     id: getRouterParam(event, 'id'),
   });
+  await requireProjectOwner(event, id);
   const { approved, comment, composeFlavor } = parseBody(
     SubmitReviewSchema,
     await readBody(event)

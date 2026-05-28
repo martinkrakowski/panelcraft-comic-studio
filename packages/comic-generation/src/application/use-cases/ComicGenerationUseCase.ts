@@ -1,7 +1,12 @@
 import { RestControllerPort } from '../ports/in/rest-controller.in-port.js';
-import type { RelationalDbPort } from '../ports/out/relational-db.out-port.js';
+import type {
+  RelationalDbPort,
+  ProjectShareState,
+  ProjectVisibilityRow,
+} from '../ports/out/relational-db.out-port.js';
 import type { JobQueuePort } from '../ports/out/job-queue.out-port.js';
 import { ComicProject } from '@panelcraft/comic-project-management';
+import type { OwnerId } from '@panelcraft/comic-project-management';
 import { NotFoundError, LoggerPort } from '@panelcraft/shared';
 import { createProject } from '../handlers/createProjectHandler.js';
 import {
@@ -29,22 +34,26 @@ export class ComicGenerationUseCase implements RestControllerPort {
     private readonly logger: LoggerPort
   ) {}
 
-  async createProject(options: {
-    prompt: string;
-    panelCount: number;
-    genres?: string[];
-    tones?: string[];
-    characterBible?: Record<string, unknown>;
-    styleReferences?: {
-      globalStylePrompt: string;
-      moodBoardPreset: string;
-      moodBoardImages: string[];
-      artDirectionNotes?: string;
-    };
-    referenceImagePaths?: string[];
-  }): Promise<string> {
+  async createProject(
+    options: {
+      prompt: string;
+      panelCount: number;
+      genres?: string[];
+      tones?: string[];
+      characterBible?: Record<string, unknown>;
+      styleReferences?: {
+        globalStylePrompt: string;
+        moodBoardPreset: string;
+        moodBoardImages: string[];
+        artDirectionNotes?: string;
+      };
+      referenceImagePaths?: string[];
+    },
+    ownerId?: OwnerId
+  ): Promise<string> {
     return createProject(options, {
       projectRepo: this.projectRepo,
+      ownerId,
     });
   }
 
@@ -76,6 +85,30 @@ export class ComicGenerationUseCase implements RestControllerPort {
 
   async listProjects(): Promise<ComicProject[]> {
     return this.projectRepo.listAll();
+  }
+
+  async listProjectsByOwner(ownerId: OwnerId): Promise<ComicProject[]> {
+    return this.projectRepo.listByOwner(ownerId);
+  }
+
+  async getProjectOwnerId(id: string): Promise<string | null> {
+    return this.projectRepo.getOwnerId(id);
+  }
+
+  async listVisibleProjects(ownerId: OwnerId): Promise<ProjectVisibilityRow[]> {
+    return this.projectRepo.listVisibleSummaries(ownerId);
+  }
+
+  async getProjectShareState(id: string): Promise<ProjectShareState | null> {
+    return this.projectRepo.getShareState(id);
+  }
+
+  async setProjectShared(id: string, shared: boolean): Promise<void> {
+    return this.projectRepo.setShared(id, shared);
+  }
+
+  async adoptOrphanProjects(ownerId: OwnerId): Promise<number> {
+    return this.projectRepo.adoptOrphans(ownerId);
   }
 
   async submitReview(
