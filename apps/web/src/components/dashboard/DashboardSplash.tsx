@@ -14,6 +14,9 @@ import styles from './DashboardSplash.module.css';
  * "Seen" state is tracked in sessionStorage (see lib/splash), so reloads no
  * longer re-prompt and the login chooser can pre-empt it. Dismissed by the
  * buttons or Escape.
+ *
+ * @component
+ * @returns The modal splash overlay, or null when not visible.
  */
 export function DashboardSplash() {
   const [visible, setVisible] = useState(false);
