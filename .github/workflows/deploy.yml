@@ -9,16 +9,33 @@ jobs:
     environment: "Production VPS"
 
     steps:
+      - name: Validate required secrets
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          missing=0
+          for name in XAI_API_KEY GOOGLE_GENERATIVE_AI_API_KEY SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_API_URL NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required secret ${name} is not set"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::One or more required secrets are missing; aborting before deploy."
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main @ 2024-04-26
-        with:
-          tool-cache: false
-          docker-images: false
 
       - name: Build Docker Image
         run: |
@@ -50,33 +67,36 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           envs: XAI_API_KEY,GOOGLE_GENERATIVE_AI_API_KEY,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,LANGCHAIN_TRACING_V2,LANGCHAIN_API_KEY,LANGCHAIN_PROJECT,LANGCHAIN_ENDPOINT,NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY
-          script: "set -Eeuo pipefail\n\
-            cd /opt/varo-ai-panelcraft\n\
-            cat <<EOF > .env\n\
-            NODE_ENV=\"production\"\n\
-            DISABLE_REDIS=\"false\"\n\
-            REDIS_HOST=\"redis\"\n\
-            REDIS_PORT=\"6379\"\n\
-            CORS_ORIGIN=\"https://varoai.martinkrakowski.com\"\n\
-            FEATURE_FINAL_COMPOSITION=\"true\"\n\
-            XAI_API_KEY=\"$XAI_API_KEY\"\n\
-            GOOGLE_GENERATIVE_AI_API_KEY=\"$GOOGLE_GENERATIVE_AI_API_KEY\"\n\
-            SUPABASE_URL=\"$SUPABASE_URL\"\n\
-            SUPABASE_ANON_KEY=\"$SUPABASE_ANON_KEY\"\n\
-            SUPABASE_SERVICE_ROLE_KEY=\"$SUPABASE_SERVICE_ROLE_KEY\"\n\
-            LANGCHAIN_TRACING_V2=\"$LANGCHAIN_TRACING_V2\"\n\
-            LANGCHAIN_API_KEY=\"$LANGCHAIN_API_KEY\"\n\
-            LANGCHAIN_PROJECT=\"$LANGCHAIN_PROJECT\"\n\
-            LANGCHAIN_ENDPOINT=\"$LANGCHAIN_ENDPOINT\"\n\
-            NEXT_PUBLIC_API_URL=\"$NEXT_PUBLIC_API_URL\"\n\
-            NEXT_PUBLIC_SUPABASE_URL=\"$NEXT_PUBLIC_SUPABASE_URL\"\n\
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$NEXT_PUBLIC_SUPABASE_ANON_KEY\"\n\
-            EOF\n\
-            docker load < varo-ai-panelcraft.tar.gz\n\
-            docker compose down\n\
-            docker compose up -d\n\
-            rm varo-ai-panelcraft.tar.gz\n\
-            docker system prune -a -f --volumes"
+          script: |
+            set -Eeuo pipefail
+            cd /opt/varo-ai-panelcraft
+            umask 077
+            cat > .env <<'EOF'
+            NODE_ENV="production"
+            DISABLE_REDIS="false"
+            REDIS_HOST="redis"
+            REDIS_PORT="6379"
+            CORS_ORIGIN="https://varoai.martinkrakowski.com"
+            FEATURE_FINAL_COMPOSITION="true"
+            EOF
+            printf 'XAI_API_KEY=%s\n' "$XAI_API_KEY" >> .env
+            printf 'GOOGLE_GENERATIVE_AI_API_KEY=%s\n' "$GOOGLE_GENERATIVE_AI_API_KEY" >> .env
+            printf 'SUPABASE_URL=%s\n' "$SUPABASE_URL" >> .env
+            printf 'SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY" >> .env
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SUPABASE_SERVICE_ROLE_KEY" >> .env
+            printf 'LANGCHAIN_TRACING_V2=%s\n' "$LANGCHAIN_TRACING_V2" >> .env
+            printf 'LANGCHAIN_API_KEY=%s\n' "$LANGCHAIN_API_KEY" >> .env
+            printf 'LANGCHAIN_PROJECT=%s\n' "$LANGCHAIN_PROJECT" >> .env
+            printf 'LANGCHAIN_ENDPOINT=%s\n' "$LANGCHAIN_ENDPOINT" >> .env
+            printf 'NEXT_PUBLIC_API_URL=%s\n' "$NEXT_PUBLIC_API_URL" >> .env
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$NEXT_PUBLIC_SUPABASE_URL" >> .env
+            printf 'NEXT_PUBLIC_SUPABASE_ANON_KEY=%s\n' "$NEXT_PUBLIC_SUPABASE_ANON_KEY" >> .env
+            chmod 600 .env
+            docker load < varo-ai-panelcraft.tar.gz
+            docker compose down
+            docker compose up -d
+            rm varo-ai-panelcraft.tar.gz
+            docker system prune -a -f --volumes
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
