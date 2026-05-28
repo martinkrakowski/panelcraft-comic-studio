@@ -58,15 +58,20 @@ export function NewComicWizard() {
     formState: { errors },
   } = form;
 
-  const { handleNextStep, handleBackStep, handleAnalyzePrompt, isAnalyzing } =
-    useWizardStepNavigation({
-      activeStep,
-      setActiveStep,
-      trigger,
-      setValue,
-      getValues,
-      saveToIndexedDB,
-    });
+  const {
+    handleNextStep,
+    handleBackStep,
+    handleAnalyzePrompt,
+    isAnalyzing,
+    lastAnalyzedPrompt,
+  } = useWizardStepNavigation({
+    activeStep,
+    setActiveStep,
+    trigger,
+    setValue,
+    getValues,
+    saveToIndexedDB,
+  });
 
   const { handleCharacterImageUpload, handleMoodBoardUpload } = useImageUploads(
     {
@@ -124,6 +129,10 @@ export function NewComicWizard() {
           // decrement the wizard step.
           onBack={activeStep === 0 ? () => router.push('/new') : handleBackStep}
           onNext={handleNextStep}
+          control={control}
+          onAnalyze={handleAnalyzePrompt}
+          isAnalyzing={isAnalyzing}
+          lastAnalyzedPrompt={lastAnalyzedPrompt}
         />
       }
     >
@@ -138,8 +147,6 @@ export function NewComicWizard() {
         append={append}
         remove={remove}
         moodBoardObjectUrls={moodBoardObjectUrls}
-        isAnalyzing={isAnalyzing}
-        handleAnalyzePrompt={handleAnalyzePrompt}
         handleCharacterImageUpload={handleCharacterImageUpload}
         handleMoodBoardUpload={handleMoodBoardUpload}
         isSubmitting={isSubmitting}

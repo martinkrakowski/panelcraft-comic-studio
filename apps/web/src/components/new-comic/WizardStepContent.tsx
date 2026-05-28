@@ -31,8 +31,6 @@ interface WizardStepContentProps {
   append: (value: WizardFormValues['characters'][number]) => void;
   remove: (index: number) => void;
   moodBoardObjectUrls: string[];
-  isAnalyzing: boolean;
-  handleAnalyzePrompt: () => Promise<void>;
   handleCharacterImageUpload: (index: number, file: File) => Promise<void>;
   handleMoodBoardUpload: (files: FileList) => Promise<void>;
   isSubmitting: boolean;
@@ -69,8 +67,6 @@ export function WizardStepContent(props: WizardStepContentProps) {
     append,
     remove,
     moodBoardObjectUrls,
-    isAnalyzing,
-    handleAnalyzePrompt,
     handleCharacterImageUpload,
     handleMoodBoardUpload,
     isSubmitting,
@@ -87,7 +83,10 @@ export function WizardStepContent(props: WizardStepContentProps) {
   } = props;
 
   return (
-    <div className="mx-auto max-w-2xl px-4" style={{ paddingBottom: '8rem' }}>
+    <div
+      className="mx-auto max-w-2xl px-4 overflow-x-hidden"
+      style={{ paddingBottom: '8rem' }}
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={activeStep}
@@ -98,29 +97,13 @@ export function WizardStepContent(props: WizardStepContentProps) {
           className="w-full"
         >
           {activeStep === 0 && (
-            <>
-              <div className="px-4 pb-8 flex justify-center">
-                <img
-                  src="/tell-your-story.svg"
-                  alt="Tell your story"
-                  className="rounded-lg"
-                  style={{
-                    maxWidth: '392px',
-                    width: '100%',
-                    maxHeight: '100%',
-                  }}
-                />
-              </div>
-              <StoryPromptStep
-                control={control}
-                register={register}
-                errors={errors}
-                setValue={setValue}
-                isAnalyzing={isAnalyzing}
-                handleAnalyzePrompt={handleAnalyzePrompt}
-                saveToIndexedDB={saveToIndexedDB}
-              />
-            </>
+            <StoryPromptStep
+              control={control}
+              register={register}
+              errors={errors}
+              setValue={setValue}
+              saveToIndexedDB={saveToIndexedDB}
+            />
           )}
           {activeStep === 1 && (
             <CharacterBibleStep
