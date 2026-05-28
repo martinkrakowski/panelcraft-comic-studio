@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, LogIn, LayoutGrid, Sparkles } from 'lucide-react';
 import { Button, useToast } from '@panelcraft/ui';
@@ -16,24 +16,36 @@ import { VaroVideoTile } from '../../components/shared/VaroVideoTile';
 
 type LoginIntent = 'create' | 'browse';
 
-/** A selectable destination option in the login chooser. */
+/**
+ * A selectable destination option in the login chooser. Implements the
+ * WAI-ARIA radio pattern via roving tabindex: only the selected option is in
+ * the tab order (`tabIndex` 0), and the parent radiogroup moves selection with
+ * the arrow keys.
+ */
 function IntentOption({
   selected,
   onSelect,
+  onKeyDown,
   icon,
   label,
+  buttonRef,
 }: {
   selected: boolean;
   onSelect: () => void;
+  onKeyDown: React.KeyboardEventHandler<HTMLButtonElement>;
   icon: React.ReactNode;
   label: string;
+  buttonRef: React.Ref<HTMLButtonElement>;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       role="radio"
       aria-checked={selected}
+      tabIndex={selected ? 0 : -1}
       onClick={onSelect}
+      onKeyDown={onKeyDown}
       className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
         selected
           ? 'border-indigo-500 bg-indigo-500/10 text-white'
@@ -100,6 +112,37 @@ function LoginScreen() {
   const [intent, setIntent] = useState<LoginIntent>('browse');
   const destination = intent === 'create' ? '/new' : returnTo;
 
+  // Roving-tabindex refs for the radiogroup, in DOM order, so Arrow keys can
+  // move selection and focus per the WAI-ARIA radio pattern.
+  const browseRef = useRef<HTMLButtonElement>(null);
+  const createRef = useRef<HTMLButtonElement>(null);
+  const orderedOptions: { intent: LoginIntent; ref: typeof browseRef }[] = [
+    { intent: 'browse', ref: browseRef },
+    { intent: 'create', ref: createRef },
+  ];
+
+  const moveIntent = (delta: 1 | -1) => {
+    const i = orderedOptions.findIndex((o) => o.intent === intent);
+    const next =
+      orderedOptions[
+        (i + delta + orderedOptions.length) % orderedOptions.length
+      ];
+    setIntent(next.intent);
+    next.ref.current?.focus();
+  };
+
+  const handleRadioKeyDown: React.KeyboardEventHandler<HTMLButtonElement> = (
+    e
+  ) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      moveIntent(1);
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      moveIntent(-1);
+    }
+  };
+
   if (status === 'loading') return <CenteredSpinner />;
   // Already signed in (e.g. navigated to /login directly) — bounce onward.
   if (status === 'authenticated') return <RedirectTo path={returnTo} />;
@@ -165,12 +208,16 @@ function LoginScreen() {
             <IntentOption
               selected={intent === 'browse'}
               onSelect={() => setIntent('browse')}
+              onKeyDown={handleRadioKeyDown}
+              buttonRef={browseRef}
               icon={<LayoutGrid className="h-4 w-4" />}
               label="Browse the workspace"
             />
             <IntentOption
               selected={intent === 'create'}
               onSelect={() => setIntent('create')}
+              onKeyDown={handleRadioKeyDown}
+              buttonRef={createRef}
               icon={<Sparkles className="h-4 w-4" />}
               label="Create a new comic"
             />
