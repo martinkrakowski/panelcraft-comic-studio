@@ -17,6 +17,7 @@ export default defineEventHandler(async (event) => {
   // Owned projects plus every shared project. `isOwner` lets the dashboard
   // show edit/share affordances only on the caller's own comics.
   const rows = await getComicUseCase(event).listVisibleProjects(ownerId);
+  const ownerValue = ownerId.getValue();
   const summaries = await Promise.all(
     rows.map(async (r) => ({
       id: r.id,
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
       createdAt: r.createdAt,
       coverImageUrl: await toSignedUrlIfPath(r.coverImageUrl),
       isShared: r.isShared,
-      isOwner: r.ownerId === ownerId,
+      isOwner: r.ownerId === ownerValue,
     }))
   );
   return ok({ projects: summaries });

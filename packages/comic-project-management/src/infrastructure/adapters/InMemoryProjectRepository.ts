@@ -4,6 +4,7 @@ import {
   ProjectVisibilityRow,
 } from '../../application/ports/out/relational-db.out-port.js';
 import { ComicProject } from '../../domain/entities/ComicProject.js';
+import type { OwnerId } from '../../domain/value-objects/index.js';
 
 /**
  * An in-memory implementation of the RelationalDbPort.
@@ -14,12 +15,12 @@ export class InMemoryProjectRepository implements RelationalDbPort {
   private readonly owners = new Map<string, string>();
   private readonly shared = new Set<string>();
 
-  async save(project: ComicProject, ownerId?: string): Promise<void> {
+  async save(project: ComicProject, ownerId?: OwnerId): Promise<void> {
     const id = project.getId().getValue();
     this.projects.set(id, ComicProject.fromJSON(project.toJSON()));
     // Only stamp the owner on creation; updates omit ownerId and preserve it.
     if (ownerId) {
-      this.owners.set(id, ownerId);
+      this.owners.set(id, ownerId.getValue());
     }
   }
 
@@ -34,9 +35,9 @@ export class InMemoryProjectRepository implements RelationalDbPort {
     );
   }
 
-  async listByOwner(ownerId: string): Promise<ComicProject[]> {
+  async listByOwner(ownerId: OwnerId): Promise<ComicProject[]> {
     return Array.from(this.projects.entries())
-      .filter(([id]) => this.owners.get(id) === ownerId)
+      .filter(([id]) => this.owners.get(id) === ownerId.getValue())
       .map(([, project]) => ComicProject.fromJSON(project.toJSON()));
   }
 
@@ -44,9 +45,12 @@ export class InMemoryProjectRepository implements RelationalDbPort {
     return this.owners.get(id) ?? null;
   }
 
-  async listVisibleSummaries(ownerId: string): Promise<ProjectVisibilityRow[]> {
+  async listVisibleSummaries(
+    ownerId: OwnerId
+  ): Promise<ProjectVisibilityRow[]> {
+    const owner = ownerId.getValue();
     return Array.from(this.projects.entries())
-      .filter(([id]) => this.owners.get(id) === ownerId || this.shared.has(id))
+      .filter(([id]) => this.owners.get(id) === owner || this.shared.has(id))
       .map(([id, project]) => {
         const json = project.toJSON();
         return {
@@ -75,11 +79,11 @@ export class InMemoryProjectRepository implements RelationalDbPort {
     else this.shared.delete(id);
   }
 
-  async adoptOrphans(ownerId: string): Promise<number> {
+  async adoptOrphans(ownerId: OwnerId): Promise<number> {
     let count = 0;
     for (const id of this.projects.keys()) {
       if (!this.owners.has(id)) {
-        this.owners.set(id, ownerId);
+        this.owners.set(id, ownerId.getValue());
         this.shared.add(id);
         count += 1;
       }

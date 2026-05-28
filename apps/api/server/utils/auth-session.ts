@@ -15,6 +15,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto';
+import { OwnerId } from '@panelcraft/comic-project-management';
 
 export const SESSION_COOKIE = 'auth_session';
 export const STATE_COOKIE = 'auth_oauth_state';
@@ -160,11 +161,12 @@ function bytesToUuid(b: Buffer): string {
 }
 
 /**
- * Map an OAuth identity to a stable, valid UUID for the `comic_projects.user_id`
- * column. External subs (Google/Adobe) aren't Supabase auth UUIDs, so we hash
- * `provider:id` into a deterministic v5 UUID instead of migrating the column.
+ * Map an OAuth identity to a stable `OwnerId` value object. External subs
+ * (Google/Adobe) aren't Supabase auth UUIDs, so we hash `provider:id` into a
+ * deterministic v5 UUID instead of migrating the column. This is the single
+ * boundary where the raw identity becomes the typed domain identifier.
  */
-export function deriveOwnerId(user: AuthUser): string {
+export function deriveOwnerId(user: AuthUser): OwnerId {
   const name = `${user.provider}:${user.id}`;
   const hash = createHash('sha1')
     .update(
@@ -174,7 +176,12 @@ export function deriveOwnerId(user: AuthUser): string {
   const bytes = hash.subarray(0, 16);
   bytes[6] = (bytes[6] & 0x0f) | 0x50; // version 5
   bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC 4122 variant
-  return bytesToUuid(Buffer.from(bytes));
+
+  const result = OwnerId.create(bytesToUuid(Buffer.from(bytes)));
+  if (!result.success || !result.value) {
+    throw new Error(`Failed to derive OwnerId: ${result.error?.message}`);
+  }
+  return result.value;
 }
 
 const ONE_DAY_SECONDS = 60 * 60 * 24;

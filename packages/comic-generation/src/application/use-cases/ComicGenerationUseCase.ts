@@ -6,6 +6,7 @@ import type {
 } from '../ports/out/relational-db.out-port.js';
 import type { JobQueuePort } from '../ports/out/job-queue.out-port.js';
 import { ComicProject } from '@panelcraft/comic-project-management';
+import type { OwnerId } from '@panelcraft/comic-project-management';
 import { NotFoundError, LoggerPort } from '@panelcraft/shared';
 import { createProject } from '../handlers/createProjectHandler.js';
 import {
@@ -48,7 +49,7 @@ export class ComicGenerationUseCase implements RestControllerPort {
       };
       referenceImagePaths?: string[];
     },
-    ownerId?: string
+    ownerId?: OwnerId
   ): Promise<string> {
     return createProject(options, {
       projectRepo: this.projectRepo,
@@ -86,7 +87,7 @@ export class ComicGenerationUseCase implements RestControllerPort {
     return this.projectRepo.listAll();
   }
 
-  async listProjectsByOwner(ownerId: string): Promise<ComicProject[]> {
+  async listProjectsByOwner(ownerId: OwnerId): Promise<ComicProject[]> {
     return this.projectRepo.listByOwner(ownerId);
   }
 
@@ -94,7 +95,7 @@ export class ComicGenerationUseCase implements RestControllerPort {
     return this.projectRepo.getOwnerId(id);
   }
 
-  async listVisibleProjects(ownerId: string): Promise<ProjectVisibilityRow[]> {
+  async listVisibleProjects(ownerId: OwnerId): Promise<ProjectVisibilityRow[]> {
     return this.projectRepo.listVisibleSummaries(ownerId);
   }
 
@@ -106,7 +107,7 @@ export class ComicGenerationUseCase implements RestControllerPort {
     return this.projectRepo.setShared(id, shared);
   }
 
-  async adoptOrphanProjects(ownerId: string): Promise<number> {
+  async adoptOrphanProjects(ownerId: OwnerId): Promise<number> {
     return this.projectRepo.adoptOrphans(ownerId);
   }
 

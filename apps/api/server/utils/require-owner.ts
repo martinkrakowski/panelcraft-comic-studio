@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3';
 import { NotFoundError } from '@panelcraft/shared';
+import type { OwnerId } from '@panelcraft/comic-project-management';
 import { requireUser, deriveOwnerId } from './auth-session.js';
 import { getComicUseCase } from './dependencies.js';
 
@@ -13,12 +14,12 @@ import { getComicUseCase } from './dependencies.js';
 export async function requireProjectOwner(
   event: H3Event,
   projectId: string
-): Promise<string> {
+): Promise<OwnerId> {
   const ownerId = deriveOwnerId(requireUser(event));
   const projectOwner =
     await getComicUseCase(event).getProjectOwnerId(projectId);
 
-  if (projectOwner === null || projectOwner !== ownerId) {
+  if (projectOwner === null || projectOwner !== ownerId.getValue()) {
     throw new NotFoundError(`Project ${projectId} not found`, projectId);
   }
 

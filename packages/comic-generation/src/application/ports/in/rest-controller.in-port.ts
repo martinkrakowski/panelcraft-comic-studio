@@ -1,5 +1,6 @@
 import type {
   ComicProject,
+  OwnerId,
   ProjectShareState,
   ProjectVisibilityRow,
 } from '@panelcraft/comic-project-management';
@@ -81,7 +82,7 @@ export interface RestControllerPort {
       referenceImagePaths?: string[];
     },
     /** Owning user id, persisted on the new project for ownership scoping. */
-    ownerId?: string
+    ownerId?: OwnerId
   ): Promise<string>;
 
   /**
@@ -104,7 +105,7 @@ export interface RestControllerPort {
   /**
    * Lists only the projects owned by `ownerId`.
    */
-  listProjectsByOwner(ownerId: string): Promise<ComicProject[]>;
+  listProjectsByOwner(ownerId: OwnerId): Promise<ComicProject[]>;
 
   /**
    * Returns the owning user id for a project, or null if missing/unowned.
@@ -116,7 +117,7 @@ export interface RestControllerPort {
    * Lists the projects visible to `ownerId` — their own plus all shared
    * projects — as a lightweight dashboard read-model.
    */
-  listVisibleProjects(ownerId: string): Promise<ProjectVisibilityRow[]>;
+  listVisibleProjects(ownerId: OwnerId): Promise<ProjectVisibilityRow[]>;
 
   /**
    * Returns owner + sharing state for a project, or null if it doesn't exist.
@@ -131,7 +132,7 @@ export interface RestControllerPort {
    * One-time recovery: claim every ownerless project for `ownerId` and mark it
    * shared. Returns the number of projects adopted.
    */
-  adoptOrphanProjects(ownerId: string): Promise<number>;
+  adoptOrphanProjects(ownerId: OwnerId): Promise<number>;
 
   /**
    * Resumes the generation thread with HITL approval/rejection feedback.

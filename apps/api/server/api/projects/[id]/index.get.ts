@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
 
   // Viewable if the caller owns it OR it's shared. Non-owners get read-only
   // access (mutation routes still enforce owner-only).
-  const ownerId = deriveOwnerId(requireUser(event));
+  const ownerId = deriveOwnerId(requireUser(event)).getValue();
   const share = await getComicUseCase(event).getProjectShareState(id);
   if (!share || (share.ownerId !== ownerId && !share.isShared)) {
     throw new NotFoundError(`Project ${id} not found`, id);

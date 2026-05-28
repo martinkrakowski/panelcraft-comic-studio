@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@panelcraft/types';
 import { ComicProject } from '../../domain/entities/ComicProject.js';
+import type { OwnerId } from '../../domain/value-objects/index.js';
 import type {
   RelationalDbPort,
   ProjectShareState,
@@ -29,10 +30,10 @@ export class SupabaseProjectRepository implements RelationalDbPort {
    * payload so the existing `user_id` is preserved rather than overwritten —
    * the worker and HITL handlers call save() without an owner.
    */
-  async save(project: ComicProject, ownerId?: string): Promise<void> {
+  async save(project: ComicProject, ownerId?: OwnerId): Promise<void> {
     const row = this.projectToRow(project);
     const payload = (ownerId
-      ? { ...row, user_id: ownerId }
+      ? { ...row, user_id: ownerId.getValue() }
       : row) as unknown as ProjectInsert;
 
     const { error } = await this.supabase
@@ -109,11 +110,11 @@ export class SupabaseProjectRepository implements RelationalDbPort {
   /**
    * List only the projects owned by the given user id.
    */
-  async listByOwner(ownerId: string): Promise<ComicProject[]> {
+  async listByOwner(ownerId: OwnerId): Promise<ComicProject[]> {
     const { data, error } = await this.supabase
       .from('comic_projects')
       .select('*')
-      .eq('user_id', ownerId);
+      .eq('user_id', ownerId.getValue());
 
     if (error) {
       logger.error(`Failed to list projects for owner: ${error.message}`);
@@ -146,13 +147,15 @@ export class SupabaseProjectRepository implements RelationalDbPort {
    * List projects visible to the owner: their own plus all shared projects.
    * Returns a lightweight read-model (no full entity hydration).
    */
-  async listVisibleSummaries(ownerId: string): Promise<ProjectVisibilityRow[]> {
+  async listVisibleSummaries(
+    ownerId: OwnerId
+  ): Promise<ProjectVisibilityRow[]> {
     const { data, error } = await this.supabase
       .from('comic_projects')
       .select(
         'id, prompt, panel_count, status, created_at, cover_image_url, user_id, is_shared'
       )
-      .or(`user_id.eq.${ownerId},is_shared.eq.true`);
+      .or(`user_id.eq.${ownerId.getValue()},is_shared.eq.true`);
 
     if (error) {
       logger.error(`Failed to list visible projects: ${error.message}`);
@@ -204,10 +207,10 @@ export class SupabaseProjectRepository implements RelationalDbPort {
   }
 
   /** Claim all ownerless projects for `ownerId` and mark them shared. */
-  async adoptOrphans(ownerId: string): Promise<number> {
+  async adoptOrphans(ownerId: OwnerId): Promise<number> {
     const { data, error } = await this.supabase
       .from('comic_projects')
-      .update({ user_id: ownerId, is_shared: true })
+      .update({ user_id: ownerId.getValue(), is_shared: true })
       .is('user_id', null)
       .select('id');
 
@@ -251,11 +254,14 @@ export class SupabaseProjectRepository implements RelationalDbPort {
   }
 
   /**
-   * Convert a domain ComicProject entity to a database row, excluding
-   * `user_id` — ownership is applied separately in save() so updates never
-   * clobber the existing owner.
+   * Convert a domain ComicProject entity to a database row, excluding the
+   * separately-managed columns `user_id` (set in save() on create) and
+   * `is_shared` (toggled via setShared/adoptOrphans, defaulted by the DB) so a
+   * routine save() never clobbers ownership or sharing.
    */
-  private projectToRow(project: ComicProject): Omit<ProjectRow, 'user_id'> {
+  private projectToRow(
+    project: ComicProject
+  ): Omit<ProjectRow, 'user_id' | 'is_shared'> {
     const json = project.toJSON();
     return {
       id: json.id,
