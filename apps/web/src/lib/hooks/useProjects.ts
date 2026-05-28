@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import api from '../api';
 import { ProjectListResponse } from '@panelcraft/types';
+import { useEffectOnActivate } from './useEffectOnActivate';
 
 /**
  * Custom React hook to retrieve and manage the list of all comic book projects.
@@ -43,13 +44,9 @@ export function useProjects(enabled = true) {
 
   // Fire on each false→true transition of `enabled` (initial authenticated
   // mount, or a later sign-in) so re-login after logout reloads too.
-  const wasEnabled = useRef(false);
-  useEffect(() => {
-    if (enabled && !wasEnabled.current) {
-      void fetchProjects();
-    }
-    wasEnabled.current = enabled;
-  }, [enabled, fetchProjects]);
+  useEffectOnActivate(enabled, () => {
+    void fetchProjects();
+  });
 
   return {
     projects: data?.projects || [],

@@ -1,5 +1,6 @@
 export { useUnmountEffect } from './useUnmountEffect';
 export { useEffectOnce } from './useEffectOnce';
+export { useEffectOnActivate } from './useEffectOnActivate';
 export { useObjectUrls } from './useObjectUrls';
 export { usePolling } from './usePolling';
 export {

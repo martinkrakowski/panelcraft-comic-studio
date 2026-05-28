@@ -22,6 +22,7 @@ export default [
     files: [
       'src/lib/hooks/useUnmountEffect.ts',
       'src/lib/hooks/useEffectOnce.ts',
+      'src/lib/hooks/useEffectOnActivate.ts',
       'src/lib/hooks/useObjectUrls.ts',
       'src/lib/hooks/usePolling.ts'
     ],
