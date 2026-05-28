@@ -24,7 +24,8 @@ import { useEffectOnActivate } from './useEffectOnActivate';
  */
 export function useProjects(enabled = true) {
   const [data, setData] = useState<ProjectListResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Only "loading" when we'll actually fetch (enabled); idle while signed out.
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchProjects = useCallback(async (silent = false) => {
@@ -41,6 +42,21 @@ export function useProjects(enabled = true) {
       if (!silent) setLoading(false);
     }
   }, []);
+
+  // React to auth gain/loss without an effect — a guarded state adjustment
+  // during render (React's "reset on prop change" pattern) so the change lands
+  // before paint. On logout (true→false) drop the previous session's projects
+  // so a later sign-in can't flash them; on login (false→true) enter loading
+  // immediately so the dashboard shows a spinner — not an empty state that
+  // would wrongly trigger its zero-projects redirect — until the fetch below
+  // resolves.
+  const [prevEnabled, setPrevEnabled] = useState(enabled);
+  if (prevEnabled !== enabled) {
+    setPrevEnabled(enabled);
+    setData(null);
+    setError(null);
+    setLoading(enabled);
+  }
 
   // Fire on each false→true transition of `enabled` (initial authenticated
   // mount, or a later sign-in) so re-login after logout reloads too.
