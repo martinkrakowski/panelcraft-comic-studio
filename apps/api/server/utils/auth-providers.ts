@@ -1,4 +1,3 @@
-import { useRuntimeConfig } from 'nitropack/runtime';
 import type { AuthUser, NormalizedToken } from './auth-session.js';
 
 /**
@@ -224,9 +223,58 @@ function googleProvider(cfg: ProviderConfig, appBaseUrl: string): AuthProvider {
   };
 }
 
+/**
+ * Resolve auth configuration from `process.env` at RUNTIME.
+ *
+ * Deliberately NOT via `useRuntimeConfig()`: Nitro evaluates the runtimeConfig
+ * literal in `nitro.config.ts` (`process.env.X ?? default`) at *build* time and
+ * freezes the result into the bundle. In the production Docker build the OAuth
+ * credentials aren't present, so they'd bake as empty and `demoMode` would be
+ * stuck on regardless of the deployed `.env`. The root `.env` is loaded into
+ * `process.env` at startup by the `0.env` plugin, so reading it here picks up
+ * the real per-deploy values without rebuilding the image — and keeps the
+ * client secret out of image layers.
+ *
+ * @returns The resolved auth config: active `provider`, normalized `appBaseUrl`,
+ *   and per-provider (`adobe`, `google`) client credentials, redirect URI, and
+ *   scopes — each falling back to a dev-safe default when its env var is unset.
+ */
+export function getAuthConfig(): AuthRuntimeConfig {
+  // Trim stray whitespace/newlines (a common secret-manager artifact) and strip
+  // trailing slashes. appBaseUrl is concatenated with paths (e.g.
+  // `${appBaseUrl}/auth/callback`), so a trailing slash would yield `//`. Path
+  // prefixes are preserved — CSRF extracts the origin separately (see csrf.ts).
+  const appBaseUrl = (process.env.APP_BASE_URL ?? 'http://localhost:3000')
+    .trim()
+    .replace(/\/+$/, '');
+  return {
+    provider: process.env.AUTH_PROVIDER ?? 'adobe',
+    appBaseUrl,
+    adobe: {
+      clientId: process.env.ADOBE_CLIENT_ID ?? '',
+      clientSecret: process.env.ADOBE_CLIENT_SECRET ?? '',
+      redirectUri:
+        process.env.ADOBE_REDIRECT_URI ?? 'http://localhost:3000/auth/callback',
+      imsOrigin:
+        process.env.ADOBE_IMS_ORIGIN ?? 'https://ims-na1.adobelogin.com',
+      scopes: process.env.ADOBE_SCOPES ?? 'openid,AdobeID,profile,email',
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      redirectUri:
+        process.env.GOOGLE_REDIRECT_URI ??
+        'http://localhost:3000/auth/callback',
+      // Unused for Google (endpoints are fixed) but kept for config symmetry.
+      imsOrigin: '',
+      scopes: process.env.GOOGLE_SCOPES ?? 'openid email profile',
+    },
+  };
+}
+
 /** Resolve the provider selected by `AUTH_PROVIDER` (defaults to Adobe). */
 export function getActiveProvider(): AuthProvider {
-  const { auth } = useRuntimeConfig() as unknown as { auth: AuthRuntimeConfig };
+  const auth = getAuthConfig();
   const selected = (auth.provider || 'adobe').toLowerCase();
   if (selected === 'google') {
     return googleProvider(auth.google, auth.appBaseUrl);

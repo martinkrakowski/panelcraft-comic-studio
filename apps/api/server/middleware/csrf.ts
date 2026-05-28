@@ -1,6 +1,7 @@
 import { defineEventHandler, getHeader, setResponseStatus } from 'h3';
 import { useRuntimeConfig } from 'nitropack/runtime';
 import { fail } from '../utils/envelope.js';
+import { getAuthConfig } from '../utils/auth-providers.js';
 
 /**
  * CSRF protection for state-changing requests.
@@ -24,14 +25,22 @@ import { fail } from '../utils/envelope.js';
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function allowedOrigins(): Set<string> {
-  const { cors, auth } = useRuntimeConfig();
+  const { cors } = useRuntimeConfig();
   const origins = Array.isArray(cors?.origin)
     ? cors.origin
     : cors?.origin
       ? [cors.origin]
       : [];
   const set = new Set<string>(origins.map(String));
-  if (auth?.appBaseUrl) set.add(String(auth.appBaseUrl));
+  // appBaseUrl is resolved at runtime (see getAuthConfig) — it isn't a build
+  // arg, so the build-time runtimeConfig.auth would be the localhost default.
+  // Normalize to an origin: the allowlist is compared against the Origin header
+  // and the parsed Referer origin, which are always origin-only, so a trailing
+  // slash or path in APP_BASE_URL would otherwise never match and 403 valid
+  // mutating requests.
+  const { appBaseUrl } = getAuthConfig();
+  const appOrigin = appBaseUrl ? originFromUrl(appBaseUrl) : null;
+  if (appOrigin) set.add(appOrigin);
   return set;
 }
 
