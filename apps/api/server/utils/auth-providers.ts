@@ -234,6 +234,10 @@ function googleProvider(cfg: ProviderConfig, appBaseUrl: string): AuthProvider {
  * `process.env` at startup by the `0.env` plugin, so reading it here picks up
  * the real per-deploy values without rebuilding the image — and keeps the
  * client secret out of image layers.
+ *
+ * @returns The resolved auth config: active `provider`, normalized `appBaseUrl`,
+ *   and per-provider (`adobe`, `google`) client credentials, redirect URI, and
+ *   scopes — each falling back to a dev-safe default when its env var is unset.
  */
 export function getAuthConfig(): AuthRuntimeConfig {
   // Trim stray whitespace/newlines (a common secret-manager artifact) and strip
