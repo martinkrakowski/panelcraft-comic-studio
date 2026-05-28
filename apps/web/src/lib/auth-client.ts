@@ -41,6 +41,16 @@ export const authLoginUrl = `${API_BASE}/api/auth/login`;
  */
 export const POST_LOGIN_RETURN_KEY = 'postLoginReturnTo';
 
+/**
+ * Constrain a post-login redirect target to a same-origin path, defending
+ * against open redirects. Accepts only values that start with a single `/`
+ * (not `//` or `/\`, which browsers treat as protocol-relative); anything else
+ * — absolute URLs, `javascript:`, etc. — falls back to the dashboard.
+ */
+export function safeReturnTo(value: string | null | undefined): string {
+  return value && /^\/(?![/\\])/.test(value) ? value : '/';
+}
+
 async function authRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,

@@ -4,7 +4,11 @@ import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, LogIn } from 'lucide-react';
 import { Button, useToast } from '@panelcraft/ui';
-import { authLoginUrl, POST_LOGIN_RETURN_KEY } from '../../lib/auth-client';
+import {
+  authLoginUrl,
+  POST_LOGIN_RETURN_KEY,
+  safeReturnTo,
+} from '../../lib/auth-client';
 import { useEffectOnce } from '../../lib/hooks';
 import { useAuth } from '../../providers/AuthProvider';
 import { VaroVideoTile } from '../../components/shared/VaroVideoTile';
@@ -50,7 +54,8 @@ function GoogleMark() {
 
 function LoginScreen() {
   const params = useSearchParams();
-  const returnTo = params.get('returnTo') || '/';
+  // Constrain to a same-origin path — never trust the raw query param.
+  const returnTo = safeReturnTo(params.get('returnTo'));
   const { status, demoMode, providerLabel, signInMock } = useAuth();
   const router = useRouter();
   const { toast } = useToast();

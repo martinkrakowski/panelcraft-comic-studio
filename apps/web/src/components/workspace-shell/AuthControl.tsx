@@ -62,6 +62,7 @@ function UserMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          aria-label={`Account menu for ${user.name}`}
           className="flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/60 py-1 pl-1 pr-3 text-sm text-slate-100 backdrop-blur-sm transition-colors duration-200 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
         >
           <Avatar user={user} />

@@ -77,6 +77,10 @@ export interface ComicProjectDTO {
   status: ProjectStatus;
   createdAt: string;
   lastReviewSubmittedAt?: string | null;
+  /** True when the project is shared to all users. */
+  isShared?: boolean;
+  /** True when the signed-in user owns this project (can edit/delete/share). */
+  isOwner?: boolean;
 }
 
 export interface CreateProjectInput {

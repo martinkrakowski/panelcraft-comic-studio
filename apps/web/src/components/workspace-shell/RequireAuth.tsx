@@ -16,16 +16,17 @@ function CenteredSpinner() {
 
 /**
  * Mounts only once the visitor is known to be unauthenticated, so a one-time
- * redirect to the login screen is safe. Preserves the attempted path via
- * `returnTo` so the user lands back where they were after signing in.
+ * redirect to the login screen is safe. Reads the attempted URL (path + query)
+ * from `window.location` — avoiding `useSearchParams`, which would force the
+ * whole app (this gate lives in the layout) into client-side rendering — so
+ * deep links restore after sign-in.
  */
-function RedirectToLogin({ returnTo }: { returnTo: string }) {
+function RedirectToLogin() {
   const router = useRouter();
   useEffectOnce(() => {
+    const here = `${window.location.pathname}${window.location.search}`;
     const qs =
-      returnTo && returnTo !== '/'
-        ? `?returnTo=${encodeURIComponent(returnTo)}`
-        : '';
+      here && here !== '/' ? `?returnTo=${encodeURIComponent(here)}` : '';
     router.replace(`/login${qs}`);
   });
   return <CenteredSpinner />;
@@ -52,7 +53,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (status === 'loading') return <CenteredSpinner />;
   if (status === 'unauthenticated') {
-    return <RedirectToLogin returnTo={pathname ?? '/'} />;
+    return <RedirectToLogin />;
   }
   return <>{children}</>;
 }
