@@ -84,7 +84,24 @@ See [`DESIGN.md`](./DESIGN.md) for the UI contract and [`AGENTS.md`](./AGENTS.md
    - `XAI_API_KEY` — Grok API (LLM + Imagine)
    - `SUPABASE_URL` / `SUPABASE_ANON_KEY` — Postgres + Storage + checkpointer
    - `REDIS_URL` — BullMQ job queue
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — OAuth login (see below). Leave blank to run in **Demo Mode** with a mock sign-in.
 4. Run `yarn dev` — frontend on :3000, API on :3001
+
+#### Authentication
+
+Login runs on **Google OAuth** (`AUTH_PROVIDER=google`). To enable real sign-in:
+
+1. In the [Google Cloud Console](https://console.cloud.google.com) → **APIs & Services → Credentials**, create an **OAuth client ID** of type **Web application**.
+2. Add the redirect URI matching your environment — `http://localhost:3000/auth/callback` for dev, `https://<your-domain>/auth/callback` for production (use a separate client per environment).
+3. Set in `.env`:
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — from the OAuth client
+   - `GOOGLE_REDIRECT_URI` — must match the registered URI exactly
+   - `APP_BASE_URL` — public origin of the app (**required in production**)
+   - `SESSION_SECRET` — long random value, e.g. `openssl rand -hex 32` (**required in production**; otherwise sessions reset on every restart)
+
+> The "Sign in with Adobe" demo button is backed by Google OAuth — Adobe IMS user-authentication can't be self-served for this demo, so Google stands in behind the same UI.
+
+With `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` left blank, the auth routes report `demoMode` and the UI offers a one-click mock login instead of redirecting out.
 
 ### For Developers
 
@@ -119,7 +136,6 @@ This is a focused demo, not a production product. Some honest caveats:
 - **Panel count capped at 4 per comic** to keep image-generation token cost reasonable.
 - **Single-page layouts only** — no multi-page books or strips.
 - **Cover and panels are generated separately**, then composed client-side via CSS grid in the `/view` route — not in a single image pass.
-- **Auth is intentionally not wired up.** The workspace is shared and RLS-ready for a future auth integration.
 
 ---
 
@@ -133,4 +149,4 @@ PanelCraft was built over a weekend to demonstrate what's possible when powerful
 
 If you're from the Adobe Firefly team — thank you for taking the time to explore this demo.
 The live build is at https://varoai.martinkrakowski.com/
-Thank you.
+-Cheers.
