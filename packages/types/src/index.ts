@@ -151,6 +151,10 @@ export interface ProjectSummaryDTO {
   isShared: boolean;
   /** True when the signed-in user owns this project (can edit/delete/share). */
   isOwner: boolean;
+  /** Genre tags chosen in the wizard. Empty array when none were picked. */
+  genres: string[];
+  /** Tone tags chosen in the wizard. Empty array when none were picked. */
+  tones: string[];
 }
 
 export interface ProjectListResponse {

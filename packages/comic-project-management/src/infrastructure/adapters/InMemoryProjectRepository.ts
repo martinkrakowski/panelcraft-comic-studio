@@ -62,6 +62,8 @@ export class InMemoryProjectRepository implements RelationalDbPort {
           coverImageUrl: json.coverImageUrl ?? null,
           ownerId: this.owners.get(id) ?? null,
           isShared: this.shared.has(id),
+          genres: json.genres ?? [],
+          tones: json.tones ?? [],
         };
       });
   }
