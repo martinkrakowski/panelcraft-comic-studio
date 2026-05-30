@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { ProjectSummaryDTO } from '@panelcraft/types';
-import { getProjectStatusVariant } from '@panelcraft/ui';
+import type { ProjectStatusBucket, ProjectSummaryDTO } from '@panelcraft/types';
+import { projectStatusBucket } from '@panelcraft/types';
 import { GENRE_OPTIONS, TONE_OPTIONS } from '../../../lib/wizard-constants';
 
 /**
@@ -10,21 +10,15 @@ import { GENRE_OPTIONS, TONE_OPTIONS } from '../../../lib/wizard-constants';
 export type DateRange = 'all' | 'today' | 'week' | 'month';
 
 /**
- * Coarse status buckets the dashboard filter exposes. The project lifecycle
- * has ~13 granular statuses (see `ProjectStatus`); collapsing them into the
- * four user-meaningful groups the status badge already color-codes keeps the
- * filter legible. Bucketing reuses `getProjectStatusVariant` so the grouping
- * stays in lockstep with the badge.
+ * Status options the dashboard filter exposes: the shared lifecycle buckets
+ * (`projectStatusBucket` in `@panelcraft/types`) plus `all` for "no filter".
+ * The classification itself lives in the types package so the lifecycle rule
+ * isn't re-implemented in the UI.
  */
-export type StatusBucket =
-  | 'all'
-  | 'completed'
-  | 'review'
-  | 'in_progress'
-  | 'failed';
+export type StatusBucket = 'all' | ProjectStatusBucket;
 
 /** Non-`all` buckets in display order, used to order the available-status list. */
-const STATUS_BUCKET_ORDER: Exclude<StatusBucket, 'all'>[] = [
+const STATUS_BUCKET_ORDER: ProjectStatusBucket[] = [
   'completed',
   'review',
   'in_progress',
@@ -46,24 +40,6 @@ const EMPTY_FILTERS: DashboardFilters = {
   status: 'all',
   dateRange: 'all',
 };
-
-/** Map a project's granular status onto one of the coarse filter buckets. */
-function statusBucketOf(
-  status: ProjectSummaryDTO['status']
-): Exclude<StatusBucket, 'all'> {
-  switch (getProjectStatusVariant(status)) {
-    case 'success':
-      return 'completed';
-    case 'warning':
-      return 'review';
-    case 'destructive':
-      return 'failed';
-    default:
-      // 'default' (in-flight) and 'secondary' (unknown future) both read as
-      // work still in progress.
-      return 'in_progress';
-  }
-}
 
 /** Earliest `createdAt` (ms) that still passes the given range, or null for `all`. */
 function dateCutoff(range: DateRange): number | null {
@@ -100,7 +76,7 @@ export interface UseDashboardFiltersResult {
    * than one entry — otherwise every project shares a bucket and filtering
    * by status can't narrow anything.
    */
-  availableStatuses: Exclude<StatusBucket, 'all'>[];
+  availableStatuses: ProjectStatusBucket[];
   setSearch: (value: string) => void;
   toggleGenre: (genre: string) => void;
   toggleTone: (tone: string) => void;
@@ -137,7 +113,7 @@ export function useDashboardFilters(
       if (!matchesAny(filters.tones, p.tones)) return false;
       if (
         filters.status !== 'all' &&
-        statusBucketOf(p.status) !== filters.status
+        projectStatusBucket(p.status) !== filters.status
       )
         return false;
       if (cutoff !== null && new Date(p.createdAt).getTime() < cutoff)
@@ -153,11 +129,11 @@ export function useDashboardFilters(
   const available = useMemo(() => {
     const genres = new Set<string>();
     const tones = new Set<string>();
-    const buckets = new Set<Exclude<StatusBucket, 'all'>>();
+    const buckets = new Set<ProjectStatusBucket>();
     for (const p of projects) {
       p.genres.forEach((g) => genres.add(g));
       p.tones.forEach((t) => tones.add(t));
-      buckets.add(statusBucketOf(p.status));
+      buckets.add(projectStatusBucket(p.status));
     }
     // Canonical order first, then any non-preset values (alphabetical).
     const order = (canonical: readonly string[], present: Set<string>) => [
