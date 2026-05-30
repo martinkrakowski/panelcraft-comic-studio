@@ -48,6 +48,43 @@ export type ProjectStatus =
   | 'regenerating_cover'
   | 'pending_review_cover';
 
+/**
+ * Coarse lifecycle grouping of a `ProjectStatus`. The pipeline has many
+ * granular statuses; consumers (dashboard filters, summaries) routinely need
+ * the four user-meaningful phases instead. Owning this mapping here — next to
+ * `ProjectStatus` itself — keeps the lifecycle rule in one shared, framework-
+ * agnostic place rather than duplicated across UI surfaces.
+ */
+export type ProjectStatusBucket =
+  | 'completed'
+  | 'review'
+  | 'in_progress'
+  | 'failed';
+
+/**
+ * Classify a granular `ProjectStatus` into its coarse lifecycle bucket:
+ * `completed`, `review` (any human-review pause), `failed`, or `in_progress`
+ * (any pre-terminal in-flight phase). Exhaustive over `ProjectStatus`; the
+ * `default` also absorbs any future status as still-in-progress.
+ */
+export function projectStatusBucket(
+  status: ProjectStatus
+): ProjectStatusBucket {
+  switch (status) {
+    case 'completed':
+      return 'completed';
+    case 'failed':
+      return 'failed';
+    case 'pending_review':
+    case 'pending_review_extend':
+    case 'pending_review_final':
+    case 'pending_review_cover':
+      return 'review';
+    default:
+      return 'in_progress';
+  }
+}
+
 export interface PanelDTO {
   id: string;
   index: number;
@@ -151,6 +188,10 @@ export interface ProjectSummaryDTO {
   isShared: boolean;
   /** True when the signed-in user owns this project (can edit/delete/share). */
   isOwner: boolean;
+  /** Genre tags chosen in the wizard. Empty array when none were picked. */
+  genres: string[];
+  /** Tone tags chosen in the wizard. Empty array when none were picked. */
+  tones: string[];
 }
 
 export interface ProjectListResponse {

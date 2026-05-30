@@ -28,6 +28,8 @@ export default defineEventHandler(async (event) => {
       coverImageUrl: await toSignedUrlIfPath(r.coverImageUrl),
       isShared: r.isShared,
       isOwner: r.ownerId === ownerValue,
+      genres: r.genres,
+      tones: r.tones,
     }))
   );
   return ok({ projects: summaries });

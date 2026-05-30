@@ -153,7 +153,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
     const { data, error } = await this.supabase
       .from('comic_projects')
       .select(
-        'id, prompt, panel_count, status, created_at, cover_image_url, user_id, is_shared'
+        'id, prompt, panel_count, status, created_at, cover_image_url, user_id, is_shared, genres, tones'
       )
       .or(`user_id.eq.${ownerId.getValue()},is_shared.eq.true`);
 
@@ -171,6 +171,8 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       coverImageUrl: row.cover_image_url,
       ownerId: row.user_id ?? null,
       isShared: row.is_shared,
+      genres: row.genres ?? [],
+      tones: row.tones ?? [],
     }));
   }
 
