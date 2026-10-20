@@ -28,14 +28,8 @@ jobs:
   check:
     if: github.event_name == 'pull_request'
     runs-on: [self-hosted, solstice, builder]
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: [staging, production]
     permissions:
       contents: read
-    env:
-      IMAGE: ghcr.io/martinkrakowski/panelcraft-${{ matrix.environment }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -44,12 +38,12 @@ jobs:
         run: docker buildx build --platform linux/amd64,linux/arm64 -f "$DOCKERFILE" "$CONTEXT"
       - name: Scan the amd64 image
         run: |
-          docker buildx build --platform linux/amd64 --load -t "scan-$GITHUB_RUN_ID-${{ matrix.environment }}" -f "$DOCKERFILE" "$CONTEXT"
-          trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed --no-progress "scan-$GITHUB_RUN_ID-${{ matrix.environment }}"
+          docker buildx build --platform linux/amd64 --load -t "scan-$GITHUB_RUN_ID" -f "$DOCKERFILE" "$CONTEXT"
+          trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed --no-progress "scan-$GITHUB_RUN_ID"
       - name: Clean up
         if: always()
         run: |
-          docker image rm "scan-$GITHUB_RUN_ID-${{ matrix.environment }}" 2>/dev/null || true
+          docker image rm "scan-$GITHUB_RUN_ID" 2>/dev/null || true
           docker builder prune -af --filter until=24h >/dev/null 2>&1 || true
 
   publish:
@@ -58,7 +52,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [staging, production]
+        # Production only for now: staging's STAGING_* secrets (its own URLs and Supabase project)
+        # do not exist yet, and an empty value fails the job. Add `staging` here when they do.
+        environment: [production]
     permissions:
       contents: read
       packages: write
@@ -77,8 +73,9 @@ jobs:
       STAGING_NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }}
       PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      PROD_CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
-      STAGING_CORS_ORIGIN: ${{ secrets.STAGING_CORS_ORIGIN }}
+      # The CORS origin is public; production's is the value deploy.yml has always used.
+      PROD_CORS_ORIGIN: https://varoai.martinkrakowski.com
+      STAGING_CORS_ORIGIN: ${{ vars.STAGING_CORS_ORIGIN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -125,7 +122,7 @@ jobs:
             --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             --build-arg CORS_ORIGIN="$CORS_ORIGIN" \
-            -t "$IMAGE:${GITHUB_REF_NAME}-${GITHUB_SHA::12}" --metadata-file "$RUNNER_TEMP/meta.json" \
+            -t "$IMAGE:sha-${GITHUB_SHA::12}" --metadata-file "$RUNNER_TEMP/meta.json" \
             -f "$DOCKERFILE" "$CONTEXT"
           echo "DIGEST=$(jq -r '."containerimage.digest"' "$RUNNER_TEMP/meta.json")" >> "$GITHUB_ENV"
       - name: Scan the pushed image, both platforms
