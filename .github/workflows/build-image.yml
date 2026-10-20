@@ -65,16 +65,51 @@ jobs:
       id-token: write
     env:
       IMAGE: ghcr.io/martinkrakowski/panelcraft-${{ matrix.environment }}
-      # Build args per environment: production uses the same secret names as deploy.yml;
-      # staging uses the same names with a STAGING_ prefix.
-      NEXT_PUBLIC_API_URL: ${{ matrix.environment == 'production' && secrets.NEXT_PUBLIC_API_URL || secrets.STAGING_NEXT_PUBLIC_API_URL }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ matrix.environment == 'production' && secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ matrix.environment == 'production' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      CORS_ORIGIN: ${{ matrix.environment == 'production' && secrets.CORS_ORIGIN || secrets.STAGING_CORS_ORIGIN }}
+      # Both environments' build args under distinct names: production uses the same
+      # secret names as deploy.yml; staging the same names with a STAGING_ prefix.
+      # The right set is picked in the first run step below, strictly per environment:
+      # an "&& ||" expression here would fall through to the staging value whenever a
+      # production secret is empty, silently baking staging config into the production
+      # image.
+      PROD_NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+      STAGING_NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_NEXT_PUBLIC_API_URL }}
+      PROD_NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      STAGING_NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }}
+      PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      PROD_CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+      STAGING_CORS_ORIGIN: ${{ secrets.STAGING_CORS_ORIGIN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+      - name: Select this environment's build args
+        # Pick exactly one environment's values and fail on any empty one, so an
+        # image can never inherit the other environment's configuration.
+        run: |
+          case "${{ matrix.environment }}" in
+            production) env_prefix=PROD ;;
+            staging) env_prefix=STAGING ;;
+            *)
+              echo "::error::Unknown environment '${{ matrix.environment }}' (expected staging or production)"
+              exit 1
+              ;;
+          esac
+          missing=""
+          for name in NEXT_PUBLIC_API_URL NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY CORS_ORIGIN; do
+            ref="${env_prefix}_${name}"
+            if [ -z "${!ref}" ]; then
+              missing="$missing $ref"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Refusing to build the ${{ matrix.environment }} image; empty build-arg variable(s):${missing}"
+            exit 1
+          fi
+          for name in NEXT_PUBLIC_API_URL NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY CORS_ORIGIN; do
+            ref="${env_prefix}_${name}"
+            printf '%s=%s\n' "$name" "${!ref}" >> "$GITHUB_ENV"
+          done
       - name: Keep the registry login inside this job's temp directory
         run: echo "DOCKER_CONFIG=$RUNNER_TEMP/docker" >> "$GITHUB_ENV"
       - name: Log in to GHCR with this job's own token
