@@ -6,7 +6,7 @@
 # NEXT_PUBLIC_* values must be supplied as --build-arg; they're baked into
 # the Next.js bundle here and cannot be changed at runtime.
 # ----------------------------------------------------------------------------
-FROM node:22-alpine AS builder
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS builder
 
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
@@ -59,7 +59,7 @@ RUN yarn build
 # Stage 2 — runner
 # Minimal alpine + tini. Copies only what each app needs at runtime.
 # ----------------------------------------------------------------------------
-FROM node:22-alpine AS runner
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS runner
 
 RUN apk add --no-cache libc6-compat tini
 WORKDIR /app

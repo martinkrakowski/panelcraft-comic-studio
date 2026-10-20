@@ -1,8 +1,7 @@
 name: Deploy to Production VPS
 
 on:
-  push:
-    branches: [main]
+  # Production moves to Kubernetes; this workflow stays for a manual rollback until cutover.
   workflow_dispatch:
 
 concurrency:
