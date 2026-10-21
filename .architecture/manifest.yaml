@@ -179,3 +179,4 @@ bounded_contexts:
       infrastructure:
         adapters:
           - LangGraphOrchestrationAdapter
+          - PgCheckpointer
