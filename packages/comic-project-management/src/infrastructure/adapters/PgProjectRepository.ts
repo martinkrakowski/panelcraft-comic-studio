@@ -34,8 +34,7 @@ type ProjectSummaryRow = Pick<
 /**
  * Plain-Postgres-backed implementation of the RelationalDbPort.
  * Persists ComicProject entities to the comic_projects table via the pg
- * driver. Mirrors the behaviour of SupabaseProjectRepository exactly, using
- * parameterised queries only.
+ * driver, using parameterised queries only.
  */
 export class PgProjectRepository implements RelationalDbPort {
   constructor(private readonly pool: Pool) {}

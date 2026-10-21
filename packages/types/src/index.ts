@@ -1,11 +1,3 @@
-export type {
-  Database,
-  Tables,
-  TablesInsert,
-  TablesUpdate,
-  Json,
-} from './database.types.js';
-
 export * from './layout-templates';
 
 export interface CharacterValue {
@@ -132,7 +124,7 @@ export interface CreateProjectInput {
     moodBoardImages: string[];
     artDirectionNotes?: string;
   } | null;
-  referenceImages?: string[]; // Relative paths to Supabase Storage
+  referenceImages?: string[]; // Relative paths to object storage
 }
 
 /**

@@ -258,7 +258,7 @@ export async function generatePanel(
     stagedPath = storagePath;
   } catch (err) {
     deps.logger.warn(
-      `Panel ${panelIndex} stage-to-Supabase failed; falling back to remote URL: ` +
+      `Panel ${panelIndex} stage-to-storage failed; falling back to remote URL: ` +
         `${err instanceof Error ? err.message : String(err)}`
     );
   }

@@ -197,8 +197,8 @@ describe('generateCover storage behaviour', () => {
   it('succeeds on a second generateCover for the same project and replaces the stored bytes', async () => {
     const storage = new InMemoryObjectStorage();
     // Seed as if a previous run already stored a cover under the same key —
-    // the Supabase code path this mirrors used upsert:true, so a
-    // regeneration must overwrite rather than fail on the existing key.
+    // the storage code path uses upsert:true, so a regeneration must
+    // overwrite rather than fail on the existing key.
     await storage.putNew(
       'comics/proj-1/covers/front.webp',
       Buffer.from('stale-cover-bytes'),
@@ -281,8 +281,8 @@ describe('generatePanel storage behaviour', () => {
   it('succeeds on a second generatePanel for the same project and index and replaces the stored bytes', async () => {
     const storage = new InMemoryObjectStorage();
     // Seed as if a previous run already staged a panel under the same key —
-    // the Supabase code path this mirrors used upsert:true, so a
-    // regeneration must overwrite rather than fail on the existing key.
+    // the storage code path uses upsert:true, so a regeneration must
+    // overwrite rather than fail on the existing key.
     await storage.putNew(
       'comics/proj-1/panels/0.webp',
       Buffer.from('stale-panel-bytes'),
@@ -320,7 +320,7 @@ describe('generatePanel storage behaviour', () => {
     );
     expect(result.currentPanelIndex).toBe(1);
     expect(
-      logger.warnings.some((warning) => warning.includes('stage-to-Supabase failed'))
+      logger.warnings.some((warning) => warning.includes('stage-to-storage failed'))
     ).toBe(true);
   });
 });

@@ -89,8 +89,8 @@ export class S3ObjectStorage implements ObjectStoragePort {
   }
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
-    // No IfNoneMatch: this mirrors Supabase's upsert:true — an existing
-    // object under the same key is silently replaced.
+    // No IfNoneMatch: an existing object under the same key is silently
+    // replaced (upsert:true semantics).
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucket,

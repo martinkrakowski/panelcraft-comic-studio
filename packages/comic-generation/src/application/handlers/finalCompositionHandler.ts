@@ -30,7 +30,7 @@ interface ComposeFinalPageDeps {
  * Validates that every panel has a generated image — composing a page from
  * an unfinished comic would silently produce missing slots — then flips the
  * project into `composing` and enqueues `compose-final-page`. The worker
- * pulls panel images from Supabase storage, builds the geometry-aware
+ * pulls panel images from object storage, builds the geometry-aware
  * prompt, calls the composition adapter, uploads the result, and pauses
  * the project at `pending_review_final`.
  *

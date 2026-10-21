@@ -1,6 +1,6 @@
 /**
- * Outbound port for object storage (currently Supabase Storage; target is
- * OCI Object Storage via its S3-compatible API).
+ * Outbound port for object storage (OCI Object Storage via its S3-compatible
+ * API).
  *
  * Implement this interface to swap between object storage backends without
  * touching domain or application code. The port mirrors every operation the
@@ -18,10 +18,10 @@ export interface StoredObject {
 }
 
 export interface ObjectStoragePort {
-  /** Creates or replaces (Supabase upsert:true). */
+  /** Creates or replaces (upsert semantics). */
   put(key: string, body: Buffer, contentType: string): Promise<void>;
 
-  /** Fails if the key exists (Supabase used upsert:false). */
+  /** Fails if the key exists (no overwrite). */
   putNew(key: string, body: Buffer, contentType: string): Promise<void>;
 
   /** null when missing */

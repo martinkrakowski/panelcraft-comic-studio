@@ -10,9 +10,9 @@ interface ImageWithFallbackProps {
   /**
    * When true, requests the image with `crossOrigin="anonymous"` so the
    * resulting pixels can be read back through canvas (required for the
-   * comic-page PNG export). Only set this for hosts that send CORS headers
-   * (e.g., Supabase signed URLs); enabling it for non-CORS hosts will
-   * silently block the image.
+   * comic-page PNG export). Only set this for hosts that cooperate with
+   * canvas reads (same-origin or our API's /api/media/ media URLs); enabling
+   * it for other hosts will silently block the image.
    */
   crossOrigin?: boolean;
 }

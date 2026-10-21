@@ -4,14 +4,13 @@ import type { ComicProjectJSON } from '../../domain/entities/ComicProjectSeriali
 /**
  * Shared row shape for the comic_projects table (snake_case columns).
  *
- * This is the canonical mapping used by both the pg-backed and Supabase-backed
- * repositories. JSON-ish columns (`character_bible`, `style_references`,
- * `panels`) are kept as raw values — the storage driver is responsible for
- * encoding them for its transport (e.g. the pg driver must JSON-serialise
- * array-typed columns before binding them as parameters). Timestamps are
- * accepted as ISO strings (as returned by Supabase) or Date instances (as
- * returned by the pg driver) and are normalised to ISO strings when hydrating
- * a ComicProject.
+ * This is the canonical mapping used by the pg-backed repository. JSON-ish
+ * columns (`character_bible`, `style_references`, `panels`) are kept as raw
+ * values — the storage driver is responsible for encoding them for its
+ * transport (e.g. the pg driver must JSON-serialise array-typed columns
+ * before binding them as parameters). Timestamps are accepted as ISO strings
+ * or Date instances (as returned by the pg driver) and are normalised to ISO
+ * strings when hydrating a ComicProject.
  */
 export interface ProjectRow {
   id: string;

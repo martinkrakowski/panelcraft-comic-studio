@@ -34,8 +34,6 @@ COPY . .
 
 # Build args baked into the Next.js client bundle at build time
 ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 # Build arg baked into Nitro's runtimeConfig.cors at build time (varies by deploy)
 ARG CORS_ORIGIN
@@ -46,8 +44,6 @@ ARG CORS_ORIGIN
 # REDIS_HOST is the compose service name; REDIS_PORT and DISABLE_REDIS are
 # fixed across all deploys.
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
-    NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
     CORS_ORIGIN=$CORS_ORIGIN \
     REDIS_HOST=redis \
     REDIS_PORT=6379 \

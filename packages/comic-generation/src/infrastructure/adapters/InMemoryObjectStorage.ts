@@ -13,7 +13,7 @@ export class InMemoryObjectStorage implements ObjectStoragePort {
   private readonly objects = new Map<string, StoredObject>();
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
-    // Overwrites any existing object under the same key (Supabase upsert:true).
+    // Overwrites any existing object under the same key (upsert:true).
     this.objects.set(key, {
       body,
       contentType,

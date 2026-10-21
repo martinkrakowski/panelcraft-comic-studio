@@ -147,7 +147,6 @@ bounded_contexts:
       infrastructure:
         adapters:
           - PgProjectRepository
-          - SupabaseProjectRepository
           - InMemoryProjectRepository
   - name: comic-generation
     type: core

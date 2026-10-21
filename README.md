@@ -33,7 +33,7 @@ Everything is saved automatically, so you can close the tab and pick up where yo
 5. **Review & Generate** — Varo generates panels one at a time and pauses for your approval after each.
 6. **Polish & Export** — Finalize the layout and download your completed page.
 
-LangGraph maintains memory across the entire flow, so your feedback influences future panels — and the run survives reloads through Supabase-backed checkpoints.
+LangGraph maintains memory across the entire flow, so your feedback influences future panels — and the run survives reloads through Postgres-backed checkpoints.
 
 ---
 
@@ -55,7 +55,7 @@ structureStory → buildCharacterBible → generateCover → suggestLayouts
                                                        finalizeComic
 ```
 
-**Checkpointer = Supabase.** Every node transition serializes graph state to `langgraph_checkpoints` so HITL interruption and resume are durable across browser sessions.
+**Checkpointer = Postgres.** Every node transition serializes graph state to `langgraph_checkpoints` so HITL interruption and resume are durable across browser sessions.
 
 See [`DESIGN.md`](./DESIGN.md) for the UI contract and [`AGENTS.md`](./AGENTS.md) for the agent-collaboration workflow.
 
@@ -65,10 +65,10 @@ See [`DESIGN.md`](./DESIGN.md) for the UI contract and [`AGENTS.md`](./AGENTS.md
 
 - **Frontend**: Next.js 15 (App Router) + React 19 + Tailwind CSS + Radix UI primitives
 - **Backend**: Nitro API + event-context dependency injection
-- **AI Orchestration**: LangGraph.js + Supabase-backed checkpointer + LangSmith tracing
+- **AI Orchestration**: LangGraph.js + Postgres-backed checkpointer + LangSmith tracing
 - **LLM**: Grok (reasoning + non-reasoning models, routed per task)
 - **Image Generation**: Grok Imagine (swappable via `ImageGenerationPort`)
-- **Database / Storage**: Supabase Postgres + Supabase Storage (`comics` bucket)
+- **Database / Storage**: Postgres 17 + S3-compatible object storage (images served by the API at `/api/media`)
 - **Job Queue**: BullMQ on Redis for the comic-generation worker
 - **Deploy**: Docker + GitHub Actions → VPS
 
@@ -82,7 +82,8 @@ See [`DESIGN.md`](./DESIGN.md) for the UI contract and [`AGENTS.md`](./AGENTS.md
 2. Run `yarn install` (Node 18+, Yarn v4)
 3. Copy `.env.example` to `.env` and fill in:
    - `XAI_API_KEY` — Grok API (LLM + Imagine)
-   - `SUPABASE_URL` / `SUPABASE_ANON_KEY` — Postgres + Storage + checkpointer
+   - `DATABASE_URL` — Postgres 17 connection (apply `db/migrations/001_init.sql`)
+   - `S3_ENDPOINT` / `S3_REGION` / `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_FORCE_PATH_STYLE` — S3-compatible storage (images served by the API at `/api/media`); `MEDIA_PUBLIC_BASE_URL` defaults to `APP_BASE_URL`
    - `REDIS_URL` — BullMQ job queue
    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — OAuth login (see below). Leave blank to run in **Demo Mode** with a mock sign-in.
 4. Run `yarn dev` — frontend on :3000, API on :3001
