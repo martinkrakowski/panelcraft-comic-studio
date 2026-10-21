@@ -84,7 +84,7 @@ jobs:
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, solstice, builder]
-    # The production build args live in this GitHub environment, as for deploy.yml.
+    # The production build args live in this GitHub environment.
     environment: "Production VPS"
     strategy:
       fail-fast: false
@@ -99,7 +99,7 @@ jobs:
     env:
       IMAGE: ghcr.io/martinkrakowski/panelcraft-${{ matrix.environment }}
       # Both environments' build args under distinct names: production uses the same
-      # secret names as deploy.yml; staging the same names with a STAGING_ prefix.
+      # secret names as the former droplet deploy; staging the same names with a STAGING_ prefix.
       # The right set is picked in the first run step below, strictly per environment:
       # an "&& ||" expression here would fall through to the staging value whenever a
       # production secret is empty, silently baking staging config into the production
