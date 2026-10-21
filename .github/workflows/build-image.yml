@@ -60,7 +60,7 @@ jobs:
       postgres:
         image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
         env:
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust   # throwaway service container, reachable only from this job
           POSTGRES_DB: test
         options: >-
           --health-cmd "pg_isready -h 127.0.0.1 -U postgres"
@@ -73,13 +73,13 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
-        run: yarn install --immutable
+        run: yarn install --immutable --mode=skip-build   # no lifecycle scripts
       - name: Typecheck
         run: yarn typecheck
       - name: Test
         run: yarn test
         env:
-          TEST_DATABASE_URL: postgres://postgres:postgres@postgres:5432/test
+          TEST_DATABASE_URL: postgres://postgres@postgres:5432/test
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
