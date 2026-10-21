@@ -89,9 +89,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Production only for now: staging's STAGING_* secrets (its own URLs)
-        # do not exist yet, and an empty value fails the job. Add `staging` here when they do.
-        environment: [production]
+        # Staging's build args: secret STAGING_NEXT_PUBLIC_API_URL and variable STAGING_CORS_ORIGIN
+        # (https://varoai.solstice.krakowski.cloud), set 2026-10-21.
+        environment: [staging, production]
     permissions:
       contents: read
       packages: write
