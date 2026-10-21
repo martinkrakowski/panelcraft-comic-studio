@@ -6,3 +6,4 @@ export * from './job-queue.out-port.js';
 export * from './llm-client.out-port.js';
 export * from './image-generation.out-port.js';
 export * from './image-composition.out-port.js';
+export * from './object-storage.out-port.js';

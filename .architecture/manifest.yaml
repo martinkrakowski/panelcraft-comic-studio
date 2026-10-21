@@ -176,7 +176,10 @@ bounded_contexts:
             - job-queue.out-port.ts
             - llm-client.out-port.ts
             - image-generation.out-port.ts
+            - object-storage.out-port.ts
       infrastructure:
         adapters:
           - LangGraphOrchestrationAdapter
           - PgCheckpointer
+          - S3ObjectStorage
+          - InMemoryObjectStorage
