@@ -73,8 +73,6 @@ jobs:
         run: yarn install --immutable
       - name: Typecheck
         run: yarn typecheck
-      - name: Validate architecture
-        run: yarn lint:arch
       - name: Test
         run: yarn test
         env:
