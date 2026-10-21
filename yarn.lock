@@ -2110,7 +2110,6 @@ __metadata:
     "@panelcraft/comic-project-management": "workspace:*"
     "@panelcraft/shared": "workspace:*"
     "@panelcraft/types": "workspace:*"
-    "@supabase/supabase-js": "npm:^2.49.4"
     "@types/node": "npm:^25.9.1"
     "@types/pg": "npm:^8.11.0"
     pg: "npm:^8.11.0"
@@ -3446,7 +3445,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@supabase/supabase-js@npm:^2.106.1, @supabase/supabase-js@npm:^2.49.4":
+"@supabase/supabase-js@npm:^2.106.1":
   version: 2.106.1
   resolution: "@supabase/supabase-js@npm:2.106.1"
   dependencies:

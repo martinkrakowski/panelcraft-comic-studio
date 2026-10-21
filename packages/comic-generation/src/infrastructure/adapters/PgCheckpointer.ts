@@ -11,7 +11,7 @@ import type { Pool } from 'pg';
  * This enables suspending, resuming, and rolling back stateful comic generation agent steps
  * across API processes.
  *
- * This is the plain-Postgres counterpart to `SupabaseCheckpointer`, mirroring its behaviour
+ * This is the plain-Postgres counterpart to `the former Supabase checkpointer`, mirroring its behaviour
  * method by method using parameterised SQL only. jsonb values are serialized with JSON.stringify
  * on write and come back already parsed by the pg driver.
  *

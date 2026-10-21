@@ -26,7 +26,6 @@
     "@panelcraft/comic-project-management": "workspace:*",
     "@panelcraft/shared": "workspace:*",
     "@panelcraft/types": "workspace:*",
-    "@supabase/supabase-js": "^2.49.4",
     "pg": "^8.11.0",
     "sharp": "^0.34.5",
     "zod": "^4.4.3"
