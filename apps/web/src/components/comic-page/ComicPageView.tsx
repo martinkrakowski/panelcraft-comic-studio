@@ -29,32 +29,27 @@ interface ComicPageViewProps {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 /**
- * Returns true when an image URL is served by a host that we know returns
- * `Access-Control-Allow-Origin` headers — currently just Supabase Storage.
- * Setting `crossOrigin` on an `<img>` whose host does NOT return CORS will
- * block the image, so we only opt in when we're confident the host will
- * cooperate (otherwise canvas export silently fails and the image works).
+ * Whether to set `crossOrigin` on an `<img>`. Media is served by our own API at
+ * /api/media/ (same origin as the app in production), and same-origin images
+ * never taint a canvas, so no image needs it; the API does not send CORS
+ * headers, so setting it would block cross-origin dev setups. Returns false
+ * on the server and in the browser alike, so hydration is deterministic.
  */
-function isCorsCapableHost(url: string | null | undefined): boolean {
-  if (!url) return false;
-  try {
-    return new URL(url).hostname.endsWith('.supabase.co');
-  } catch {
-    return false;
-  }
+function isCorsCapableHost(_url: string | null | undefined): boolean {
+  return false;
 }
 
 /**
  * Returns true if the image url should be re-fetched through our /api/image-proxy
- * for the PNG export pipeline. We only proxy hosts that don't send CORS
- * headers themselves — Supabase signed URLs work directly.
+ * for the PNG export pipeline. We only proxy hosts that don't cooperate with
+ * canvas reads — same-origin images and our own /api/media/ URLs work directly.
  */
 function needsExportProxy(src: string | undefined | null): boolean {
   if (!src) return false;
   try {
     const u = new URL(src, window.location.href);
     if (u.origin === window.location.origin) return false;
-    if (u.hostname.endsWith('.supabase.co')) return false;
+    if (u.pathname.startsWith('/api/media/')) return false;
     return true;
   } catch {
     return false;
@@ -581,9 +576,9 @@ function ComposedPage({ pageRef, layout, panels }: ComposedPageProps) {
             src={panel.imageUrl}
             alt={`Panel ${panel.index + 1}`}
             className="w-full h-full object-cover"
-            // Older projects still reference the xAI CDN (no CORS).
-            // Only request CORS for hosts that we know serve it (our
-            // Supabase signed URLs) — otherwise the image is blocked.
+            // Older projects still reference the xAI CDN (no CORS); export
+            // re-fetches those through /api/image-proxy. Media is same-origin,
+            // so no image requests CORS (see isCorsCapableHost).
             crossOrigin={isCorsCapableHost(panel.imageUrl)}
           />
         </div>

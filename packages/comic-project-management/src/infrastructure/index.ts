@@ -1,2 +1,2 @@
 export * from './adapters/InMemoryProjectRepository.js';
-export * from './adapters/SupabaseProjectRepository.js';
+export * from './adapters/PgProjectRepository.js';

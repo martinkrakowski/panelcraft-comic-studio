@@ -1,14 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseCheckpointSaver } from '@langchain/langgraph';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Pool } from 'pg';
 
 /**
- * `SupabaseCheckpointer` is a persistent checkpoint saver for LangGraph.js workflows
+ * `PgCheckpointer` is a persistent checkpoint saver for LangGraph.js workflows
  * that implements the `BaseCheckpointSaver` interface.
  *
- * It stores LangGraph checkpoint objects and execution metadata in the `langgraph_checkpoints` Supabase table.
+ * It stores LangGraph checkpoint objects and execution metadata in the `langgraph_checkpoints` table
+ * on plain Postgres (see db/migrations/001_init.sql).
  * This enables suspending, resuming, and rolling back stateful comic generation agent steps
  * across API processes.
+ *
+ * This is the plain-Postgres counterpart to `the former Supabase checkpointer`, mirroring its behaviour
+ * method by method using parameterised SQL only. jsonb values are serialized with JSON.stringify
+ * on write and come back already parsed by the pg driver.
  *
  * Database Schema Expectations:
  * The table `langgraph_checkpoints` must contain:
@@ -19,17 +24,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * - `parent_id` (text)
  * - `created_at` (timestamptz)
  */
-export class SupabaseCheckpointer extends BaseCheckpointSaver {
-  private supabase: SupabaseClient;
-
+export class PgCheckpointer extends BaseCheckpointSaver {
   /**
-   * Initializes a new instance of the `SupabaseCheckpointer` class.
+   * Initializes a new instance of the `PgCheckpointer` class.
    *
-   * @param supabase - The authenticated Supabase Client instance used to query the db.
+   * @param pool - A pg `Pool` used to query the database.
    */
-  constructor(supabase: SupabaseClient) {
+  constructor(private readonly pool: Pool) {
     super();
-    this.supabase = supabase;
   }
 
   /**
@@ -59,28 +61,49 @@ export class SupabaseCheckpointer extends BaseCheckpointSaver {
       checkpoint_id: checkpointId,
       checkpoint: JSON.parse(JSON.stringify(checkpoint)),
       metadata: JSON.parse(JSON.stringify(metadata)),
-      parent_id: checkpoint?.parent_id,
+      parent_id: checkpoint?.parent_id ?? null,
       created_at: new Date().toISOString(),
     };
 
+    const sql = `INSERT INTO langgraph_checkpoints (
+        thread_id, checkpoint_id, checkpoint, metadata, parent_id, created_at
+      )
+      VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6)
+      ON CONFLICT (thread_id, checkpoint_id) DO UPDATE SET
+        checkpoint = EXCLUDED.checkpoint,
+        metadata = EXCLUDED.metadata,
+        parent_id = EXCLUDED.parent_id,
+        created_at = EXCLUDED.created_at`;
+    const params = [
+      record.thread_id,
+      record.checkpoint_id,
+      JSON.stringify(record.checkpoint),
+      JSON.stringify(record.metadata),
+      record.parent_id,
+      record.created_at,
+    ];
+
     // Retry upsert up to 3 times on transient errors
     for (let attempt = 1; attempt <= 3; attempt++) {
-      const { error } = await this.supabase
-        .from('langgraph_checkpoints')
-        .upsert(record, { onConflict: 'thread_id,checkpoint_id' });
-
-      if (!error) return config;
-      if (attempt === 3)
-        throw new Error(
-          `Checkpoint save failed after 3 attempts: ${error.message}`
-        );
-      await new Promise((resolve) => setTimeout(resolve, 100 * attempt)); // Backoff
+      try {
+        await this.pool.query(sql, params);
+        return config;
+      } catch (error: any) {
+        if (attempt === 3)
+          throw new Error(
+            `Checkpoint save failed after 3 attempts: ${error.message}`
+          );
+        await new Promise((resolve) => setTimeout(resolve, 100 * attempt)); // Backoff
+      }
     }
     return config;
   }
 
   /**
-   * Retrieves the latest checkpoint tuple for the configured thread.
+   * Retrieves a checkpoint tuple for the configured thread.
+   *
+   * When the config includes an explicit `checkpoint_id`, that specific checkpoint is
+   * returned; otherwise the newest checkpoint for the thread is returned.
    *
    * @param config - The LangGraph configuration object. Must contain `configurable.thread_id`.
    * @returns A promise resolving to the CheckpointTuple if found, or undefined if no checkpoint is stored yet.
@@ -90,39 +113,52 @@ export class SupabaseCheckpointer extends BaseCheckpointSaver {
     const threadId = config?.configurable?.thread_id;
     if (!threadId) throw new Error('thread_id required in config');
 
-    const { data, error } = await this.supabase
-      .from('langgraph_checkpoints')
-      .select('*')
-      .eq('thread_id', threadId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    const checkpointId = config?.configurable?.checkpoint_id;
 
-    if (error) {
-      if (error.code === 'PGRST116') return undefined;
+    let result;
+    try {
+      if (checkpointId) {
+        result = await this.pool.query(
+          `SELECT * FROM langgraph_checkpoints
+           WHERE thread_id = $1 AND checkpoint_id = $2
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [threadId, checkpointId]
+        );
+      } else {
+        result = await this.pool.query(
+          `SELECT * FROM langgraph_checkpoints
+           WHERE thread_id = $1
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [threadId]
+        );
+      }
+    } catch (error: any) {
       throw new Error(`Checkpoint fetch failed: ${error.message}`);
     }
 
-    return data
-      ? {
-          checkpoint: data.checkpoint,
-          metadata: data.metadata,
-          config: {
+    const row = result.rows[0];
+    if (!row) return undefined;
+
+    return {
+      checkpoint: row.checkpoint,
+      metadata: row.metadata,
+      config: {
+        configurable: {
+          thread_id: row.thread_id,
+          checkpoint_id: row.checkpoint_id,
+        },
+      },
+      parentConfig: row.parent_id
+        ? {
             configurable: {
-              thread_id: data.thread_id,
-              checkpoint_id: data.checkpoint_id,
+              thread_id: row.thread_id,
+              checkpoint_id: row.parent_id,
             },
-          },
-          parentConfig: data.parent_id
-            ? {
-                configurable: {
-                  thread_id: data.thread_id,
-                  checkpoint_id: data.parent_id,
-                },
-              }
-            : undefined,
-        }
-      : undefined;
+          }
+        : undefined,
+    };
   }
 
   /**
@@ -137,36 +173,48 @@ export class SupabaseCheckpointer extends BaseCheckpointSaver {
     const threadId = config?.configurable?.thread_id;
     if (!threadId) throw new Error('thread_id required in config');
 
-    let query = this.supabase
-      .from('langgraph_checkpoints')
-      .select('*')
-      .eq('thread_id', threadId)
-      .order('created_at', { ascending: false });
+    let query = `SELECT * FROM langgraph_checkpoints WHERE thread_id = $1`;
+    const params: any[] = [threadId];
+    let paramIndex = 2;
 
     if (options?.before?.configurable?.checkpoint_id) {
       const beforeCheckpointId = options.before.configurable.checkpoint_id;
       // Validate that the before checkpoint exists
-      const { data: beforeData, error: beforeError } = await this.supabase
-        .from('langgraph_checkpoints')
-        .select('created_at')
-        .eq('thread_id', threadId)
-        .eq('checkpoint_id', beforeCheckpointId)
-        .single();
+      let beforeResult;
+      try {
+        beforeResult = await this.pool.query(
+          `SELECT created_at FROM langgraph_checkpoints
+           WHERE thread_id = $1 AND checkpoint_id = $2`,
+          [threadId, beforeCheckpointId]
+        );
+      } catch (error: any) {
+        throw new Error(`Checkpoint list failed: ${error.message}`);
+      }
 
-      if (beforeError || !beforeData) {
+      if (beforeResult.rows.length === 0) {
         throw new Error(
           `Before checkpoint ${beforeCheckpointId} not found for thread ${threadId}`
         );
       }
-      query = query.lt('created_at', beforeData.created_at);
+      query += ` AND created_at < $${paramIndex++}`;
+      params.push(beforeResult.rows[0].created_at);
     }
 
-    if (options?.limit) query = query.limit(options.limit);
+    query += ` ORDER BY created_at DESC`;
 
-    const { data, error } = await query;
-    if (error) throw new Error(`Checkpoint list failed: ${error.message}`);
+    if (options?.limit) {
+      query += ` LIMIT $${paramIndex++}`;
+      params.push(options.limit);
+    }
 
-    for (const row of data || []) {
+    let result;
+    try {
+      result = await this.pool.query(query, params);
+    } catch (error: any) {
+      throw new Error(`Checkpoint list failed: ${error.message}`);
+    }
+
+    for (const row of result.rows) {
       yield {
         checkpoint: row.checkpoint,
         metadata: row.metadata,
@@ -195,10 +243,10 @@ export class SupabaseCheckpointer extends BaseCheckpointSaver {
   async deleteThread(config: any): Promise<void> {
     const threadId = config?.configurable?.thread_id;
     if (!threadId) return;
-    await this.supabase
-      .from('langgraph_checkpoints')
-      .delete()
-      .eq('thread_id', threadId);
+    await this.pool.query(
+      `DELETE FROM langgraph_checkpoints WHERE thread_id = $1`,
+      [threadId]
+    );
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

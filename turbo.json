@@ -3,8 +3,6 @@
   "globalEnv": [
     "NODE_ENV",
     "NEXT_PUBLIC_API_URL",
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "CORS_ORIGIN",
     "REDIS_HOST",
     "REDIS_PORT",
@@ -13,23 +11,45 @@
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", ".output/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        ".output/**"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "typecheck": {
       "outputs": [],
-      "cache": true
+      "cache": true,
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ],
+      "passThroughEnv": [
+        "TEST_DATABASE_URL",
+        "TEST_S3_ENDPOINT",
+        "TEST_S3_BUCKET",
+        "TEST_S3_ACCESS_KEY_ID",
+        "TEST_S3_SECRET_ACCESS_KEY"
+      ]
     }
   }
 }

@@ -1,7 +1,7 @@
 import { defineEventHandler } from 'h3';
 import { ok } from '../../utils/envelope.js';
 import { getComicUseCase } from '../../utils/dependencies.js';
-import { toSignedUrlIfPath } from '../../utils/supabase.js';
+import { toSignedUrlIfPath } from '../../utils/storage.js';
 import { requireUser, deriveOwnerId } from '../../utils/auth-session.js';
 
 /**

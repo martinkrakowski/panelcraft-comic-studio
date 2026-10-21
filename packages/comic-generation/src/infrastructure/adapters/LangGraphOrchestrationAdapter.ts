@@ -1,4 +1,5 @@
 import { StateGraph, START, END } from '@langchain/langgraph';
+import type { BaseCheckpointSaver } from '@langchain/langgraph';
 import type { LoggerPort } from '@panelcraft/shared';
 import {
   ComicGraphState,
@@ -7,8 +8,8 @@ import {
 import type { ImageGenerationPort } from '../../application/ports/out/image-generation.out-port.js';
 import type { LLMClientPort } from '../../application/ports/out/llm-client.out-port.js';
 import type { RelationalDbPort } from '../../application/ports/out/relational-db.out-port.js';
-import { SupabaseCheckpointer } from './SupabaseCheckpointer.js';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { ObjectStoragePort } from '../../application/ports/out/object-storage.out-port.js';
+import type { MediaUrlPort } from '../../application/ports/out/media-url.out-port.js';
 import type { WorkflowDeps } from './ComicWorkflowTypes.js';
 import { structureStory, buildCharacterBible } from './StoryStructureNodes.js';
 import {
@@ -28,6 +29,7 @@ import {
  */
 export class LangGraphOrchestrationAdapter {
   private readonly deps: WorkflowDeps;
+  private readonly checkpointer: BaseCheckpointSaver;
   private readonly graph;
 
   constructor(
@@ -35,9 +37,12 @@ export class LangGraphOrchestrationAdapter {
     llmClient: LLMClientPort,
     projectRepo: RelationalDbPort,
     logger: LoggerPort,
-    supabase: SupabaseClient
+    storage: ObjectStoragePort,
+    mediaUrls: MediaUrlPort,
+    checkpointer: BaseCheckpointSaver
   ) {
-    this.deps = { imageGenPort, llmClient, projectRepo, logger, supabase };
+    this.deps = { imageGenPort, llmClient, projectRepo, logger, storage, mediaUrls };
+    this.checkpointer = checkpointer;
     this.graph = this.buildGraph();
   }
 
@@ -46,7 +51,6 @@ export class LangGraphOrchestrationAdapter {
   }
 
   private buildGraph() {
-    const checkpointer = new SupabaseCheckpointer(this.deps.supabase);
     const d = this.deps;
 
     const workflow = new StateGraph(ComicGraphState)
@@ -100,6 +104,6 @@ export class LangGraphOrchestrationAdapter {
     });
     workflow.addEdge('finalizeComic', END);
 
-    return workflow.compile({ checkpointer });
+    return workflow.compile({ checkpointer: this.checkpointer });
   }
 }

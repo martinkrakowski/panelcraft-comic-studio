@@ -11,7 +11,7 @@ const logger = createLogger('image-proxy');
 // Server-side allowlist for the proxy. Open proxies are an SSRF foot-gun;
 // scope to the hosts we actually need to bridge for `html-to-image` exports.
 // Extend cautiously when adding a new image source.
-const ALLOWED_HOST_SUFFIXES = ['x.ai', 'supabase.co', 'amazonaws.com'];
+const ALLOWED_HOST_SUFFIXES = ['x.ai', 'amazonaws.com'];
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 25 * 1024 * 1024; // 25 MB, well above any panel size
 const MAX_REDIRECTS = 3;
@@ -23,9 +23,8 @@ function isAllowedHost(hostname: string): boolean {
 }
 
 /**
- * Hostname-only stringification for logs. Signed Supabase URLs carry a
- * `token` query parameter that grants storage access; never log the full
- * URL.
+ * Hostname-only stringification for logs. Signed media URLs carry query
+ * parameters; never log the full URL.
  */
 function redact(u: URL): string {
   return `${u.protocol}//${u.hostname}${u.pathname}`;

@@ -1,15 +1,16 @@
 import { defineEventHandler, getRouterParam, setResponseStatus } from 'h3';
 import { fail, ok } from '../../../utils/envelope.js';
 import { z, ZodError } from 'zod';
-import { getSupabaseClient } from '../../../utils/supabase.js';
+import { getPool } from '../../../utils/db.js';
+import { getStorage } from '../../../utils/storage.js';
 import { requireProjectOwner } from '../../../utils/require-owner.js';
 
 /**
  * DELETE /api/projects/[id]
  *
- * Delete a project and clean up all associated Supabase Storage assets and
+ * Delete a project and clean up all associated object-storage assets and
  * LangGraph checkpoints. Cleanup happens in three steps:
- *   1. List + delete storage objects under `comics/${id}/`
+ *   1. List + delete storage objects under `comics/${id}/` and `${id}/`
  *   2. Delete LangGraph checkpoint rows for thread_id = id
  *   3. Delete the `comic_projects` row
  *
@@ -41,111 +42,74 @@ export default defineEventHandler(async (event) => {
   const cleanupErrors: Array<{ step: string; message: string }> = [];
 
   try {
-    const supabase = getSupabaseClient();
-
     // 1. Verify project exists
-    const { data: project, error: fetchError } = await supabase
-      .from('comic_projects')
-      .select('id, user_id')
-      .eq('id', projectId)
-      .single();
+    const pool = getPool();
+    const { rows } = await pool.query(
+      'SELECT id, user_id FROM comic_projects WHERE id = $1',
+      [projectId]
+    );
 
-    if (fetchError || !project) {
+    if (rows.length === 0) {
       setResponseStatus(event, 404);
       return fail('NOT_FOUND', 'Project not found');
     }
 
-    // 2. Recursively delete all storage objects under comics/${projectId}/
-    // Collect all file paths using depth-first traversal with pagination.
-    // Folders are detected by checking metadata.size === undefined (files always
-    // have a size property, even if it's 0).
-    const filePaths: string[] = [];
-    const prefixStack: string[] = [`${projectId}`]; // depth-first work queue
-    const pageSize = 100;
+    // 2. Delete every storage object belonging to this project. Uploads live
+    // under `comics/${projectId}/`, but rows written before the objects moved
+    // into the `comics/` prefix store paths under `${projectId}/` at the
+    // bucket root — delete both so no orphan object survives.
+    const storage = getStorage();
+    const prefixes = [`comics/${projectId}/`, `${projectId}/`];
+    const keys: string[] = [];
 
-    while (prefixStack.length > 0) {
-      const prefix = prefixStack.pop()!;
-      let offset = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data: entries, error: listError } = await supabase.storage
-          .from('comics')
-          .list(prefix, { limit: pageSize, offset });
-
-        if (listError) {
-          cleanupErrors.push({
-            step: `storage_list:${prefix}`,
-            message: listError.message,
-          });
-          break; // move to next prefix on list error
+    for (const prefix of prefixes) {
+      try {
+        const found = await storage.listKeys(prefix);
+        for (const key of found) {
+          if (!keys.includes(key)) keys.push(key);
         }
-
-        if (!entries || entries.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        for (const entry of entries) {
-          if (!entry.name) continue;
-          const fullPath = `${prefix}/${entry.name}`;
-          // Files have metadata.size (even zero-byte files); folders do not
-          const isFile = typeof entry.metadata?.size === 'number';
-          if (isFile) {
-            filePaths.push(fullPath);
-          } else {
-            // Folder: add to work queue for recursive traversal
-            prefixStack.push(fullPath);
-          }
-        }
-
-        // Paginate if this batch was full
-        if (entries.length < pageSize) {
-          hasMore = false;
-        } else {
-          offset += pageSize;
-        }
+      } catch (err) {
+        cleanupErrors.push({
+          step: `storage_list:${prefix}`,
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
-    // Delete all collected file paths
-    if (filePaths.length > 0) {
-      const { error: deleteStorageError } = await supabase.storage
-        .from('comics')
-        .remove(filePaths);
-
-      if (deleteStorageError) {
+    if (keys.length > 0) {
+      try {
+        await storage.remove(keys);
+      } catch (err) {
         cleanupErrors.push({
           step: 'storage_delete',
-          message: deleteStorageError.message,
+          message: err instanceof Error ? err.message : String(err),
         });
       }
     }
 
     // 3. Delete LangGraph checkpoints
-    const { error: checkpointError } = await supabase
-      .from('langgraph_checkpoints')
-      .delete()
-      .eq('thread_id', projectId);
-
-    if (checkpointError) {
+    try {
+      await pool.query(
+        'DELETE FROM langgraph_checkpoints WHERE thread_id = $1',
+        [projectId]
+      );
+    } catch (err) {
       cleanupErrors.push({
         step: 'checkpoint_delete',
-        message: checkpointError.message,
+        message: err instanceof Error ? err.message : String(err),
       });
     }
 
     // 4. Delete project row
-    const { error: deleteError } = await supabase
-      .from('comic_projects')
-      .delete()
-      .eq('id', projectId);
-
-    if (deleteError) {
+    try {
+      await pool.query('DELETE FROM comic_projects WHERE id = $1', [projectId]);
+    } catch (err) {
       setResponseStatus(event, 500);
-      return fail('DELETE_ERROR', deleteError.message, {
-        partialCleanupErrors: cleanupErrors,
-      });
+      return fail(
+        'DELETE_ERROR',
+        err instanceof Error ? err.message : 'Unknown error',
+        { partialCleanupErrors: cleanupErrors }
+      );
     }
 
     if (cleanupErrors.length > 0) {

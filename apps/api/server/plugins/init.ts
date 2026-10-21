@@ -5,20 +5,23 @@ import {
   LangGraphOrchestrationAdapter,
   ImageGenerationAdapter,
   GeminiImageCompositionAdapter,
+  PgCheckpointer,
 } from '@panelcraft/comic-generation';
 import type {
   ImageGenerationPort,
   ImageCompositionPort,
   GeneratePanelCommand,
 } from '@panelcraft/comic-generation';
-import { SupabaseProjectRepository } from '@panelcraft/comic-project-management';
+import { PgProjectRepository } from '@panelcraft/comic-project-management';
 import { BullMQJobQueueAdapter } from '../adapters/BullMQJobQueueAdapter.js';
 import { XaiLLMClientAdapter } from '../adapters/XaiLLMClientAdapter.js';
 import { initComicWorker } from '../workers/comic-worker.js';
 import type { JobQueuePort } from '@panelcraft/comic-generation';
 import type { Worker } from 'bullmq';
 import { createLogger } from '@panelcraft/shared';
-import { getSupabaseClient } from '../utils/supabase.js';
+import { getPool } from '../utils/db.js';
+import { getStorage } from '../utils/storage.js';
+import { getMediaUrls } from '../utils/media-urls.js';
 
 /**
  * Nitro server initialization plugin.
@@ -35,7 +38,10 @@ export default defineNitroPlugin(async (nitroApp) => {
 
   const logger = createLogger('API');
   const redisConnection = { host: config.redisHost, port: redisPort };
-  const projectRepo = new SupabaseProjectRepository(getSupabaseClient());
+  const projectRepo = new PgProjectRepository(getPool());
+  const storage = getStorage();
+  const mediaUrls = getMediaUrls();
+  const checkpointer = new PgCheckpointer(getPool());
 
   let bullMQQueue: Queue | null = null;
   let jobQueueAdapter: JobQueuePort = {
@@ -119,7 +125,9 @@ export default defineNitroPlugin(async (nitroApp) => {
     llmClient,
     projectRepo,
     logger,
-    getSupabaseClient()
+    storage,
+    mediaUrls,
+    checkpointer
   );
   const comicUseCase = new ComicGenerationUseCase(
     projectRepo,
@@ -142,7 +150,8 @@ export default defineNitroPlugin(async (nitroApp) => {
       projectRepo,
       bullMQQueue,
       logger,
-      getSupabaseClient(),
+      storage,
+      mediaUrls,
       imageGenPort,
       llmClient,
       imageCompositionPort
@@ -162,6 +171,15 @@ export default defineNitroPlugin(async (nitroApp) => {
         logger.error(`[BullMQ] Shutdown errors: ${rejected.length} failure(s)`);
       }
       logger.info('[BullMQ] Connections closed.');
+    }
+    // After the worker has drained (its last save() needs the pool), and
+    // whether or not Redis was enabled.
+    try {
+      await getPool().end();
+    } catch (err) {
+      logger.error(
+        `[Postgres] Pool shutdown failed: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   });
 });

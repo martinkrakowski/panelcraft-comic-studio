@@ -3,7 +3,7 @@ import { ok } from '../../utils/envelope.js';
 import { parseBody } from '../../utils/validation.js';
 import { PreviewStyleSchema } from '../../utils/schemas.js';
 import { getImageGenerationClient } from '../../utils/dependencies.js';
-import { uploadToStorage } from '../../utils/supabase.js';
+import { uploadNew } from '../../utils/storage.js';
 import { requireUser } from '../../utils/auth-session.js';
 
 /**
@@ -29,8 +29,7 @@ export default defineEventHandler(async (event) => {
 
     // Upload to temp storage for preview (short expiry)
     const tempPath = `previews/${Date.now()}.webp`;
-    const { signedUrl } = await uploadToStorage(
-      'comics',
+    const { signedUrl } = await uploadNew(
       tempPath,
       imageBuffer,
       'image/webp'

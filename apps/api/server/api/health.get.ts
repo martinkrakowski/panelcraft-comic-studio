@@ -4,7 +4,7 @@ import { defineEventHandler } from 'h3';
  * GET /api/health
  *
  * Liveness probe for Kubernetes. Returns 200 immediately without touching
- * Redis, Supabase or any other external service, and without requiring
+ * Redis, Postgres, object storage or any other external service, and without requiring
  * auth — it should never hang or fail just because a dependency is down.
  */
 export default defineEventHandler(() => {

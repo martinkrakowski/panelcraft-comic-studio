@@ -162,7 +162,7 @@ function bytesToUuid(b: Buffer): string {
 
 /**
  * Map an OAuth identity to a stable `OwnerId` value object. External subs
- * (Google/Adobe) aren't Supabase auth UUIDs, so we hash `provider:id` into a
+ * (Google/Adobe) aren't Postgres-native UUIDs, so we hash `provider:id` into a
  * deterministic v5 UUID instead of migrating the column. This is the single
  * boundary where the raw identity becomes the typed domain identifier.
  */

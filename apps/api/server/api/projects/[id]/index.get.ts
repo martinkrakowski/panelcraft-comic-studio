@@ -4,7 +4,7 @@ import { NotFoundError } from '@panelcraft/shared';
 import { ok } from '../../../utils/envelope.js';
 import { parseParams } from '../../../utils/validation.js';
 import { getComicUseCase } from '../../../utils/dependencies.js';
-import { toSignedUrlIfPath } from '../../../utils/supabase.js';
+import { toSignedUrlIfPath } from '../../../utils/storage.js';
 import { requireUser, deriveOwnerId } from '../../../utils/auth-session.js';
 
 interface PanelJSON {

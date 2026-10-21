@@ -3,3 +3,6 @@
 export { LangGraphOrchestrationAdapter } from './adapters/LangGraphOrchestrationAdapter.js';
 export { ImageGenerationAdapter } from './adapters/ImageGenerationAdapter.js';
 export { GeminiImageCompositionAdapter } from './adapters/GeminiImageCompositionAdapter.js';
+export { S3ObjectStorage } from './adapters/S3ObjectStorage.js';
+export { InMemoryObjectStorage } from './adapters/InMemoryObjectStorage.js';
+export { PgCheckpointer } from './adapters/PgCheckpointer.js';

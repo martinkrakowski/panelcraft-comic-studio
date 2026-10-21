@@ -7,7 +7,8 @@ import { ok, fail } from '../../utils/envelope.js';
 import { CreateProjectSchema } from '../../utils/schemas.js';
 import { getComicUseCase } from '../../utils/dependencies.js';
 import { createLogger } from '@panelcraft/shared';
-import { getSupabaseClient, uploadToStorage } from '../../utils/supabase.js';
+import { getStorage, uploadNew } from '../../utils/storage.js';
+import { getMediaUrls } from '../../utils/media-urls.js';
 import { formatLayoutSuggestions } from '../../utils/layout-suggestions.js';
 import { requireUser, deriveOwnerId } from '../../utils/auth-session.js';
 import sharp from 'sharp';
@@ -132,7 +133,6 @@ export default defineEventHandler(async (event) => {
   // re-throw so the caller sees the failure rather than a half-created project.
   const referenceImagePaths: string[] = [];
   const moodBoardImagePaths: string[] = [];
-  const supabase = getSupabaseClient();
   const uploadedPaths: string[] = [];
 
   try {
@@ -149,11 +149,7 @@ export default defineEventHandler(async (event) => {
       const match = file.name.match(/^referenceImages(?:_(\d+))?$/);
       if (match) {
         uploadPath = `comics/${projectId}/references/${timestamp}-${randomId}.webp`;
-        const { path } = await uploadToStorage(
-          'comics',
-          uploadPath,
-          processedImage
-        );
+        const { path } = await uploadNew(uploadPath, processedImage);
         const charIndex = match[1] ? parseInt(match[1], 10) : null;
         if (charIndex !== null) {
           referenceImagePaths[charIndex] = path;
@@ -163,11 +159,7 @@ export default defineEventHandler(async (event) => {
         uploadedPaths.push(path);
       } else if (file.name === 'moodBoardImages') {
         uploadPath = `comics/${projectId}/mood-boards/${timestamp}-${randomId}.webp`;
-        const { path } = await uploadToStorage(
-          'comics',
-          uploadPath,
-          processedImage
-        );
+        const { path } = await uploadNew(uploadPath, processedImage);
         moodBoardImagePaths.push(path);
         uploadedPaths.push(path);
       }
@@ -188,7 +180,7 @@ export default defineEventHandler(async (event) => {
     // leave orphans pinned to a project that may never finish provisioning.
     if (uploadedPaths.length > 0) {
       try {
-        await supabase.storage.from('comics').remove(uploadedPaths);
+        await getStorage().remove(uploadedPaths);
       } catch (cleanupErr) {
         logger.error(
           `Failed to clean up uploads for project ${projectId}`,
@@ -213,18 +205,20 @@ export default defineEventHandler(async (event) => {
   const referenceSignedUrls = await Promise.all(
     Array.from(referenceImagePaths).map(async (path) => {
       if (!path) return '';
-      const { data } = await supabase.storage
-        .from('comics')
-        .createSignedUrl(path, 3600);
-      return data?.signedUrl || '';
+      try {
+        return getMediaUrls().urlFor(path, 3600);
+      } catch {
+        return '';
+      }
     })
   );
   const moodBoardSignedUrls = await Promise.all(
     moodBoardImagePaths.map(async (path) => {
-      const { data } = await supabase.storage
-        .from('comics')
-        .createSignedUrl(path, 3600);
-      return data?.signedUrl || '';
+      try {
+        return getMediaUrls().urlFor(path, 3600);
+      } catch {
+        return '';
+      }
     })
   );
 

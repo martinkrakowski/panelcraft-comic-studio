@@ -146,7 +146,7 @@ bounded_contexts:
             - relational-db.out-port.ts
       infrastructure:
         adapters:
-          - SupabaseProjectRepository
+          - PgProjectRepository
           - InMemoryProjectRepository
   - name: comic-generation
     type: core
@@ -175,6 +175,11 @@ bounded_contexts:
             - job-queue.out-port.ts
             - llm-client.out-port.ts
             - image-generation.out-port.ts
+            - object-storage.out-port.ts
+            - media-url.out-port.ts
       infrastructure:
         adapters:
           - LangGraphOrchestrationAdapter
+          - PgCheckpointer
+          - S3ObjectStorage
+          - InMemoryObjectStorage

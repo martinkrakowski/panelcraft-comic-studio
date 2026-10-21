@@ -432,9 +432,9 @@ interface RegenerateCoverDeps {
  * `processing` so the polling UI stays active while the worker runs,
  * and rolls back on enqueue failure. The worker (in `comic-worker.ts`)
  * calls `imageGenPort.generateCover` with optional reviewer `feedback`
- * appended to the prompt and writes the result to the same Supabase
- * storage path the original cover used, so existing signed URLs and
- * downstream consumers transparently see the new image.
+ * appended to the prompt and writes the result to the same storage path
+ * the original cover used, so existing media URLs and downstream consumers
+ * transparently see the new image.
  */
 export async function regenerateCover(
   projectId: string,
