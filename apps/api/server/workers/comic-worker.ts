@@ -5,6 +5,8 @@ import type {
   ImageGenerationPort,
   ImageCompositionPort,
   LLMClientPort,
+  ObjectStoragePort,
+  MediaUrlPort,
 } from '@panelcraft/comic-generation';
 import {
   PENDING_REVIEW_EXTEND_STATUS,
@@ -22,7 +24,6 @@ import {
   getDefaultFallbackLayout,
   type LayoutTemplate,
 } from '@panelcraft/types';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface ComicJobData {
   projectId: string;
@@ -77,6 +78,91 @@ function buildStyleModifiers(project: ComicProject): string | undefined {
 }
 
 /**
+ * Timeout-bound fetch used when pulling http(s) panel images for final
+ * composition. Signed URLs and CDN edges can hang on slow networks, and
+ * without an abort the whole compose-final-page job would block on a
+ * `Promise.all` forever. `AbortController` + `setTimeout` is the standard
+ * inline shape; the timer is cleaned up in `finally` so a fast response
+ * doesn't leak the handle.
+ */
+const PANEL_FETCH_TIMEOUT_MS = 30_000;
+
+async function fetchPanelWithTimeout(
+  url: string,
+  idx: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(),
+    PANEL_FETCH_TIMEOUT_MS
+  );
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      (err.name === 'AbortError' ||
+        (err as { name?: string }).name === 'AbortError')
+    ) {
+      throw new Error(
+        `[Worker] Panel ${idx} fetch timed out after ` +
+          `${PANEL_FETCH_TIMEOUT_MS}ms (${url})`
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Load a panel's image bytes for final composition. Storage keys (non-http)
+ * are read directly from object storage; http(s) URLs are fetched through
+ * the supplied fetcher (timeout-bound).
+ *
+ * @param stored - The panel's stored image value (storage key or URL).
+ * @param storage - Object storage port used to read storage keys.
+ * @param fetcher - Fetcher used for http(s) URLs.
+ * @param idx - Panel index, used only in error messages.
+ * @returns The panel image bytes.
+ */
+export async function loadPanelImage(
+  stored: string,
+  storage: ObjectStoragePort,
+  fetcher: (url: string, idx: number) => Promise<Response> = fetchPanelWithTimeout,
+  idx = 0
+): Promise<Buffer> {
+  if (!/^https?:\/\//i.test(stored)) {
+    const storedObject = await storage.get(stored);
+    if (!storedObject) {
+      throw new Error(
+        `[Worker] Failed to read panel ${idx} (${stored}) from storage: ` +
+          `object not found`
+      );
+    }
+    return storedObject.body;
+  }
+  const res = await fetcher(stored, idx);
+  if (!res.ok) {
+    throw new Error(
+      `[Worker] Failed to fetch panel ${idx} (${stored}): HTTP ${res.status}`
+    );
+  }
+  return Buffer.from(await res.arrayBuffer());
+}
+
+/**
+ * Resolve a storage path into a signed reference URL for image generation.
+ * http(s) URLs are returned unchanged; storage keys are signed through the
+ * `MediaUrlPort` with the same 1-hour TTL the Supabase signed-URL calls
+ * used.
+ */
+export function toReferenceUrl(path: string, mediaUrls: MediaUrlPort): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  return mediaUrls.urlFor(path, 3600);
+}
+
+/**
  * Initialises the BullMQ worker that drives the comic-generation pipeline.
  *
  * Creates a `Worker` bound to the `comic-generation-queue` and registers a
@@ -93,8 +179,9 @@ function buildStyleModifiers(project: ComicProject): string | undefined {
  * @param projectRepo - Repository used to hydrate/save project state.
  * @param queue - The BullMQ queue this worker drains.
  * @param logger - Project logger for diagnostic output.
- * @param supabase - Service-role Supabase client (storage signed URLs,
- *   checkpointer access).
+ * @param storage - Object storage port used to persist generated images.
+ * @param mediaUrls - Media-URL port that signs storage paths into
+ *   absolute short-lived links (xAI reference images).
  * @returns The constructed BullMQ `Worker`. Caller is responsible for
  *   closing it on graceful shutdown.
  */
@@ -103,7 +190,8 @@ export function initComicWorker(
   projectRepo: RelationalDbPort,
   queue: Queue,
   logger: LoggerPort,
-  supabase: SupabaseClient,
+  storage: ObjectStoragePort,
+  mediaUrls: MediaUrlPort,
   imageGenPort: ImageGenerationPort,
   llmClient: LLMClientPort,
   imageCompositionPort: ImageCompositionPort | null
@@ -327,12 +415,7 @@ export function initComicWorker(
           const coverPath = project.getCoverImageUrl();
           if (coverPath && !/^https?:\/\//i.test(coverPath)) {
             try {
-              const { data: signedUrlData } = await supabase.storage
-                .from('comics')
-                .createSignedUrl(coverPath, 3600);
-              if (signedUrlData?.signedUrl) {
-                referenceImageUrls = [signedUrlData.signedUrl];
-              }
+              referenceImageUrls = [toReferenceUrl(coverPath, mediaUrls)];
             } catch (err) {
               logger.warn(
                 `[Worker] Failed to sign cover for regen reference: ${err instanceof Error ? err.message : String(err)}`
@@ -359,13 +442,7 @@ export function initComicWorker(
               );
             }
             const buffer = Buffer.from(await imageResponse.arrayBuffer());
-            const { error: uploadError } = await supabase.storage
-              .from('comics')
-              .upload(storagePath, buffer, {
-                contentType: 'image/webp',
-                upsert: true,
-              });
-            if (uploadError) throw uploadError;
+            await storage.put(storagePath, buffer, 'image/webp');
             stagedPath = storagePath;
           } catch (err) {
             logger.warn(
@@ -428,15 +505,13 @@ export function initComicWorker(
           // Mirror the in-graph cover path so a single storage location
           // owns the cover for the project's whole lifecycle.
           const storagePath = `comics/${projectId}/covers/front.webp`;
-          const { error: uploadError } = await supabase.storage
-            .from('comics')
-            .upload(storagePath, coverBuffer, {
-              contentType: 'image/webp',
-              upsert: true,
-            });
-          if (uploadError) {
+          try {
+            await storage.put(storagePath, coverBuffer, 'image/webp');
+          } catch (uploadError) {
             throw new Error(
-              `[Worker] Failed to upload regenerated cover: ${uploadError.message}`
+              `[Worker] Failed to upload regenerated cover: ${
+                uploadError instanceof Error ? uploadError.message : String(uploadError)
+              }`
             );
           }
 
@@ -570,12 +645,7 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
           const coverPath = project.getCoverImageUrl();
           if (coverPath && !/^https?:\/\//i.test(coverPath)) {
             try {
-              const { data: signedUrlData } = await supabase.storage
-                .from('comics')
-                .createSignedUrl(coverPath, 3600);
-              if (signedUrlData?.signedUrl) {
-                referenceImageUrls = [signedUrlData.signedUrl];
-              }
+              referenceImageUrls = [toReferenceUrl(coverPath, mediaUrls)];
             } catch (err) {
               logger.warn(
                 `[Worker] Failed to sign cover for extend reference: ` +
@@ -601,13 +671,7 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
               );
             }
             const buffer = Buffer.from(await imageResponse.arrayBuffer());
-            const { error: uploadError } = await supabase.storage
-              .from('comics')
-              .upload(storagePath, buffer, {
-                contentType: 'image/webp',
-                upsert: true,
-              });
-            if (uploadError) throw uploadError;
+            await storage.put(storagePath, buffer, 'image/webp');
             stagedPath = storagePath;
           } catch (err) {
             logger.warn(
@@ -673,50 +737,15 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
             layoutTemplate = fallback;
           }
 
-          // Fetch each panel image as a Buffer. Generated panels are stored
+          // Load each panel image as a Buffer. Generated panels are stored
           // as storage paths once staged, but the original CDN URL is kept
-          // as a fallback for panels that failed to stage. Sign storage
-          // paths in parallel — most projects have 1-4 panels so this is
-          // cheap.
+          // as a fallback for panels that failed to stage. Storage paths
+          // are read directly from object storage; http(s) URLs are fetched
+          // with a timeout bound.
           logger.info(
             `[Worker] Composing final page for project ${projectId} ` +
               `(${panels.length} panel(s), layout="${layoutTemplate.id}")`
           );
-          // Bound each panel fetch to a 30s ceiling — signed URLs and
-          // CDN edges can hang on slow networks, and without an abort
-          // the whole compose-final-page job would block on the
-          // Promise.all forever. AbortController + setTimeout is the
-          // standard inline shape; we clean up the timer in `finally`
-          // so a fast response doesn't leak the handle.
-          const PANEL_FETCH_TIMEOUT_MS = 30_000;
-          const fetchPanelWithTimeout = async (
-            url: string,
-            idx: number
-          ): Promise<Response> => {
-            const controller = new AbortController();
-            const timer = setTimeout(
-              () => controller.abort(),
-              PANEL_FETCH_TIMEOUT_MS
-            );
-            try {
-              return await fetch(url, { signal: controller.signal });
-            } catch (err) {
-              if (
-                err instanceof Error &&
-                (err.name === 'AbortError' ||
-                  (err as { name?: string }).name === 'AbortError')
-              ) {
-                throw new Error(
-                  `[Worker] Panel ${idx} fetch timed out after ` +
-                    `${PANEL_FETCH_TIMEOUT_MS}ms (${url})`
-                );
-              }
-              throw err;
-            } finally {
-              clearTimeout(timer);
-            }
-          };
-
           const panelImages: Buffer[] = await Promise.all(
             panels.map(async (panel, idx) => {
               const stored = panel.getGeneratedImageUrl();
@@ -726,28 +755,7 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
                     `image URL — cannot compose.`
                 );
               }
-              let fetchUrl = stored;
-              if (!/^https?:\/\//i.test(stored)) {
-                const { data: signedUrlData, error: signError } =
-                  await supabase.storage
-                    .from('comics')
-                    .createSignedUrl(stored, 3600);
-                if (signError || !signedUrlData?.signedUrl) {
-                  throw new Error(
-                    `[Worker] Failed to sign panel ${idx} (${stored}): ` +
-                      (signError?.message || 'no signed URL returned')
-                  );
-                }
-                fetchUrl = signedUrlData.signedUrl;
-              }
-              const res = await fetchPanelWithTimeout(fetchUrl, idx);
-              if (!res.ok) {
-                throw new Error(
-                  `[Worker] Failed to fetch panel ${idx} (${fetchUrl}): ` +
-                    `HTTP ${res.status}`
-                );
-              }
-              return Buffer.from(await res.arrayBuffer());
+              return loadPanelImage(stored, storage, fetchPanelWithTimeout, idx);
             })
           );
 
@@ -766,15 +774,13 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
           });
 
           const composedPath = `comics/${projectId}/composed/final.webp`;
-          const { error: uploadError } = await supabase.storage
-            .from('comics')
-            .upload(composedPath, composedBuffer, {
-              contentType: 'image/webp',
-              upsert: true,
-            });
-          if (uploadError) {
+          try {
+            await storage.put(composedPath, composedBuffer, 'image/webp');
+          } catch (uploadError) {
             throw new Error(
-              `[Worker] Failed to upload composed page: ${uploadError.message}`
+              `[Worker] Failed to upload composed page: ${
+                uploadError instanceof Error ? uploadError.message : String(uploadError)
+              }`
             );
           }
 
