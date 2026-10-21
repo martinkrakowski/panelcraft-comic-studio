@@ -55,6 +55,10 @@ export class S3ObjectStorage implements ObjectStoragePort {
         secretAccessKey: options.secretAccessKey,
       },
       forcePathStyle: options.forcePathStyle,
+      // SDK >= 3.729 sends CRC checksums (aws-chunked for streams) by default; OCI and other
+      // non-AWS S3 services reject that ("AWS chunked encoding not supported").
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     });
   }
 
