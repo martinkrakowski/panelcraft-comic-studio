@@ -2,11 +2,13 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { MediaUrlPort } from '@panelcraft/comic-generation';
 
 /**
- * Keys allowed to be signed or served by the media route. A key must live
- * under `comics/`, have at least two segments, and contain no `..` segment
- * (no path traversal).
+ * Keys allowed to be signed or served by the media route: at least two
+ * segments of safe characters, a first segment without dots, and no `..`
+ * segment (no path traversal). Covers every prefix the app writes
+ * (`comics/<projectId>/...`, `previews/<file>`) and legacy bucket-root
+ * `<projectId>/...` keys. The bucket holds only panelcraft media.
  */
-const KEY_PATTERN = /^comics\/[A-Za-z0-9_-]+(\/[A-Za-z0-9_.-]+)+$/;
+const KEY_PATTERN = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_.-]+)+$/;
 
 const DEFAULT_TTL_SECONDS = 3600;
 const MAX_TTL_SECONDS = 86400;
@@ -79,9 +81,7 @@ export class HmacMediaUrlSigner implements MediaUrlPort {
       ttlSeconds < 1 ||
       ttlSeconds > MAX_TTL_SECONDS
     ) {
-      throw new Error(
-        `ttlSeconds must be an integer in 1..${MAX_TTL_SECONDS}`
-      );
+      throw new Error(`ttlSeconds must be an integer in 1..${MAX_TTL_SECONDS}`);
     }
 
     const signingKey = deriveSigningKey(this.secret);
@@ -127,8 +127,7 @@ let mediaUrls: HmacMediaUrlSigner | null = null;
  */
 export function getMediaUrls(): HmacMediaUrlSigner {
   if (!mediaUrls) {
-    const base =
-      process.env.MEDIA_PUBLIC_BASE_URL ?? process.env.APP_BASE_URL;
+    const base = process.env.MEDIA_PUBLIC_BASE_URL ?? process.env.APP_BASE_URL;
     if (!base) {
       throw new Error(
         'Missing MEDIA_PUBLIC_BASE_URL or APP_BASE_URL environment variable'

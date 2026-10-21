@@ -45,9 +45,9 @@ describe('HmacMediaUrlSigner', () => {
     const exp = parsed.searchParams.get('exp')!;
     const sig = parsed.searchParams.get('sig')!;
 
-    expect(
-      signer.verify('comics/p1/panels/02.webp', exp, sig)
-    ).toBe('bad-signature');
+    expect(signer.verify('comics/p1/panels/02.webp', exp, sig)).toBe(
+      'bad-signature'
+    );
   });
 
   it('rejects a tampered expiry', () => {
@@ -69,7 +69,9 @@ describe('HmacMediaUrlSigner', () => {
     const exp = parsed.searchParams.get('exp')!;
     const sig = parsed.searchParams.get('sig')!;
 
-    const flipped = sig.endsWith('A') ? sig.slice(0, -1) + 'B' : sig.slice(0, -1) + 'A';
+    const flipped = sig.endsWith('A')
+      ? sig.slice(0, -1) + 'B'
+      : sig.slice(0, -1) + 'A';
     expect(signer.verify(KEY, exp, flipped)).toBe('bad-signature');
   });
 
@@ -82,9 +84,12 @@ describe('HmacMediaUrlSigner', () => {
 
   it.each([
     'comics/../x',
-    'other/a.webp',
-    'comics/a',
+    'comics',
+    '../x',
     'comics/a/b/../c',
+    '.hidden/a.webp',
+    'comics//a.webp',
+    'comics/a b.webp',
     '',
   ])('throws for disallowed key %s', (key) => {
     const signer = makeSigner();
@@ -122,5 +127,14 @@ describe('HmacMediaUrlSigner', () => {
     expect(() => signer.urlFor(KEY, -5)).toThrow();
     expect(() => signer.urlFor(KEY, 1.5)).toThrow();
     expect(() => signer.urlFor(KEY, 86400)).not.toThrow();
+  });
+
+  it.each([
+    'comics/p1/covers/front.webp',
+    'previews/1700000000000.webp',
+    '00000000-0000-0000-0000-000000000000/panels/1.webp',
+  ])('signs keys the app writes: %s', (key) => {
+    const signer = makeSigner();
+    expect(() => signer.urlFor(key)).not.toThrow();
   });
 });

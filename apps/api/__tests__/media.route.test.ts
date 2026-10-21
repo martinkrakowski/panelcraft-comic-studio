@@ -99,15 +99,13 @@ describe('GET /api/media/**', () => {
   });
 
   it('returns 400 for a disallowed key', async () => {
-    const res = await request(app).get(
-      '/api/media/other/a.webp?exp=1000&sig=x'
-    );
+    const res = await request(app).get('/api/media/comics?exp=1000&sig=x');
     expect(res.status).toBe(400);
   });
 
   it('returns 400 for a path-traversal-shaped key', async () => {
     const res = await request(app).get(
-      '/api/media/comics/a/../b?exp=1000&sig=x'
+      '/api/media/comics/a%2F..%2Fb?exp=1000&sig=x'
     );
     expect(res.status).toBe(400);
   });

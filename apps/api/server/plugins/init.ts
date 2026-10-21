@@ -165,13 +165,21 @@ export default defineNitroPlugin(async (nitroApp) => {
       const results = await Promise.allSettled([
         worker?.close(),
         bullMQQueue.close(),
-        getPool().end(),
       ]);
       const rejected = results.filter((r) => r.status === 'rejected');
       if (rejected.length > 0) {
         logger.error(`[BullMQ] Shutdown errors: ${rejected.length} failure(s)`);
       }
       logger.info('[BullMQ] Connections closed.');
+    }
+    // After the worker has drained (its last save() needs the pool), and
+    // whether or not Redis was enabled.
+    try {
+      await getPool().end();
+    } catch (err) {
+      logger.error(
+        `[Postgres] Pool shutdown failed: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   });
 });
