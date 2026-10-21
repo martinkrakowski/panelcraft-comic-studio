@@ -7,12 +7,11 @@ import type {
   ProjectShareState,
   ProjectVisibilityRow,
 } from '../../application/ports/out/relational-db.out-port.js';
-import type { ComicProjectJSON } from '../../domain/entities/ComicProjectSerializer.js';
+import { projectToRow, rowToProject } from './projectRowMapping.js';
 import { createLogger } from '@panelcraft/shared';
 
 const logger = createLogger('SupabaseProjectRepository');
 
-type ProjectRow = Database['public']['Tables']['comic_projects']['Row'];
 type ProjectInsert = Database['public']['Tables']['comic_projects']['Insert'];
 
 /**
@@ -31,7 +30,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
    * the worker and HITL handlers call save() without an owner.
    */
   async save(project: ComicProject, ownerId?: OwnerId): Promise<void> {
-    const row = this.projectToRow(project);
+    const row = projectToRow(project);
     const payload = (ownerId
       ? { ...row, user_id: ownerId.getValue() }
       : row) as unknown as ProjectInsert;
@@ -78,7 +77,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       return null;
     }
 
-    return this.rowToProject(data);
+    return rowToProject(data);
   }
 
   /**
@@ -104,7 +103,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       throw new Error(`Failed to list projects: ${error.message}`);
     }
 
-    return data.map((row) => this.rowToProject(row));
+    return data.map((row) => rowToProject(row));
   }
 
   /**
@@ -121,7 +120,7 @@ export class SupabaseProjectRepository implements RelationalDbPort {
       throw new Error(`Failed to list projects: ${error.message}`);
     }
 
-    return data.map((row) => this.rowToProject(row));
+    return data.map((row) => rowToProject(row));
   }
 
   /**
@@ -222,71 +221,5 @@ export class SupabaseProjectRepository implements RelationalDbPort {
     }
 
     return data?.length ?? 0;
-  }
-
-  /**
-   * Convert a database row to a domain ComicProject entity.
-   */
-  private rowToProject(row: ProjectRow): ComicProject {
-    const json: ComicProjectJSON = {
-      id: row.id,
-      prompt: row.prompt,
-      panelCount: row.panel_count,
-      panels: (row.panels as unknown as ComicProjectJSON['panels']) || [],
-      characterBible: row.character_bible
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (row.character_bible as any)
-        : null,
-      genres: row.genres || undefined,
-      tones: row.tones || undefined,
-      styleReferences: row.style_references
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (row.style_references as any)
-        : null,
-      coverImageUrl: row.cover_image_url,
-      composedImageUrl: row.composed_image_url,
-      selectedLayout: row.selected_layout,
-      layoutOptions: row.layout_options,
-      status: row.status || 'pending_creation',
-      createdAt: row.created_at || new Date().toISOString(),
-      lastReviewSubmittedAt: null,
-    };
-
-    return ComicProject.fromJSON(json);
-  }
-
-  /**
-   * Convert a domain ComicProject entity to a database row, excluding the
-   * separately-managed columns `user_id` (set in save() on create) and
-   * `is_shared` (toggled via setShared/adoptOrphans, defaulted by the DB) so a
-   * routine save() never clobbers ownership or sharing.
-   */
-  private projectToRow(
-    project: ComicProject
-  ): Omit<ProjectRow, 'user_id' | 'is_shared'> {
-    const json = project.toJSON();
-    return {
-      id: json.id,
-      prompt: json.prompt,
-      panel_count: json.panelCount,
-      character_bible: json.characterBible
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (json.characterBible as any)
-        : null,
-      genres: json.genres || null,
-      tones: json.tones || null,
-      style_references: json.styleReferences
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (json.styleReferences as any)
-        : null,
-      cover_image_url: json.coverImageUrl || null,
-      composed_image_url: json.composedImageUrl || null,
-      selected_layout: json.selectedLayout || null,
-      layout_options: json.layoutOptions || null,
-      status: json.status || 'pending_creation',
-      created_at: json.createdAt,
-      updated_at: new Date().toISOString(),
-      panels: (json.panels ?? []) as unknown as ProjectRow['panels'],
-    };
   }
 }

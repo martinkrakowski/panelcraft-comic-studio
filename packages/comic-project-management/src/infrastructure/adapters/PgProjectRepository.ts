@@ -6,57 +6,30 @@ import type {
   ProjectShareState,
   ProjectVisibilityRow,
 } from '../../application/ports/out/relational-db.out-port.js';
-import type { ComicProjectJSON } from '../../domain/entities/ComicProjectSerializer.js';
+import {
+  projectToRow,
+  rowToProject,
+  toIsoString,
+  type ProjectRow,
+} from './projectRowMapping.js';
 import { createLogger } from '@panelcraft/shared';
 
 const logger = createLogger('PgProjectRepository');
 
-/**
- * Minimal row shape for comic_projects as returned by the pg driver
- * (snake_case columns, matching the plain Postgres schema in
- * db/migrations/001_init.sql). timestamptz columns come back as Date
- * instances, so the date-ish columns are typed as unknown and normalized on
- * read.
- */
-interface ProjectRow {
-  id: string;
-  user_id: string | null;
-  prompt: string;
-  panel_count: number;
-  genres: string[] | null;
-  tones: string[] | null;
-  character_bible: unknown | null;
-  style_references: unknown | null;
-  cover_image_url: string | null;
-  selected_layout: string | null;
-  layout_options: string[] | null;
-  status: string;
-  created_at: unknown;
-  updated_at: unknown;
-  panels: unknown;
-  composed_image_url: string | null;
-  is_shared: boolean;
-}
-
 /** Subset of ProjectRow used by listVisibleSummaries. */
-interface ProjectSummaryRow {
-  id: string;
-  prompt: string;
-  panel_count: number;
-  status: string;
-  created_at: unknown;
-  cover_image_url: string | null;
-  user_id: string | null;
-  is_shared: boolean;
-  genres: string[] | null;
-  tones: string[] | null;
-}
-
-/**
- * Write payload for an INSERT/upsert. `user_id` and `is_shared` are managed
- * separately (owner stamped on create, sharing toggled via setShared/adoptOrphans).
- */
-type ProjectWriteRow = Omit<ProjectRow, 'user_id' | 'is_shared'>;
+type ProjectSummaryRow = Pick<
+  ProjectRow,
+  | 'id'
+  | 'prompt'
+  | 'panel_count'
+  | 'status'
+  | 'created_at'
+  | 'cover_image_url'
+  | 'user_id'
+  | 'is_shared'
+  | 'genres'
+  | 'tones'
+>;
 
 /**
  * Plain-Postgres-backed implementation of the RelationalDbPort.
@@ -77,7 +50,7 @@ export class PgProjectRepository implements RelationalDbPort {
    * value was provided (COALESCE keeps the stored owner otherwise).
    */
   async save(project: ComicProject, ownerId?: OwnerId): Promise<void> {
-    const row = this.projectToRow(project);
+    const row = projectToRow(project);
     const userId = ownerId ? ownerId.getValue() : null;
 
     try {
@@ -111,15 +84,19 @@ export class PgProjectRepository implements RelationalDbPort {
           row.panel_count,
           row.genres,
           row.tones,
-          row.character_bible,
-          row.style_references,
+          row.character_bible == null
+            ? null
+            : JSON.stringify(row.character_bible),
+          row.style_references == null
+            ? null
+            : JSON.stringify(row.style_references),
           row.cover_image_url,
           row.selected_layout,
           row.layout_options,
           row.status,
           row.created_at,
           row.updated_at,
-          row.panels,
+          JSON.stringify(row.panels ?? []),
           row.composed_image_url,
         ]
       );
@@ -155,7 +132,7 @@ export class PgProjectRepository implements RelationalDbPort {
       if (!row) {
         return null;
       }
-      return this.rowToProject(row);
+      return rowToProject(row);
     } catch (error) {
       const message = this.errorMessage(error);
       logger.error(`Failed to load project ${id}: ${message}`);
@@ -181,7 +158,7 @@ export class PgProjectRepository implements RelationalDbPort {
       const { rows } = await this.pool.query<ProjectRow>(
         'SELECT * FROM comic_projects'
       );
-      return rows.map((row) => this.rowToProject(row));
+      return rows.map((row) => rowToProject(row));
     } catch (error) {
       const message = this.errorMessage(error);
       logger.error(`Failed to list projects: ${message}`);
@@ -198,7 +175,7 @@ export class PgProjectRepository implements RelationalDbPort {
         'SELECT * FROM comic_projects WHERE user_id = $1',
         [ownerId.getValue()]
       );
-      return rows.map((row) => this.rowToProject(row));
+      return rows.map((row) => rowToProject(row));
     } catch (error) {
       const message = this.errorMessage(error);
       logger.error(`Failed to list projects for owner: ${message}`);
@@ -243,7 +220,7 @@ export class PgProjectRepository implements RelationalDbPort {
         prompt: row.prompt,
         panelCount: row.panel_count,
         status: row.status,
-        createdAt: this.toIsoString(row.created_at),
+        createdAt: toIsoString(row.created_at),
         coverImageUrl: row.cover_image_url,
         ownerId: row.user_id ?? null,
         isShared: row.is_shared,
@@ -306,75 +283,6 @@ export class PgProjectRepository implements RelationalDbPort {
       logger.error(`Failed to adopt orphan projects: ${message}`);
       throw new Error(`Failed to adopt projects: ${message}`);
     }
-  }
-
-  /**
-   * Convert a database row to a domain ComicProject entity.
-   */
-  private rowToProject(row: ProjectRow): ComicProject {
-    const json: ComicProjectJSON = {
-      id: row.id,
-      prompt: row.prompt,
-      panelCount: row.panel_count,
-      panels: (row.panels as unknown as ComicProjectJSON['panels']) || [],
-      characterBible: row.character_bible
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (row.character_bible as any)
-        : null,
-      genres: row.genres || undefined,
-      tones: row.tones || undefined,
-      styleReferences: row.style_references
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (row.style_references as any)
-        : null,
-      coverImageUrl: row.cover_image_url,
-      composedImageUrl: row.composed_image_url,
-      selectedLayout: row.selected_layout,
-      layoutOptions: row.layout_options,
-      status: row.status || 'pending_creation',
-      createdAt: this.toIsoString(row.created_at),
-      lastReviewSubmittedAt: null,
-    };
-
-    return ComicProject.fromJSON(json);
-  }
-
-  /**
-   * Convert a domain ComicProject entity to a database row, excluding the
-   * separately-managed columns `user_id` (set in save() on create) and
-   * `is_shared` (toggled via setShared/adoptOrphans, defaulted by the DB) so a
-   * routine save() never clobbers ownership or sharing.
-   */
-  private projectToRow(project: ComicProject): ProjectWriteRow {
-    const json = project.toJSON();
-    return {
-      id: json.id,
-      prompt: json.prompt,
-      panel_count: json.panelCount,
-      character_bible: json.characterBible
-        ? JSON.stringify(json.characterBible)
-        : null,
-      genres: json.genres || null,
-      tones: json.tones || null,
-      style_references: json.styleReferences
-        ? JSON.stringify(json.styleReferences)
-        : null,
-      cover_image_url: json.coverImageUrl || null,
-      composed_image_url: json.composedImageUrl || null,
-      selected_layout: json.selectedLayout || null,
-      layout_options: json.layoutOptions || null,
-      status: json.status || 'pending_creation',
-      created_at: json.createdAt,
-      updated_at: new Date().toISOString(),
-      panels: JSON.stringify(json.panels ?? []),
-    };
-  }
-
-  /** Normalise a timestamptz value (Date or ISO string) to an ISO string. */
-  private toIsoString(value: unknown): string {
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === 'string') return value;
-    return new Date().toISOString();
   }
 
   private errorMessage(error: unknown): string {
