@@ -5,6 +5,7 @@
  * Implement this interface to swap between object storage backends without
  * touching domain or application code. The port mirrors every operation the
  * comic workflow uses today:
+ *   - upload with `upsert: true` semantics (put — create or replace)
  *   - upload with `upsert: false` semantics (putNew)
  *   - read-by-path (get)
  *   - recursive delete of all objects under a project prefix (listKeys + remove)
@@ -17,6 +18,9 @@ export interface StoredObject {
 }
 
 export interface ObjectStoragePort {
+  /** Creates or replaces (Supabase upsert:true). */
+  put(key: string, body: Buffer, contentType: string): Promise<void>;
+
   /** Fails if the key exists (Supabase used upsert:false). */
   putNew(key: string, body: Buffer, contentType: string): Promise<void>;
 

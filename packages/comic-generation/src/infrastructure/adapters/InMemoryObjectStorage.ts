@@ -5,11 +5,21 @@ import type {
 
 /**
  * In-memory ObjectStoragePort implementation for tests. It mirrors the
- * behavioural contract of the real S3 adapter (putNew rejects existing keys,
- * get returns null for missing keys, remove ignores missing keys).
+ * behavioural contract of the real S3 adapter (put overwrites existing keys,
+ * putNew rejects existing keys, get returns null for missing keys, remove
+ * ignores missing keys).
  */
 export class InMemoryObjectStorage implements ObjectStoragePort {
   private readonly objects = new Map<string, StoredObject>();
+
+  async put(key: string, body: Buffer, contentType: string): Promise<void> {
+    // Overwrites any existing object under the same key (Supabase upsert:true).
+    this.objects.set(key, {
+      body,
+      contentType,
+      contentLength: body.length,
+    });
+  }
 
   async putNew(key: string, body: Buffer, contentType: string): Promise<void> {
     if (this.objects.has(key)) {

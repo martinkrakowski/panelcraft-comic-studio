@@ -48,7 +48,7 @@ export async function generateCover(
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        await deps.storage.putNew(storagePath, coverBuffer, 'image/webp');
+        await deps.storage.put(storagePath, coverBuffer, 'image/webp');
         uploadError = null;
         break;
       } catch (err) {
@@ -254,7 +254,7 @@ export async function generatePanel(
       );
     }
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-    await deps.storage.putNew(storagePath, imageBuffer, 'image/webp');
+    await deps.storage.put(storagePath, imageBuffer, 'image/webp');
     stagedPath = storagePath;
   } catch (err) {
     deps.logger.warn(

@@ -49,6 +49,34 @@ export function objectStorageContractTests(
       ).rejects.toThrow();
     });
 
+    it('creates an object via put', async () => {
+      const key = `${prefix}/put-create`;
+      const body = Buffer.from('created via put');
+
+      await port.put(key, body, 'image/webp');
+
+      const object = await port.get(key);
+      expect(object).not.toBeNull();
+      expect(object!.contentType).toBe('image/webp');
+      expect(object!.contentLength).toBe(body.length);
+      expect(object!.body.equals(body)).toBe(true);
+    });
+
+    it('replaces bytes and contentType when put targets an existing key', async () => {
+      const key = `${prefix}/put-replace`;
+      await port.putNew(key, Buffer.from('old bytes'), 'text/plain');
+
+      const replacement = Buffer.from('new bytes');
+      await port.put(key, replacement, 'image/webp');
+
+      const object = await port.get(key);
+      expect(object).not.toBeNull();
+      expect(object!.contentType).toBe('image/webp');
+      expect(object!.contentLength).toBe(replacement.length);
+      expect(object!.body.equals(replacement)).toBe(true);
+      expect(object!.body.equals(Buffer.from('old bytes'))).toBe(false);
+    });
+
     it('returns null for a missing key', async () => {
       await expect(port.get(`${prefix}/missing`)).resolves.toBeNull();
     });

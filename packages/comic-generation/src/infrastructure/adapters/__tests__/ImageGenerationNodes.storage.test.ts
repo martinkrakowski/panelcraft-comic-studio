@@ -139,6 +139,9 @@ function makeProjectRepo() {
 
 function makeFailingStorage(error = new Error('bucket unavailable')): ObjectStoragePort {
   return {
+    put: vi.fn(async () => {
+      throw error;
+    }),
     putNew: vi.fn(async () => {
       throw error;
     }),
@@ -189,6 +192,32 @@ describe('generateCover storage behaviour', () => {
     expect(stored).not.toBeNull();
     expect(stored!.contentType).toBe('image/webp');
     expect(stored!.body.equals(Buffer.from('cover-image-bytes'))).toBe(true);
+  });
+
+  it('succeeds on a second generateCover for the same project and replaces the stored bytes', async () => {
+    const storage = new InMemoryObjectStorage();
+    // Seed as if a previous run already stored a cover under the same key —
+    // the Supabase code path this mirrors used upsert:true, so a
+    // regeneration must overwrite rather than fail on the existing key.
+    await storage.putNew(
+      'comics/proj-1/covers/front.webp',
+      Buffer.from('stale-cover-bytes'),
+      'application/octet-stream'
+    );
+
+    const deps = makeDeps({ storage });
+    const result = await generateCover(makeState(), deps);
+
+    expect(result.coverImageUrl).toBe('comics/proj-1/covers/front.webp');
+    expect(result.project.coverImageUrl).toBe(
+      'comics/proj-1/covers/front.webp'
+    );
+
+    const stored = await storage.get('comics/proj-1/covers/front.webp');
+    expect(stored).not.toBeNull();
+    expect(stored!.contentType).toBe('image/webp');
+    expect(stored!.body.equals(Buffer.from('cover-image-bytes'))).toBe(true);
+    expect(stored!.body.equals(Buffer.from('stale-cover-bytes'))).toBe(false);
   });
 
   it('throws after three failed upload attempts, marking the project failed', async () => {
@@ -247,6 +276,33 @@ describe('generatePanel storage behaviour', () => {
       'comics/proj-1/panels/0.webp'
     );
     expect(result.currentPanelIndex).toBe(1);
+  });
+
+  it('succeeds on a second generatePanel for the same project and index and replaces the stored bytes', async () => {
+    const storage = new InMemoryObjectStorage();
+    // Seed as if a previous run already staged a panel under the same key —
+    // the Supabase code path this mirrors used upsert:true, so a
+    // regeneration must overwrite rather than fail on the existing key.
+    await storage.putNew(
+      'comics/proj-1/panels/0.webp',
+      Buffer.from('stale-panel-bytes'),
+      'application/octet-stream'
+    );
+
+    const deps = makeDeps({ storage });
+    const state = makeState({ currentPanelIndex: 0 });
+    const result = await generatePanel(state, deps);
+
+    expect(result.project.panels![0].generatedImageUrl).toBe(
+      'comics/proj-1/panels/0.webp'
+    );
+    expect(result.currentPanelIndex).toBe(1);
+
+    const stored = await storage.get('comics/proj-1/panels/0.webp');
+    expect(stored).not.toBeNull();
+    expect(stored!.contentType).toBe('image/webp');
+    expect(stored!.body.equals(PANEL_BYTES)).toBe(true);
+    expect(stored!.body.equals(Buffer.from('stale-panel-bytes'))).toBe(false);
   });
 
   it('falls back to the remote URL when staging the panel fails', async () => {
