@@ -99,12 +99,16 @@ describe('GET /api/media/**', () => {
   });
 
   it('returns 400 for a disallowed key', async () => {
-    const res = await request(app).get('/api/media/other/a.webp?exp=1000&sig=x');
+    const res = await request(app).get(
+      '/api/media/other/a.webp?exp=1000&sig=x'
+    );
     expect(res.status).toBe(400);
   });
 
   it('returns 400 for a path-traversal-shaped key', async () => {
-    const res = await request(app).get('/api/media/comics/a/../b?exp=1000&sig=x');
+    const res = await request(app).get(
+      '/api/media/comics/a/../b?exp=1000&sig=x'
+    );
     expect(res.status).toBe(400);
   });
 
@@ -116,5 +120,22 @@ describe('GET /api/media/**', () => {
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toBe('application/octet-stream');
     expect(res.headers['content-disposition']).toBe('attachment');
+  });
+
+  it('never serves SVG inline (same-origin script risk)', async () => {
+    await storage.put(
+      KEY,
+      Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+      'image/svg+xml'
+    );
+
+    const res = await request(app).get(signedPath());
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('application/octet-stream');
+    expect(res.headers['content-disposition']).toBe('attachment');
+    expect(res.headers['content-security-policy']).toContain(
+      "default-src 'none'"
+    );
   });
 });

@@ -12,6 +12,14 @@ import { getMediaUrls, isMediaKeyAllowed } from '../../utils/media-urls.js';
 
 const logger = createLogger('media');
 
+const RASTER_TYPES = new Set([
+  'image/webp',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/avif',
+]);
+
 function respond(event: H3Event, status: number, body: unknown) {
   setResponseStatus(event, status);
   return body;
@@ -76,23 +84,27 @@ export default defineEventHandler(async (event) => {
     return respond(event, 404, { error: 'Not found' });
   }
 
-  if (stored.contentType.startsWith('image/')) {
+  // Raster images only: an SVG (or HTML) served from the API shares the app's
+  // origin and could run script, so anything else downloads as an attachment.
+  if (RASTER_TYPES.has(stored.contentType.split(';')[0].trim().toLowerCase())) {
     setResponseHeader(event, 'Content-Type', stored.contentType);
   } else {
     setResponseHeader(event, 'Content-Type', 'application/octet-stream');
     setResponseHeader(event, 'Content-Disposition', 'attachment');
   }
   setResponseHeader(event, 'Content-Length', stored.contentLength);
-  const maxAge = Math.min(
-    Number(exp) - Math.floor(Date.now() / 1000),
-    3600
-  );
+  const maxAge = Math.min(Number(exp) - Math.floor(Date.now() / 1000), 3600);
   setResponseHeader(
     event,
     'Cache-Control',
     `private, max-age=${Math.max(0, maxAge)}`
   );
   setResponseHeader(event, 'X-Content-Type-Options', 'nosniff');
+  setResponseHeader(
+    event,
+    'Content-Security-Policy',
+    "default-src 'none'; sandbox"
+  );
 
   return stored.body;
 });
