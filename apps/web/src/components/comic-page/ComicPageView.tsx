@@ -576,10 +576,9 @@ function ComposedPage({ pageRef, layout, panels }: ComposedPageProps) {
             src={panel.imageUrl}
             alt={`Panel ${panel.index + 1}`}
             className="w-full h-full object-cover"
-            // Older projects still reference the xAI CDN (no CORS).
-            // Only request CORS for hosts that cooperate with canvas reads
-            // (same-origin or our /api/media/ media URLs) — otherwise the
-            // image is blocked.
+            // Older projects still reference the xAI CDN (no CORS); export
+            // re-fetches those through /api/image-proxy. Media is same-origin,
+            // so no image requests CORS (see isCorsCapableHost).
             crossOrigin={isCorsCapableHost(panel.imageUrl)}
           />
         </div>

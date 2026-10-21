@@ -70,7 +70,7 @@ See [`DESIGN.md`](./DESIGN.md) for the UI contract and [`AGENTS.md`](./AGENTS.md
 - **Image Generation**: Grok Imagine (swappable via `ImageGenerationPort`)
 - **Database / Storage**: Postgres 17 + S3-compatible object storage (images served by the API at `/api/media`)
 - **Job Queue**: BullMQ on Redis for the comic-generation worker
-- **Deploy**: Docker + GitHub Actions → VPS
+- **Deploy**: signed multi-arch images (GitHub Actions) → k3s on OCI via Flux
 
 ---
 
