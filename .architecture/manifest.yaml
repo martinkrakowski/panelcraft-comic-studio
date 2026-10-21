@@ -146,6 +146,7 @@ bounded_contexts:
             - relational-db.out-port.ts
       infrastructure:
         adapters:
+          - PgProjectRepository
           - SupabaseProjectRepository
           - InMemoryProjectRepository
   - name: comic-generation

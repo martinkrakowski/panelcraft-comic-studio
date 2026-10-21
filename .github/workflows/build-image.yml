@@ -46,6 +46,40 @@ jobs:
           docker image rm "scan-$GITHUB_RUN_ID" 2>/dev/null || true
           docker builder prune -af --filter until=24h >/dev/null 2>&1 || true
 
+  test:
+    if: github.event_name == 'pull_request'
+    runs-on: [self-hosted, solstice, builder]
+    permissions:
+      contents: read
+    container:
+      image: node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Typecheck
+        run: yarn typecheck
+      - name: Validate architecture
+        run: yarn lint:arch
+      - name: Test
+        run: yarn test
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@postgres:5432/test
+
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, solstice, builder]
