@@ -6,11 +6,16 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     // Deterministic dummy values so integration tests are self-contained.
-    // The exercised paths construct a Supabase client but never hit the network
-    // (no file uploads), so these don't need to be real.
+    // The exercised paths use Postgres and object storage but never hit the
+    // network (no file uploads), so these don't need to be real.
     env: {
-      SUPABASE_URL: 'http://localhost:54321',
-      SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+      DATABASE_URL: 'postgres://test:test@127.0.0.1:1/test',
+      S3_ENDPOINT: 'http://127.0.0.1:1',
+      S3_REGION: 'us-east-1',
+      S3_BUCKET: 'test',
+      S3_ACCESS_KEY_ID: 'test',
+      S3_SECRET_ACCESS_KEY: 'test',
+      APP_BASE_URL: 'http://localhost:3000',
     },
     coverage: {
       provider: 'v8',

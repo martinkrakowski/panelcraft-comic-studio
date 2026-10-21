@@ -27,7 +27,7 @@ export function setStorageForTests(next: ObjectStoragePort | null): void {
  * storage path plus a freshly-signed media URL.
  *
  * If signing fails, the uploaded object is removed before rethrowing — the
- * same compensation the Supabase storage helper performs.
+ * same compensation the legacy storage helper performed.
  */
 export async function uploadNew(
   key: string,
@@ -54,7 +54,7 @@ export async function uploadNew(
 
 /**
  * Convert a storage path to a freshly-signed short-lived media URL, mirroring
- * the Supabase `toSignedUrlIfPath` semantics: null/empty → null; an existing
+ * the legacy `toSignedUrlIfPath` semantics: null/empty → null; an existing
  * http(s) URL is returned unchanged; otherwise sign, logging a warning and
  * returning null when signing fails.
  */

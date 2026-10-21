@@ -154,8 +154,8 @@ export async function loadPanelImage(
 /**
  * Resolve a storage path into a signed reference URL for image generation.
  * http(s) URLs are returned unchanged; storage keys are signed through the
- * `MediaUrlPort` with the same 1-hour TTL the Supabase signed-URL calls
- * used.
+ * `MediaUrlPort` with the same 1-hour TTL the object-storage signed-URL
+ * calls used.
  */
 export function toReferenceUrl(path: string, mediaUrls: MediaUrlPort): string {
   if (/^https?:\/\//i.test(path)) return path;
@@ -430,7 +430,7 @@ export function initComicWorker(
             referenceImageUrls,
           });
 
-          // Persist the regenerated image to Supabase so the URL doesn't
+          // Persist the regenerated image to object storage so the URL doesn't
           // expire and CORS-dependent features (PNG export) keep working.
           const storagePath = `comics/${projectId}/panels/${panelIndex}.webp`;
           let stagedPath = remoteUrl;
@@ -446,7 +446,7 @@ export function initComicWorker(
             stagedPath = storagePath;
           } catch (err) {
             logger.warn(
-              `[Worker] Regenerated panel ${panelIndex} stage-to-Supabase failed; ` +
+              `[Worker] Regenerated panel ${panelIndex} stage-to-storage failed; ` +
                 `falling back to remote URL: ${err instanceof Error ? err.message : String(err)}`
             );
           }
@@ -623,7 +623,7 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
 
           // Now generate the image for the targeted panel. Mirrors the
           // regenerate-panel pipeline (mask of styleModifiers, optional
-          // cover reference, Supabase staging) so visual continuity carries
+          // cover reference, object-storage staging) so visual continuity carries
           // over without diverging from the original tooling.
           const basePrompt = targetPanel.getPrompt().trim();
           if (!basePrompt) {
@@ -675,7 +675,7 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
             stagedPath = storagePath;
           } catch (err) {
             logger.warn(
-              `[Worker] Extend panel ${nextPendingIndex} stage-to-Supabase failed; ` +
+              `[Worker] Extend panel ${nextPendingIndex} stage-to-storage failed; ` +
                 `falling back to remote URL: ` +
                 (err instanceof Error ? err.message : String(err))
             );
@@ -700,7 +700,7 @@ Return ONLY a valid JSON array of exactly ${needsPrompts.length} string(s) with 
           // the LangGraph thread already finalized for the original
           // generation. We pull each approved panel image as a Buffer, hand
           // them to the composition adapter together with the resolved layout
-          // template, and stage the result back to Supabase. The project is
+          // template, and stage the result back to object storage. The project is
           // left at `pending_review_final` so the user can approve or reject
           // the composite via the existing review endpoint.
           if (!imageCompositionPort) {

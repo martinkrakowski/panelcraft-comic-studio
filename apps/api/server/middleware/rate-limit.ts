@@ -63,12 +63,10 @@ export default defineEventHandler((event) => {
   // UUID generation overhead on every health-check / static request.
   // Falls back to IP when cookies are unavailable (curl, server-to-server).
   let sessionId = getCookie(event, SESSION_COOKIE);
-  let usesIpFallback = false;
   if (!sessionId) {
     const clientIp = getClientIp(event);
     // Use IP as fallback to prevent non-cookie clients from evading rate limits
     sessionId = clientIp;
-    usesIpFallback = true;
     // Attempt to mint and set a cookie for future requests
     const newSessionId = randomUUID();
     try {
