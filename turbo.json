@@ -33,7 +33,10 @@
     },
     "typecheck": {
       "outputs": [],
-      "cache": true
+      "cache": true,
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test": {
       "dependsOn": [
