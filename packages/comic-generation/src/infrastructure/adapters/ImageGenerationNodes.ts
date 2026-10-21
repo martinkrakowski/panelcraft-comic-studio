@@ -43,31 +43,19 @@ export async function generateCover(
       characterBible: project.characterBible,
     });
 
-    const bucket = 'comics';
     const storagePath = `comics/${projectId}/covers/front.webp`;
     let uploadError: Error | null = null;
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const { error } = await deps.supabase.storage
-          .from(bucket)
-          .upload(storagePath, coverBuffer, {
-            contentType: 'image/webp',
-            upsert: true,
-          });
-        if (error) {
-          uploadError = error as unknown as Error;
-          deps.logger.warn(
-            `Cover upload attempt ${attempt} failed: ${error.message}`
-          );
-          if (attempt < 3)
-            await new Promise((r) => setTimeout(r, 1000 * attempt));
-        } else {
-          uploadError = null;
-          break;
-        }
+        await deps.storage.putNew(storagePath, coverBuffer, 'image/webp');
+        uploadError = null;
+        break;
       } catch (err) {
         uploadError = err as Error;
+        deps.logger.warn(
+          `Cover upload attempt ${attempt} failed: ${err instanceof Error ? err.message : String(err)}`
+        );
         if (attempt < 3)
           await new Promise((r) => setTimeout(r, 1000 * attempt));
       }
@@ -153,12 +141,7 @@ export async function layoutInterrupt(
   let coverImageUrl = '';
   if (state.coverImageUrl) {
     try {
-      const { data: signedUrlData } = await deps.supabase.storage
-        .from('comics')
-        .createSignedUrl(state.coverImageUrl, 3600);
-      if (signedUrlData?.signedUrl) {
-        coverImageUrl = signedUrlData.signedUrl;
-      }
+      coverImageUrl = deps.mediaUrls.urlFor(state.coverImageUrl, 3600);
     } catch (err) {
       deps.logger.warn(
         `Failed to generate signed URL for layout preview: ${err instanceof Error ? err.message : String(err)}`
@@ -241,12 +224,7 @@ export async function generatePanel(
   let referenceImageUrls: string[] | undefined;
   if (state.coverImageUrl) {
     try {
-      const { data: signedUrlData } = await deps.supabase.storage
-        .from('comics')
-        .createSignedUrl(state.coverImageUrl, 3600);
-      if (signedUrlData?.signedUrl) {
-        referenceImageUrls = [signedUrlData.signedUrl];
-      }
+      referenceImageUrls = [deps.mediaUrls.urlFor(state.coverImageUrl, 3600)];
     } catch (err) {
       deps.logger.warn(
         `Failed to generate fresh signed URL for reference image: ${err instanceof Error ? err.message : String(err)}`
@@ -261,10 +239,10 @@ export async function generatePanel(
     referenceImageUrls,
   });
 
-  // Stage the generated panel in Supabase Storage so we own its URL forever
+  // Stage the generated panel in object storage so we own its URL forever
   // (xAI returns short-lived signed URLs) and so the page exporter can read
-  // pixels back from canvas — Supabase serves CORS headers, the xAI CDN
-  // doesn't. Errors here surface as panel regenerations rather than data loss.
+  // pixels back from canvas. Errors here surface as panel regenerations
+  // rather than data loss.
   const projectId = state.project.id;
   const storagePath = `comics/${projectId}/panels/${panelIndex}.webp`;
   let stagedPath = remoteImageUrl;
@@ -276,13 +254,7 @@ export async function generatePanel(
       );
     }
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-    const { error: uploadError } = await deps.supabase.storage
-      .from('comics')
-      .upload(storagePath, imageBuffer, {
-        contentType: 'image/webp',
-        upsert: true,
-      });
-    if (uploadError) throw uploadError;
+    await deps.storage.putNew(storagePath, imageBuffer, 'image/webp');
     stagedPath = storagePath;
   } catch (err) {
     deps.logger.warn(

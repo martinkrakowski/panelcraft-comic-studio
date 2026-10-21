@@ -177,6 +177,7 @@ bounded_contexts:
             - llm-client.out-port.ts
             - image-generation.out-port.ts
             - object-storage.out-port.ts
+            - media-url.out-port.ts
       infrastructure:
         adapters:
           - LangGraphOrchestrationAdapter
