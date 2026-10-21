@@ -49,6 +49,8 @@ jobs:
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, solstice, builder]
+    # The production build args live in this GitHub environment, as for deploy.yml.
+    environment: "Production VPS"
     strategy:
       fail-fast: false
       matrix:
