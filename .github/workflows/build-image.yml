@@ -53,6 +53,9 @@ jobs:
       contents: read
     container:
       image: node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+    defaults:
+      run:
+        shell: sh   # node:22-alpine has no bash (the workflow default)
     services:
       postgres:
         image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
@@ -60,7 +63,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test
         options: >-
-          --health-cmd "pg_isready -U postgres"
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres"
           --health-interval 5s
           --health-retries 10
     steps:
