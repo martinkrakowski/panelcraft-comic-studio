@@ -53,25 +53,42 @@ export function objectStorageContractTests(
       await expect(port.get(`${prefix}/missing`)).resolves.toBeNull();
     });
 
-    it('lists keys under a prefix, paginating internally', async () => {
-      const subPrefix = `${prefix}/list`;
-      const keys: string[] = [];
+    // The S3 suite creates 1005 objects here (to prove pagination past the
+    // 1000-key page boundary), so creation runs concurrently in batches and
+    // the test gets an explicit timeout well above the 5s default.
+    it(
+      'lists keys under a prefix, paginating internally',
+      async () => {
+        const subPrefix = `${prefix}/list`;
+        const keys = Array.from({ length: paginationCount }, (_, i) => {
+          return `${subPrefix}/${String(i).padStart(4, '0')}.webp`;
+        });
 
-      for (let i = 0; i < paginationCount; i++) {
-        const key = `${subPrefix}/${String(i).padStart(4, '0')}.webp`;
-        keys.push(key);
-        await port.putNew(key, Buffer.from(`img-${i}`), 'image/webp');
-      }
+        const batchSize = 50;
+        for (let start = 0; start < keys.length; start += batchSize) {
+          const batch = keys.slice(start, start + batchSize);
+          await Promise.all(
+            batch.map((key, offset) => {
+              return port.putNew(
+                key,
+                Buffer.from(`img-${start + offset}`),
+                'image/webp'
+              );
+            })
+          );
+        }
 
-      const listed = await port.listKeys(subPrefix);
-      expect(listed).toHaveLength(paginationCount);
-      for (const key of keys) {
-        expect(listed).toContain(key);
-      }
+        const listed = await port.listKeys(subPrefix);
+        expect(listed).toHaveLength(paginationCount);
+        for (const key of keys) {
+          expect(listed).toContain(key);
+        }
 
-      // Listing respects the prefix boundary.
-      await expect(port.listKeys(`${prefix}/other`)).resolves.toEqual([]);
-    });
+        // Listing respects the prefix boundary.
+        await expect(port.listKeys(`${prefix}/other`)).resolves.toEqual([]);
+      },
+      60_000
+    );
 
     it('removes keys and ignores missing keys', async () => {
       const keyA = `${prefix}/rm/a`;
