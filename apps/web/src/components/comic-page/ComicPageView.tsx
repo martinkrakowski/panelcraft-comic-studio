@@ -29,25 +29,14 @@ interface ComicPageViewProps {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 /**
- * Returns true when an image URL can be read back through canvas without
- * blocking: either it is same-origin with the app (no CORS needed), or it
- * is a media URL served by our API at /api/media/ (which is same-origin in
- * production and returns CORS headers otherwise). Setting `crossOrigin` on an
- * `<img>` whose host does NOT cooperate will block the image, so we only opt
- * in when we're confident the host will cooperate (otherwise canvas export
- * silently fails and the image works).
+ * Whether to set `crossOrigin` on an `<img>`. Media is served by our own API at
+ * /api/media/ (same origin as the app in production), and same-origin images
+ * never taint a canvas, so no image needs it; the API does not send CORS
+ * headers, so setting it would block cross-origin dev setups. Returns false
+ * on the server and in the browser alike, so hydration is deterministic.
  */
-function isCorsCapableHost(url: string | null | undefined): boolean {
-  if (!url) return false;
-  if (typeof window === 'undefined') return false;
-  try {
-    const u = new URL(url, window.location.href);
-    if (u.origin === window.location.origin) return true;
-    if (u.pathname.startsWith('/api/media/')) return true;
-    return false;
-  } catch {
-    return false;
-  }
+function isCorsCapableHost(_url: string | null | undefined): boolean {
+  return false;
 }
 
 /**
