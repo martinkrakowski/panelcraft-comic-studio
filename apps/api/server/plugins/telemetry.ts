@@ -17,7 +17,12 @@ const DEFAULT_DEPLOYMENT_ENVIRONMENT = 'unknown';
  * @returns The exporter URL with `/v1/traces` appended.
  */
 export function otlpTraceUrl(endpoint: string): string {
-  return `${endpoint.replace(/\/+$/, '')}/v1/traces`;
+  // Append to the PATH, keeping the query and any credentials (CodeRabbit on #55): a
+  // query-authenticated endpoint `https://h/otlp?token=t` must become
+  // `https://h/otlp/v1/traces?token=t`, not `...?token=t/v1/traces`.
+  const url = new URL(endpoint);
+  url.pathname = `${url.pathname.replace(/\/+$/, '')}/v1/traces`;
+  return url.toString();
 }
 
 /**
@@ -62,9 +67,7 @@ export default defineNitroPlugin(async (nitroApp) => {
   const endpoint = process.env[ENDPOINT_ENV]?.trim();
 
   if (!endpoint) {
-    logger.info(
-      `Tracing disabled (${ENDPOINT_ENV} not set)`
-    );
+    logger.info(`Tracing disabled (${ENDPOINT_ENV} not set)`);
     return;
   }
 

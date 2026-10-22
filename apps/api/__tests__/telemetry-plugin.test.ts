@@ -99,7 +99,9 @@ describe('telemetry plugin', () => {
       res.writeHead(200);
       res.end();
     });
-    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve)
+    );
     const port = (server.address() as AddressInfo).port;
 
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
@@ -108,8 +110,12 @@ describe('telemetry plugin', () => {
       const app = makeNitroApp();
       await telemetryPlugin(app as never);
 
-      const logged = infoSpy.mock.calls.map((call) => String(call[0])).join('\n');
-      expect(logged).toContain(`Tracing enabled (OTLP exporter at http://127.0.0.1:${port})`);
+      const logged = infoSpy.mock.calls
+        .map((call) => String(call[0]))
+        .join('\n');
+      expect(logged).toContain(
+        `Tracing enabled (OTLP exporter at http://127.0.0.1:${port})`
+      );
       expect(logged).not.toContain('u:p');
 
       // One finished span; the close-hook shutdown force-flushes the batch
@@ -138,7 +144,9 @@ describe('telemetry plugin', () => {
       const app = makeNitroApp();
       await telemetryPlugin(app as never);
 
-      const logged = infoSpy.mock.calls.map((call) => String(call[0])).join('\n');
+      const logged = infoSpy.mock.calls
+        .map((call) => String(call[0]))
+        .join('\n');
       expect(logged).toContain('(invalid endpoint)');
 
       expect(app.hooksRef.close).toHaveLength(0);
@@ -148,5 +156,14 @@ describe('telemetry plugin', () => {
     } finally {
       infoSpy.mockRestore();
     }
+  });
+  test('a query-authenticated endpoint keeps its query after the trace path', () => {
+    expect(otlpTraceUrl('https://host:4318/otlp?token=abc')).toBe(
+      'https://host:4318/otlp/v1/traces?token=abc'
+    );
+
+    expect(otlpTraceUrl('https://u:p@host:4318/')).toBe(
+      'https://u:p@host:4318/v1/traces'
+    );
   });
 });
