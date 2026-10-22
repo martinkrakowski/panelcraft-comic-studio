@@ -19,6 +19,7 @@ import {
   PanelStatus,
 } from '@panelcraft/comic-project-management';
 import type { LoggerPort } from '@panelcraft/shared';
+import { withLlmSpan } from '@panelcraft/shared';
 import {
   getLayoutById,
   getDefaultFallbackLayout,
@@ -152,6 +153,34 @@ export async function loadPanelImage(
 }
 
 /**
+ * LangGraph pauses a run for human review by throwing `GraphInterrupt`
+ * (or `NodeInterrupt`). Both are an expected, deliberate part of the
+ * HITL workflow — not failures — so the CHAIN spans around the graph
+ * invoke/resume mark them as interrupts (OK + `span.interrupted=true`)
+ * instead of errors. Matching is done on the error's class name so this
+ * module does not need to import LangGraph's error classes (which would
+ * create an import cycle).
+ */
+const EXPECTED_INTERRUPT_CLASS_NAMES = ['GraphInterrupt', 'NodeInterrupt'];
+
+/**
+ * Recognise a thrown error as an expected workflow interrupt by its
+ * class name. Anything else (real provider/network failures) returns
+ * false and is treated as an error.
+ *
+ * @param err - The thrown value to classify.
+ * @returns True when `err` is a `GraphInterrupt` or `NodeInterrupt`.
+ */
+function isExpectedWorkflowInterrupt(err: unknown): boolean {
+  return (
+    !!err &&
+    typeof err === 'object' &&
+    'name' in err &&
+    EXPECTED_INTERRUPT_CLASS_NAMES.includes((err as { name: string }).name)
+  );
+}
+
+/**
  * Resolve a storage path into a signed reference URL for image generation.
  * http(s) URLs are returned unchanged; storage keys are signed through the
  * `MediaUrlPort` with the same 1-hour TTL the object-storage signed-URL
@@ -213,24 +242,23 @@ export function initComicWorker(
           );
 
           try {
-            await graph.invoke(
-              {
-                project: project.toJSON(),
-                currentPanelIndex: 0,
-                lastFeedback: null,
-                threadId: projectId,
-              },
-              { configurable: { thread_id: projectId } }
+            await withLlmSpan(
+              'comic.graph.run',
+              { kind: 'CHAIN', projectId },
+              () =>
+                graph.invoke(
+                  {
+                    project: project.toJSON(),
+                    currentPanelIndex: 0,
+                    lastFeedback: null,
+                    threadId: projectId,
+                  },
+                  { configurable: { thread_id: projectId } }
+                ),
+              { expected: isExpectedWorkflowInterrupt }
             );
           } catch (err) {
-            if (
-              err &&
-              typeof err === 'object' &&
-              'name' in err &&
-              ['NodeInterrupt', 'GraphInterrupt'].includes(
-                (err as { name: string }).name
-              )
-            ) {
+            if (isExpectedWorkflowInterrupt(err)) {
               logger.info(
                 `[Worker] Project ${projectId} paused by expected workflow interrupt`
               );
@@ -311,18 +339,17 @@ export function initComicWorker(
           }
 
           try {
-            await graph.invoke(new Command({ resume: resumeValue }), {
-              configurable: { thread_id: projectId },
-            });
+            await withLlmSpan(
+              'comic.graph.resume',
+              { kind: 'CHAIN', projectId },
+              () =>
+                graph.invoke(new Command({ resume: resumeValue }), {
+                  configurable: { thread_id: projectId },
+                }),
+              { expected: isExpectedWorkflowInterrupt }
+            );
           } catch (err) {
-            if (
-              err &&
-              typeof err === 'object' &&
-              'name' in err &&
-              ['NodeInterrupt', 'GraphInterrupt'].includes(
-                (err as { name: string }).name
-              )
-            ) {
+            if (isExpectedWorkflowInterrupt(err)) {
               logger.info(
                 `[Worker] Project ${projectId} paused by expected workflow interrupt`
               );

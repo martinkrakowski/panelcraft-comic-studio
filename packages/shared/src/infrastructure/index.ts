@@ -2,3 +2,4 @@
 
 export * from './adapters/index';
 export * from './logger';
+export * from './telemetry/index';

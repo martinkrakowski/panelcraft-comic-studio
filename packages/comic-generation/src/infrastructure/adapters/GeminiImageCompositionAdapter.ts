@@ -3,6 +3,7 @@ import type {
   ComposeFinalPageOptions,
 } from '../../application/ports/out/image-composition.out-port.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+import { withLlmSpan } from '@panelcraft/shared';
 
 interface GeminiPart {
   text?: string;
@@ -67,100 +68,112 @@ export class GeminiImageCompositionAdapter implements ImageCompositionPort {
   private readonly requestTimeoutMs = 90_000;
 
   async composeFinalPage(options: ComposeFinalPageOptions): Promise<Buffer> {
-    if (!this.apiKey) {
-      throw new Error(
-        'GOOGLE_GENERATIVE_AI_API_KEY environment variable is not set'
-      );
-    }
-
-    const fullPrompt = this.buildPrompt(options);
-    const parts: GeminiPart[] = [{ text: fullPrompt }];
-    for (const buf of options.panelImages) {
-      parts.push({
-        inlineData: {
-          mimeType: 'image/webp',
-          data: buf.toString('base64'),
-        },
-      });
-    }
-
-    // Send the API key via the `x-goog-api-key` header rather than as a
-    // `?key=` query parameter. Query parameters can leak into logs,
-    // proxy access records, error stack traces, and the `fetchWithTimeout`
-    // timeout-error message — the header is treated as a credential by
-    // every reasonable logger.
-    const endpoint = `${this.baseEndpoint}/${encodeURIComponent(this.model)}:generateContent`;
-
-    const response = await fetchWithTimeout(
-      endpoint,
+    return withLlmSpan(
+      'gemini.image.compose_page',
       {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': this.apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          // Request an image in the response. Newer Gemini image models
-          // accept this hint; older multimodal-text models will ignore it
-          // and surface text-only candidates, which we handle below.
-          //
-          // 2:3 is the standard US comic-book page ratio (6.625" × 10.25"
-          // ≈ 0.65). Gemini image-gen accepts an explicit `imageConfig.
-          // aspectRatio`; without it the model returns near-square output
-          // which then letterboxes inside the carousel's portrait frame.
-          // We also reinforce the ratio in the text prompt as a
-          // belt-and-suspenders measure since the field is honored on a
-          // best-effort basis.
-          generationConfig: {
-            responseModalities: ['IMAGE'],
-            imageConfig: {
-              aspectRatio: '2:3',
-            },
-          },
-        }),
+        provider: 'google',
+        system: 'google',
+        model: this.model,
+        operation: 'image_generation',
+        'llm.image.count': 1,
       },
-      this.requestTimeoutMs
+      async () => {
+        if (!this.apiKey) {
+          throw new Error(
+            'GOOGLE_GENERATIVE_AI_API_KEY environment variable is not set'
+          );
+        }
+
+        const fullPrompt = this.buildPrompt(options);
+        const parts: GeminiPart[] = [{ text: fullPrompt }];
+        for (const buf of options.panelImages) {
+          parts.push({
+            inlineData: {
+              mimeType: 'image/webp',
+              data: buf.toString('base64'),
+            },
+          });
+        }
+
+        // Send the API key via the `x-goog-api-key` header rather than as a
+        // `?key=` query parameter. Query parameters can leak into logs,
+        // proxy access records, error stack traces, and the `fetchWithTimeout`
+        // timeout-error message — the header is treated as a credential by
+        // every reasonable logger.
+        const endpoint = `${this.baseEndpoint}/${encodeURIComponent(this.model)}:generateContent`;
+
+        const response = await fetchWithTimeout(
+          endpoint,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': this.apiKey,
+            },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts }],
+              // Request an image in the response. Newer Gemini image models
+              // accept this hint; older multimodal-text models will ignore it
+              // and surface text-only candidates, which we handle below.
+              //
+              // 2:3 is the standard US comic-book page ratio (6.625" × 10.25"
+              // ≈ 0.65). Gemini image-gen accepts an explicit `imageConfig.
+              // aspectRatio`; without it the model returns near-square output
+              // which then letterboxes inside the carousel's portrait frame.
+              // We also reinforce the ratio in the text prompt as a
+              // belt-and-suspenders measure since the field is honored on a
+              // best-effort basis.
+              generationConfig: {
+                responseModalities: ['IMAGE'],
+                imageConfig: {
+                  aspectRatio: '2:3',
+                },
+              },
+            }),
+          },
+          this.requestTimeoutMs
+        );
+
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `Gemini composition failed (${response.status}): ${body}`
+          );
+        }
+
+        const json = (await response.json()) as GeminiGenerateContentResponse;
+        if (json.error) {
+          throw new Error(
+            `Gemini composition error (${json.error.code}): ${json.error.message}`
+          );
+        }
+        if (json.promptFeedback?.blockReason) {
+          throw new Error(
+            `Gemini composition blocked: ${json.promptFeedback.blockReason}`
+          );
+        }
+
+        const imagePart = json.candidates
+          ?.flatMap((c) => c.content?.parts ?? [])
+          .find((p) => p.inlineData?.data);
+        if (!imagePart?.inlineData?.data) {
+          // The model returned only text. Surface enough context for debugging
+          // (the worker logs this) but avoid embedding base64 payloads.
+          const textParts = json.candidates
+            ?.flatMap((c) => c.content?.parts ?? [])
+            .map((p) => p.text)
+            .filter(Boolean)
+            .join(' | ');
+          throw new Error(
+            `Gemini composition returned no image (finish: ` +
+              `${json.candidates?.[0]?.finishReason || 'unknown'}; text: ` +
+              `${textParts?.slice(0, 200) || '<none>'})`
+          );
+        }
+
+        return Buffer.from(imagePart.inlineData.data, 'base64');
+      }
     );
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(
-        `Gemini composition failed (${response.status}): ${body}`
-      );
-    }
-
-    const json = (await response.json()) as GeminiGenerateContentResponse;
-    if (json.error) {
-      throw new Error(
-        `Gemini composition error (${json.error.code}): ${json.error.message}`
-      );
-    }
-    if (json.promptFeedback?.blockReason) {
-      throw new Error(
-        `Gemini composition blocked: ${json.promptFeedback.blockReason}`
-      );
-    }
-
-    const imagePart = json.candidates
-      ?.flatMap((c) => c.content?.parts ?? [])
-      .find((p) => p.inlineData?.data);
-    if (!imagePart?.inlineData?.data) {
-      // The model returned only text. Surface enough context for debugging
-      // (the worker logs this) but avoid embedding base64 payloads.
-      const textParts = json.candidates
-        ?.flatMap((c) => c.content?.parts ?? [])
-        .map((p) => p.text)
-        .filter(Boolean)
-        .join(' | ');
-      throw new Error(
-        `Gemini composition returned no image (finish: ` +
-          `${json.candidates?.[0]?.finishReason || 'unknown'}; text: ` +
-          `${textParts?.slice(0, 200) || '<none>'})`
-      );
-    }
-
-    return Buffer.from(imagePart.inlineData.data, 'base64');
   }
 
   private buildPrompt(options: ComposeFinalPageOptions): string {

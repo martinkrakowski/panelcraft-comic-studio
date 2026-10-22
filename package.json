@@ -7,6 +7,9 @@
     "apps/*",
     "packages/*"
   ],
+  "resolutions": {
+    "@opentelemetry/api": "1.9.1"
+  },
   "scripts": {
     "build": "turbo build",
     "dev": "node scripts/start-redis.js && turbo dev",

@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import type { ImageGenerationPort } from '../../application/ports/out/image-generation.out-port.js';
 import type { GeneratePanelCommand } from '../../application/commands/GeneratePanelCommand.js';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+import { withLlmSpan } from '@panelcraft/shared';
 
 // Standard US comic book aspect ratio (6.625" × 10.25" ≈ 0.6463). We
 // target 1024×1536 explicitly as the post-processing crop's destination
@@ -57,72 +58,110 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     // generate_image with a prompt-only request — character consistency must
     // come from the style modifiers and prompt engineering rather than an
     // img2img reference. Revisit if xAI ships a JSON-compatible edit endpoint.
-    return this.generateImage(fullPrompt, this.qualityModel);
+    return withLlmSpan(
+      'xai.image.generatePanel',
+      // A CHAIN span with no image count: the nested xai.image.generateImage request span
+      // carries the count, so summing LLM spans counts each panel image once (CodeRabbit on #55).
+      {
+        kind: 'CHAIN',
+        provider: 'xai',
+        system: 'xai',
+        model: this.qualityModel,
+        operation: 'image_generation',
+      },
+      () => this.generateImage(fullPrompt, this.qualityModel)
+    );
   }
 
   private async generateImage(prompt: string, model: string): Promise<string> {
-    const response = await fetchWithTimeout(this.generateEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
+    return withLlmSpan(
+      'xai.image.generateImage',
+      {
+        provider: 'xai',
+        system: 'xai',
+        model,
+        operation: 'image_generation',
+        'llm.image.count': 1,
       },
-      body: JSON.stringify({ model, prompt, n: 1, response_format: 'url' }),
-    });
+      async () => {
+        const response = await fetchWithTimeout(this.generateEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({ model, prompt, n: 1, response_format: 'url' }),
+        });
 
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(
-        `xAI generate_image failed (${response.status}): ${body}`
-      );
-    }
-    const json = (await response.json()) as XaiImageResponse;
-    const url = json.data[0]?.url;
-    if (!url) throw new Error('xAI generate_image returned no image URL');
-    return url;
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `xAI generate_image failed (${response.status}): ${body}`
+          );
+        }
+        const json = (await response.json()) as XaiImageResponse;
+        const url = json.data[0]?.url;
+        if (!url) throw new Error('xAI generate_image returned no image URL');
+        return url;
+      }
+    );
   }
 
   private async editImage(
     referenceUrl: string,
     prompt: string
   ): Promise<string> {
-    const imageResponse = await fetchWithTimeout(referenceUrl, {}, 30000);
-    if (!imageResponse.ok) {
-      throw new Error(
-        `Failed to fetch reference image for edit: ${imageResponse.status}`
-      );
-    }
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-
-    const form = new FormData();
-    form.append('model', this.qualityModel);
-    form.append(
-      'image',
-      new Blob([imageBuffer], { type: 'image/webp' }),
-      'reference.webp'
-    );
-    form.append('prompt', prompt);
-    form.append('n', '1');
-    form.append('response_format', 'url');
-
-    const response = await fetchWithTimeout(
-      this.editEndpoint,
+    return withLlmSpan(
+      'xai.image.editImage',
       {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}` },
-        body: form as unknown as BodyInit,
+        provider: 'xai',
+        system: 'xai',
+        model: this.qualityModel,
+        operation: 'image_generation',
+        'llm.image.count': 1,
       },
-      60000
-    );
+      async () => {
+        const imageResponse = await fetchWithTimeout(referenceUrl, {}, 30000);
+        if (!imageResponse.ok) {
+          throw new Error(
+            `Failed to fetch reference image for edit: ${imageResponse.status}`
+          );
+        }
+        const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
 
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`xAI edit_image failed (${response.status}): ${body}`);
-    }
-    const json = (await response.json()) as XaiImageResponse;
-    const url = json.data[0]?.url;
-    if (!url) throw new Error('xAI edit_image returned no image URL');
-    return url;
+        const form = new FormData();
+        form.append('model', this.qualityModel);
+        form.append(
+          'image',
+          new Blob([imageBuffer], { type: 'image/webp' }),
+          'reference.webp'
+        );
+        form.append('prompt', prompt);
+        form.append('n', '1');
+        form.append('response_format', 'url');
+
+        const response = await fetchWithTimeout(
+          this.editEndpoint,
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${this.apiKey}` },
+            body: form as unknown as BodyInit,
+          },
+          60000
+        );
+
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `xAI edit_image failed (${response.status}): ${body}`
+          );
+        }
+        const json = (await response.json()) as XaiImageResponse;
+        const url = json.data[0]?.url;
+        if (!url) throw new Error('xAI edit_image returned no image URL');
+        return url;
+      }
+    );
   }
 
   async generateCover(options: {
@@ -134,63 +173,75 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     if (!this.apiKey)
       throw new Error('XAI_API_KEY environment variable is not set');
 
-    const styleDesc = options.style
-      ? `Style: ${(options.style as Record<string, unknown>)?.globalStylePrompt || ''}`
-      : '';
-    const characterDesc = options.characterBible
-      ? `Characters: ${JSON.stringify(options.characterBible)}`
-      : '';
-    // Reviewer feedback is appended to the prompt for this call only.
-    // The base prompt (story + style + characters) is never mutated so a
-    // subsequent regeneration without feedback returns to the original
-    // direction unless new feedback is supplied.
-    const feedbackDesc = options.regenFeedback
-      ? ` Reviewer feedback for this regeneration: ${options.regenFeedback}.`
-      : '';
-    // Repeat the portrait-orientation directive at the start AND end of
-    // the prompt: image models weight tokens near the boundaries more
-    // heavily, and a single "portrait" instruction buried in the middle
-    // of a long prompt is often ignored. The post-processing step still
-    // crops to 2:3 if the model returns a square anyway.
-    const fullPrompt =
-      `Portrait-orientation comic book cover (taller than wide, ` +
-      `standard 2:3 page aspect ratio) for story: ${options.prompt}. ` +
-      `${styleDesc} ${characterDesc}. Professional comic cover, bold ` +
-      `title at the top, vibrant colors, dynamic composition framed for ` +
-      `a vertical poster. The image MUST be portrait orientation — taller ` +
-      `than it is wide. Do not return a square or landscape image.` +
-      `${feedbackDesc}`;
-
-    const response = await fetchWithTimeout(this.generateEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
+    return withLlmSpan(
+      'xai.image.generateCover',
+      {
+        provider: 'xai',
+        system: 'xai',
         model: this.qualityModel,
-        prompt: fullPrompt,
-        n: 1,
-        response_format: 'url',
-      }),
-    });
+        operation: 'image_generation',
+        'llm.image.count': 1,
+      },
+      async () => {
+        const styleDesc = options.style
+          ? `Style: ${(options.style as Record<string, unknown>)?.globalStylePrompt || ''}`
+          : '';
+        const characterDesc = options.characterBible
+          ? `Characters: ${JSON.stringify(options.characterBible)}`
+          : '';
+        // Reviewer feedback is appended to the prompt for this call only.
+        // The base prompt (story + style + characters) is never mutated so a
+        // subsequent regeneration without feedback returns to the original
+        // direction unless new feedback is supplied.
+        const feedbackDesc = options.regenFeedback
+          ? ` Reviewer feedback for this regeneration: ${options.regenFeedback}.`
+          : '';
+        // Repeat the portrait-orientation directive at the start AND end of
+        // the prompt: image models weight tokens near the boundaries more
+        // heavily, and a single "portrait" instruction buried in the middle
+        // of a long prompt is often ignored. The post-processing step still
+        // crops to 2:3 if the model returns a square anyway.
+        const fullPrompt =
+          `Portrait-orientation comic book cover (taller than wide, ` +
+          `standard 2:3 page aspect ratio) for story: ${options.prompt}. ` +
+          `${styleDesc} ${characterDesc}. Professional comic cover, bold ` +
+          `title at the top, vibrant colors, dynamic composition framed for ` +
+          `a vertical poster. The image MUST be portrait orientation — taller ` +
+          `than it is wide. Do not return a square or landscape image.` +
+          `${feedbackDesc}`;
 
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(
-        `xAI cover generation failed (${response.status}): ${body}`
-      );
-    }
-    const json = (await response.json()) as XaiImageResponse;
-    const imageUrl = json.data[0]?.url;
-    if (!imageUrl)
-      throw new Error('xAI cover generation returned no image URL');
+        const response = await fetchWithTimeout(this.generateEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: this.qualityModel,
+            prompt: fullPrompt,
+            n: 1,
+            response_format: 'url',
+          }),
+        });
 
-    const imageResponse = await fetchWithTimeout(imageUrl, {});
-    if (!imageResponse.ok)
-      throw new Error('Failed to fetch generated cover image');
-    const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
-    return this.cropCoverToPortrait(rawBuffer);
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `xAI cover generation failed (${response.status}): ${body}`
+          );
+        }
+        const json = (await response.json()) as XaiImageResponse;
+        const imageUrl = json.data[0]?.url;
+        if (!imageUrl)
+          throw new Error('xAI cover generation returned no image URL');
+
+        const imageResponse = await fetchWithTimeout(imageUrl, {});
+        if (!imageResponse.ok)
+          throw new Error('Failed to fetch generated cover image');
+        const rawBuffer = Buffer.from(await imageResponse.arrayBuffer());
+        return this.cropCoverToPortrait(rawBuffer);
+      }
+    );
   }
 
   /**
@@ -233,46 +284,58 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     if (!this.apiKey)
       throw new Error('XAI_API_KEY environment variable is not set');
 
-    const presetSegment = options?.preset
-      ? ` Style preset: ${options.preset}.`
-      : '';
-    const moodBoardSegment =
-      options?.moodBoardImages && options.moodBoardImages.length > 0
-        ? ` Inspired by ${options.moodBoardImages.length} mood board reference${options.moodBoardImages.length === 1 ? '' : 's'}.`
-        : '';
-    const fullPrompt =
-      `Quick style preview: ${stylePrompt}.${presetSegment}${moodBoardSegment} ` +
-      `Simple comic object on neutral background, clean lines, flat colors.`;
-
-    const response = await fetchWithTimeout(this.generateEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
+    return withLlmSpan(
+      'xai.image.generatePreview',
+      {
+        provider: 'xai',
+        system: 'xai',
         model: this.standardModel,
-        prompt: fullPrompt,
-        n: 1,
-        response_format: 'url',
-      }),
-    });
+        operation: 'image_generation',
+        'llm.image.count': 1,
+      },
+      async () => {
+        const presetSegment = options?.preset
+          ? ` Style preset: ${options.preset}.`
+          : '';
+        const moodBoardSegment =
+          options?.moodBoardImages && options.moodBoardImages.length > 0
+            ? ` Inspired by ${options.moodBoardImages.length} mood board reference${options.moodBoardImages.length === 1 ? '' : 's'}.`
+            : '';
+        const fullPrompt =
+          `Quick style preview: ${stylePrompt}.${presetSegment}${moodBoardSegment} ` +
+          `Simple comic object on neutral background, clean lines, flat colors.`;
 
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(
-        `xAI preview generation failed (${response.status}): ${body}`
-      );
-    }
-    const json = (await response.json()) as XaiImageResponse;
-    const imageUrl = json.data[0]?.url;
-    if (!imageUrl)
-      throw new Error('xAI preview generation returned no image URL');
+        const response = await fetchWithTimeout(this.generateEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: this.standardModel,
+            prompt: fullPrompt,
+            n: 1,
+            response_format: 'url',
+          }),
+        });
 
-    const imageResponse = await fetchWithTimeout(imageUrl, {});
-    if (!imageResponse.ok)
-      throw new Error('Failed to fetch generated preview image');
-    return Buffer.from(await imageResponse.arrayBuffer());
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `xAI preview generation failed (${response.status}): ${body}`
+          );
+        }
+        const json = (await response.json()) as XaiImageResponse;
+        const imageUrl = json.data[0]?.url;
+        if (!imageUrl)
+          throw new Error('xAI preview generation returned no image URL');
+
+        const imageResponse = await fetchWithTimeout(imageUrl, {});
+        if (!imageResponse.ok)
+          throw new Error('Failed to fetch generated preview image');
+        return Buffer.from(await imageResponse.arrayBuffer());
+      }
+    );
   }
 
   private buildComicPrompt(basePrompt: string, modifiers?: string): string {
