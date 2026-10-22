@@ -19,6 +19,7 @@ import {
   PanelStatus,
 } from '@panelcraft/comic-project-management';
 import type { LoggerPort } from '@panelcraft/shared';
+import { withLlmSpan } from '@panelcraft/shared';
 import {
   getLayoutById,
   getDefaultFallbackLayout,
@@ -213,14 +214,19 @@ export function initComicWorker(
           );
 
           try {
-            await graph.invoke(
-              {
-                project: project.toJSON(),
-                currentPanelIndex: 0,
-                lastFeedback: null,
-                threadId: projectId,
-              },
-              { configurable: { thread_id: projectId } }
+            await withLlmSpan(
+              'comic.graph.run',
+              { kind: 'CHAIN', projectId },
+              () =>
+                graph.invoke(
+                  {
+                    project: project.toJSON(),
+                    currentPanelIndex: 0,
+                    lastFeedback: null,
+                    threadId: projectId,
+                  },
+                  { configurable: { thread_id: projectId } }
+                )
             );
           } catch (err) {
             if (
@@ -311,9 +317,14 @@ export function initComicWorker(
           }
 
           try {
-            await graph.invoke(new Command({ resume: resumeValue }), {
-              configurable: { thread_id: projectId },
-            });
+            await withLlmSpan(
+              'comic.graph.resume',
+              { kind: 'CHAIN', projectId },
+              () =>
+                graph.invoke(new Command({ resume: resumeValue }), {
+                  configurable: { thread_id: projectId },
+                })
+            );
           } catch (err) {
             if (
               err &&
