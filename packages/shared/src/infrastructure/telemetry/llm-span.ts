@@ -43,6 +43,22 @@ export interface LlmSpanAttrs {
 }
 
 /**
+ * Options for {@link withLlmSpan}.
+ */
+export interface WithLlmSpanOptions {
+  /**
+   * Predicate recognising thrown errors that are an expected part of the
+   * workflow rather than failures (e.g. LangGraph's HITL interrupts).
+   *
+   * When it returns `true` for a thrown error, the span is set to OK with
+   * the boolean attribute `span.interrupted=true` instead of ERROR, and
+   * the error is rethrown unchanged so the caller keeps handling it the
+   * same way.
+   */
+  expected?: (err: unknown) => boolean;
+}
+
+/**
  * Record LLM token usage on a span when the provider returned `usage`.
  * Sets `llm.token_count.prompt|completion|total` and
  * `gen_ai.usage.input_tokens|output_tokens` for numeric counts only.
@@ -72,7 +88,9 @@ export function recordLlmUsage(span: Span, usage?: LlmUsage | null): void {
  * The span is started via the `panelcraft` tracer, made the active span
  * for the duration of `fn` (so nested LLM spans parent correctly), set to
  * OK on success or ERROR (message = the error class name only) on
- * failure, and always ended. Thrown errors are rethrown unchanged.
+ * failure, and always ended. Thrown errors are rethrown unchanged —
+ * including "expected" ones recognised by `options.expected`, which are
+ * marked OK with `span.interrupted=true` instead of ERROR.
  *
  * When no tracer provider is registered (OTEL_EXPORTER_OTLP_ENDPOINT
  * unset), `@opentelemetry/api` returns no-op tracer/span instances and
@@ -81,12 +99,14 @@ export function recordLlmUsage(span: Span, usage?: LlmUsage | null): void {
  * @param name - Span name (e.g. `xai.chat`, `comic.graph.run`).
  * @param attrs - Attributes; see {@link LlmSpanAttrs}.
  * @param fn - Work to wrap; receives the started span.
+ * @param options - Optional behaviour; see {@link WithLlmSpanOptions}.
  * @returns The value returned by `fn`.
  */
 export async function withLlmSpan<T>(
   name: string,
   attrs: LlmSpanAttrs,
-  fn: (span: Span) => Promise<T> | T
+  fn: (span: Span) => Promise<T> | T,
+  options?: WithLlmSpanOptions
 ): Promise<T> {
   const tracer = trace.getTracer('panelcraft');
   const span = tracer.startSpan(name);
@@ -138,8 +158,16 @@ export async function withLlmSpan<T>(
     span.setStatus({ code: SpanStatusCode.OK });
     return result;
   } catch (err) {
-    const errorName = err instanceof Error && err.name ? err.name : 'Error';
-    span.setStatus({ code: SpanStatusCode.ERROR, message: errorName });
+    if (options?.expected?.(err)) {
+      // Expected control-flow error (e.g. a HITL interrupt): the span
+      // describes a deliberate pause, not a failure. Still rethrow so
+      // the caller's existing handling is unchanged.
+      span.setAttribute('span.interrupted', true);
+      span.setStatus({ code: SpanStatusCode.OK });
+    } else {
+      const errorName = err instanceof Error && err.name ? err.name : 'Error';
+      span.setStatus({ code: SpanStatusCode.ERROR, message: errorName });
+    }
     throw err;
   } finally {
     span.end();

@@ -86,6 +86,66 @@ describe('withLlmSpan', () => {
     expect(span.attributes['openinference.span.kind']).toBe('CHAIN');
   });
 
+  it('marks an expected error as OK with span.interrupted and rethrows', async () => {
+    class GraphInterrupt extends Error {
+      constructor() {
+        super('paused for human review');
+        this.name = 'GraphInterrupt';
+      }
+    }
+    const interrupt = new GraphInterrupt();
+
+    let caught: unknown;
+    try {
+      await withLlmSpan(
+        'test.interrupt',
+        { kind: 'CHAIN' },
+        async () => {
+          throw interrupt;
+        },
+        { expected: (err) => err instanceof GraphInterrupt }
+      );
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBe(interrupt);
+
+    const spans = exporter.getFinishedSpans();
+    expect(spans).toHaveLength(1);
+    const span = spans[0]!;
+    expect(span.status.code).toBe(SpanStatusCode.OK);
+    expect(span.status.message).toBeUndefined();
+    expect(span.attributes['span.interrupted']).toBe(true);
+  });
+
+  it('still records ERROR when the expected predicate returns false', async () => {
+    class NodeInterrupt extends Error {
+      constructor() {
+        super('paused');
+        this.name = 'NodeInterrupt';
+      }
+    }
+
+    await expect(
+      withLlmSpan(
+        'test.unexpected',
+        { kind: 'CHAIN' },
+        async () => {
+          throw new RangeError('unexpected failure');
+        },
+        { expected: (err) => err instanceof NodeInterrupt }
+      )
+    ).rejects.toThrow('unexpected failure');
+
+    const spans = exporter.getFinishedSpans();
+    expect(spans).toHaveLength(1);
+    const span = spans[0]!;
+    expect(span.status.code).toBe(SpanStatusCode.ERROR);
+    expect(span.status.message).toBe('RangeError');
+    expect(span.attributes['span.interrupted']).toBeUndefined();
+  });
+
   it('always ends the span even when fn throws', async () => {
     await expect(
       withLlmSpan('test.throw', { operation: 'chat' }, async () => {
