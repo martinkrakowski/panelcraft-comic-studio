@@ -72,7 +72,13 @@ describe('ImageGenerationAdapter telemetry', () => {
     );
     expect(panelSpan!.attributes['llm.provider']).toBe('xai');
     expect(panelSpan!.attributes['llm.model_name']).toBe('grok-imagine-image');
-    expect(panelSpan!.attributes['llm.image.count']).toBe(1);
+    // The panel span is a CHAIN with no count; the nested request span carries the one image.
+    expect(panelSpan!.attributes['openinference.span.kind']).toBe('CHAIN');
+    expect(panelSpan!.attributes['llm.image.count']).toBeUndefined();
+    const imageSpans = spans.filter(
+      (s) => s.attributes['llm.image.count'] !== undefined
+    );
+    expect(imageSpans.map((s) => s.attributes['llm.image.count'])).toEqual([1]);
 
     // generateImage runs inside generatePanel's span, so its span must be
     // a child: the parent context's span id equals the panel span's id.

@@ -60,12 +60,14 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
     // img2img reference. Revisit if xAI ships a JSON-compatible edit endpoint.
     return withLlmSpan(
       'xai.image.generatePanel',
+      // A CHAIN span with no image count: the nested xai.image.generateImage request span
+      // carries the count, so summing LLM spans counts each panel image once (CodeRabbit on #55).
       {
+        kind: 'CHAIN',
         provider: 'xai',
         system: 'xai',
         model: this.qualityModel,
         operation: 'image_generation',
-        'llm.image.count': 1,
       },
       () => this.generateImage(fullPrompt, this.qualityModel)
     );
@@ -150,7 +152,9 @@ export class ImageGenerationAdapter implements ImageGenerationPort {
 
         if (!response.ok) {
           const body = await response.text();
-          throw new Error(`xAI edit_image failed (${response.status}): ${body}`);
+          throw new Error(
+            `xAI edit_image failed (${response.status}): ${body}`
+          );
         }
         const json = (await response.json()) as XaiImageResponse;
         const url = json.data[0]?.url;
