@@ -22,6 +22,11 @@ import { createLogger } from '@panelcraft/shared';
 import { getPool } from '../utils/db.js';
 import { getStorage } from '../utils/storage.js';
 import { getMediaUrls } from '../utils/media-urls.js';
+import {
+  connectQueueWithRetry,
+  shouldAttemptRedisConnect,
+  shouldFailWithoutRedis,
+} from '../utils/redis-connect.js';
 
 /**
  * Nitro server initialization plugin.
@@ -50,41 +55,63 @@ export default defineNitroPlugin(async (nitroApp) => {
     },
   };
 
-  const isRedisDisabled = config.disableRedis === 'true';
+  const isRedisDisabled = !shouldAttemptRedisConnect(config.disableRedis);
 
   if (!isRedisDisabled) {
     // BullMQ connects lazily — new Queue() never throws on connection failure,
     // it only throws on invalid config (e.g. non-numeric port). ECONNREFUSED
     // surfaces later when the queue or worker first interact with Redis.
-    // waitUntilReady() forces an eager connection check so failures are visible
-    // at startup rather than silently on the first job enqueue.
+    // connectQueueWithRetry forces eager connection checks so failures are
+    // visible at startup, retrying with bounded exponential backoff until Redis
+    // is up instead of handing the process a stub queue that drops jobs.
     try {
-      bullMQQueue = new Queue('comic-generation-queue', {
-        connection: {
-          ...redisConnection,
-          // Fail fast: one immediate retry then give up. Without this, IORedis
-          // floods the log with ECONNREFUSED every second indefinitely.
-          retryStrategy: (times: number) => (times >= 1 ? null : 100),
-          // Suppress unhandled IORedis error events emitted during the retry
-          // window before waitUntilReady() rejects — these bypass try-catch.
-          enableOfflineQueue: false,
+      const { queue, attempts } = await connectQueueWithRetry({
+        create: () =>
+          new Queue('comic-generation-queue', {
+            connection: {
+              ...redisConnection,
+              // Fail fast per attempt: one immediate retry then give up, so a
+              // dead IORedis client never floods the log. Overall retries are
+              // owned by connectQueueWithRetry (fresh Queue per attempt).
+              retryStrategy: (times: number) => (times >= 1 ? null : 100),
+              // Suppress unhandled IORedis error events emitted during the
+              // retry window before waitUntilReady() rejects — these bypass
+              // try-catch.
+              enableOfflineQueue: false,
+            },
+          }),
+        waitUntilReady: (q) => q.waitUntilReady(),
+        // Absorb IORedis 'error' events that fire before waitUntilReady()
+        // rejects. Without this listener, Node.js throws an unhandled
+        // EventEmitter error. Use a named handler so we can remove only this
+        // listener afterwards, preserving any other error handling
+        // BullMQ/IORedis attaches internally.
+        attachErrorSink: (q) => {
+          const suppressInitErrors = () => undefined;
+          q.on('error', suppressInitErrors);
+          return () => q.off('error', suppressInitErrors);
         },
+        close: (q) => q.close(),
+        onRetry: (attempt, error) =>
+          logger.warn(
+            `[Init] Redis connect attempt ${attempt} failed, retrying: ${String(error)}`
+          ),
       });
-      // Absorb IORedis 'error' events that fire before waitUntilReady() rejects.
-      // Without this listener, Node.js throws an unhandled EventEmitter error.
-      // Use a named handler so we can remove only this listener afterwards,
-      // preserving any other error handling BullMQ/IORedis attaches internally.
-      const suppressInitErrors = () => undefined;
-      bullMQQueue.on('error', suppressInitErrors);
-      await bullMQQueue.waitUntilReady();
-      bullMQQueue.off('error', suppressInitErrors);
-      jobQueueAdapter = new BullMQJobQueueAdapter(bullMQQueue);
-      logger.info('[Init] Redis connection verified, job queue ready');
+      bullMQQueue = queue;
+      jobQueueAdapter = new BullMQJobQueueAdapter(queue);
+      logger.info(
+        `[Init] Redis connection verified, job queue ready (attempt ${attempts})`
+      );
     } catch (error) {
+      if (shouldFailWithoutRedis(process.env)) {
+        // In production an unreachable Redis is fatal: fail startup so
+        // Kubernetes restarts the pod rather than silently serving a stub
+        // queue that drops jobs.
+        throw error;
+      }
       logger.warn(
         `[Init] Redis unreachable, falling back to stub queue: ${String(error)}`
       );
-      await bullMQQueue?.close().catch(() => undefined);
       bullMQQueue = null;
     }
   } else {
