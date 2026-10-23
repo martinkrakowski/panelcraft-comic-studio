@@ -222,6 +222,13 @@ export default defineNitroPlugin(async (nitroApp) => {
       }
     }
 
+    // Shutdown began while the last attempt was connecting: close the ready
+    // queue and start nothing, since the close hook has already run.
+    if (connected && closing) {
+      await connected.queue.close().catch(() => undefined);
+      return;
+    }
+
     if (connected) {
       bullMQQueue = connected.queue;
       current = new BullMQJobQueueAdapter(connected.queue);
