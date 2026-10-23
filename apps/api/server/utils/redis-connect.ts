@@ -31,6 +31,12 @@ export interface ConnectQueueOptions<Q> {
   maxDelayMs?: number;
   /** Called with each failed attempt number and error before retrying. */
   onRetry?: (attempt: number, error: unknown) => void;
+  /**
+   * When provided and returning `true`, stop retrying (e.g. the server is
+   * shutting down). Checked before each attempt and after each sleep; when
+   * true the connect rejects with the abort error instead of continuing.
+   */
+  isStopped?: () => boolean;
 }
 
 /**
@@ -52,6 +58,9 @@ export async function connectQueueWithRetry<Q>(
   const sleep = opts.sleep ?? defaultSleep;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (opts.isStopped?.()) {
+      throw new Error('Redis connect aborted: server shutting down');
+    }
     let queue: Q | null = null;
     let detachErrorSink: (() => void) | null = null;
     try {
@@ -76,6 +85,9 @@ export async function connectQueueWithRetry<Q>(
       }
       opts.onRetry?.(attempt, error);
       await sleep(backoffDelay(attempt, initialDelayMs, maxDelayMs));
+      if (opts.isStopped?.()) {
+        throw new Error('Redis connect aborted: server shutting down');
+      }
     }
   }
 

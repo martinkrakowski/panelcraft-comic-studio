@@ -130,7 +130,9 @@ export default defineNitroPlugin(async (nitroApp) => {
   // worker are read at close time: they are assigned later, after a successful
   // connection, and the hook must close whatever exists by then. The pool is
   // always ended, whether or not Redis was enabled.
+  let closing = false;
   nitroApp.hooks.hook('close', async () => {
+    closing = true;
     if (bullMQQueue) {
       logger.info('[BullMQ] Closing worker and queue connections...');
       const results = await Promise.allSettled([
@@ -161,8 +163,10 @@ export default defineNitroPlugin(async (nitroApp) => {
     // connectQueueWithRetry forces eager connection checks so failures are
     // visible at startup, retrying with bounded exponential backoff until Redis
     // is up instead of handing the process a stub queue that drops jobs.
+    let connected: { queue: Queue; attempts: number } | null = null;
     try {
-      const { queue, attempts } = await connectQueueWithRetry({
+      connected = await connectQueueWithRetry({
+        isStopped: () => closing,
         create: () =>
           new Queue('comic-generation-queue', {
             connection: {
@@ -194,23 +198,12 @@ export default defineNitroPlugin(async (nitroApp) => {
             `[Init] Redis connect attempt ${attempt} failed, retrying: ${String(error)}`
           ),
       });
-      bullMQQueue = queue;
-      current = new BullMQJobQueueAdapter(queue);
-      logger.info(
-        `[Init] Redis connection verified, job queue ready (attempt ${attempts})`
-      );
-      worker = initComicWorker(
-        langGraphAdapter,
-        projectRepo,
-        bullMQQueue,
-        logger,
-        storage,
-        mediaUrls,
-        imageGenPort,
-        llmClient,
-        imageCompositionPort
-      );
     } catch (error) {
+      // Shutdown raced the retry loop: stop quietly, without treating the
+      // abort as an unreachable Redis (never exit during shutdown).
+      if (closing) {
+        return;
+      }
       // In production an unreachable Redis is fatal: terminate the process so
       // Kubernetes restarts the pod rather than silently serving a stub queue
       // that drops jobs. (Nitro never awaits plugin promises, so a thrown
@@ -227,6 +220,27 @@ export default defineNitroPlugin(async (nitroApp) => {
         current = stubQueuePort;
         bullMQQueue = null;
       }
+    }
+
+    if (connected) {
+      bullMQQueue = connected.queue;
+      current = new BullMQJobQueueAdapter(connected.queue);
+      logger.info(
+        `[Init] Redis connection verified, job queue ready (attempt ${connected.attempts})`
+      );
+      // Started OUTSIDE the Redis try/catch: a worker error is a real error
+      // and must propagate, never be reported as "Redis unreachable".
+      worker = initComicWorker(
+        langGraphAdapter,
+        projectRepo,
+        bullMQQueue,
+        logger,
+        storage,
+        mediaUrls,
+        imageGenPort,
+        llmClient,
+        imageCompositionPort
+      );
     }
   } else {
     logger.warn('[Init] Redis disabled via DISABLE_REDIS env var');

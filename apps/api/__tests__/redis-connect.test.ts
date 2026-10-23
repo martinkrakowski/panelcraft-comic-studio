@@ -187,6 +187,40 @@ describe('connectQueueWithRetry', () => {
       `ECONNREFUSED ${queues[29]!.id}`
     );
   });
+  it('rejects with the abort error when isStopped is true before the first attempt, without creating a queue', async () => {
+    const queue = makeFakeQueue();
+    const options = makeOptions([queue]);
+    options.isStopped = vi.fn(() => true);
+
+    await expect(connectQueueWithRetry(options)).rejects.toThrow(
+      'Redis connect aborted: server shutting down'
+    );
+
+    expect(options.create).not.toHaveBeenCalled();
+    expect(queue.close).not.toHaveBeenCalled();
+  });
+
+  it('aborts after one failed attempt when isStopped becomes true, closing that queue once', async () => {
+    const queues = [makeFakeQueue(1), makeFakeQueue(1)];
+    const options = makeOptions(queues);
+    let stopped = false;
+    options.isStopped = vi.fn(() => stopped);
+
+    const pending = connectQueueWithRetry(options);
+    // Flip the stop flag after the first failed attempt's sleep.
+    options.sleep.mockImplementation(() => {
+      stopped = true;
+      return Promise.resolve();
+    });
+
+    await expect(pending).rejects.toThrow(
+      'Redis connect aborted: server shutting down'
+    );
+
+    expect(options.create).toHaveBeenCalledTimes(1);
+    expect(queues[0]!.close).toHaveBeenCalledTimes(1);
+    expect(queues[1]!.close).not.toHaveBeenCalled();
+  });
 });
 
 describe('handleRedisUnavailable', () => {
