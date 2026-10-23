@@ -119,8 +119,8 @@ jobs:
       # an "&& ||" expression here would fall through to the staging value whenever a
       # production secret is empty, silently baking staging config into the production
       # image.
-      PROD_NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-      STAGING_NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_NEXT_PUBLIC_API_URL }}
+      PROD_NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || secrets.NEXT_PUBLIC_API_URL }}
+      STAGING_NEXT_PUBLIC_API_URL: ${{ vars.STAGING_NEXT_PUBLIC_API_URL || secrets.STAGING_NEXT_PUBLIC_API_URL }}
       # The CORS origin is public; production's is the value deploy.yml has always used.
       PROD_CORS_ORIGIN: https://varoai.martinkrakowski.com
       STAGING_CORS_ORIGIN: ${{ vars.STAGING_CORS_ORIGIN }}
