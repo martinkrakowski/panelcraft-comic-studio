@@ -24,8 +24,8 @@ import { getStorage } from '../utils/storage.js';
 import { getMediaUrls } from '../utils/media-urls.js';
 import {
   connectQueueWithRetry,
+  handleRedisUnavailable,
   shouldAttemptRedisConnect,
-  shouldFailWithoutRedis,
 } from '../utils/redis-connect.js';
 
 /**
@@ -49,13 +49,110 @@ export default defineNitroPlugin(async (nitroApp) => {
   const checkpointer = new PgCheckpointer(getPool());
 
   let bullMQQueue: Queue | null = null;
-  let jobQueueAdapter: JobQueuePort = {
+  let worker: Worker | undefined;
+
+  // While the Redis connection is being established (and permanently when
+  // Redis is disabled or unavailable outside production) this is the stub;
+  // after a successful connection it becomes the real BullMQ adapter. The
+  // delegating port below is built once, up front, so the use case and the
+  // request hook can be registered before we block on the retry loop.
+  let current: JobQueuePort = {
+    add: async () => {
+      throw new Error('Job queue not ready: Redis connection in progress');
+    },
+  };
+  const queuePort: JobQueuePort = {
+    add: (jobName, data, options) => current.add(jobName, data, options),
+  };
+  const stubQueuePort: JobQueuePort = {
     add: async () => {
       logger.warn('[Init] Job queue not available (Redis disabled)');
     },
   };
 
   const isRedisDisabled = !shouldAttemptRedisConnect(config.disableRedis);
+
+  const llmClient = new XaiLLMClientAdapter();
+
+  // Image generation: in mock mode return placeholder buffers/URLs without
+  // hitting any external API. In production mode wire the real xAI-backed
+  // adapter — previously this branch threw unconditionally, which made
+  // every generation request fail with a 5xx in non-mock environments.
+  const imageGenPort: ImageGenerationPort =
+    process.env.USE_MOCK_IMAGE === 'true'
+      ? {
+          generatePanel: async (command: GeneratePanelCommand) => {
+            await new Promise((r) => setTimeout(r, 500));
+            return `https://example.com/panels/${command.panelNumber || 1}.png`;
+          },
+          generateCover: async () => Buffer.from(''),
+          generatePreview: async () => Buffer.from(''),
+        }
+      : new ImageGenerationAdapter();
+
+  // Final-composition adapter is opt-in. Gated by FEATURE_FINAL_COMPOSITION
+  // because the endpoint is hidden behind the same flag and because the
+  // adapter assumes GOOGLE_GENERATIVE_AI_API_KEY is set. When the flag is
+  // off we pass `null` to the worker so any stray compose-final-page job
+  // (e.g. queued before the flag was disabled) surfaces a descriptive
+  // error instead of dispatching to an unconfigured backend.
+  const imageCompositionPort: ImageCompositionPort | null =
+    process.env.FEATURE_FINAL_COMPOSITION === 'true'
+      ? new GeminiImageCompositionAdapter()
+      : null;
+
+  const langGraphAdapter = new LangGraphOrchestrationAdapter(
+    imageGenPort,
+    llmClient,
+    projectRepo,
+    logger,
+    storage,
+    mediaUrls,
+    checkpointer
+  );
+  const comicUseCase = new ComicGenerationUseCase(
+    projectRepo,
+    queuePort,
+    logger
+  );
+
+  // Inject dependencies into request context (Nitro event.context pattern).
+  // Registered BEFORE the Redis retry wait so the server can accept (and
+  // correctly reject) requests during the startup backoff window.
+  nitroApp.hooks.hook('request', (event) => {
+    event.context = event.context || {};
+    event.context.comicUseCase = comicUseCase;
+    event.context.llmClient = llmClient;
+    event.context.imageGenerationClient = imageGenPort;
+  });
+
+  // Gracefully close BullMQ connections on server shutdown. bullMQQueue and
+  // worker are read at close time: they are assigned later, after a successful
+  // connection, and the hook must close whatever exists by then. The pool is
+  // always ended, whether or not Redis was enabled.
+  nitroApp.hooks.hook('close', async () => {
+    if (bullMQQueue) {
+      logger.info('[BullMQ] Closing worker and queue connections...');
+      const results = await Promise.allSettled([
+        worker?.close(),
+        bullMQQueue.close(),
+      ]);
+      const rejected = results.filter((r) => r.status === 'rejected');
+      if (rejected.length > 0) {
+        logger.error(`[BullMQ] Shutdown errors: ${rejected.length} failure(s)`);
+      }
+      logger.info('[BullMQ] Connections closed.');
+    }
+    // After the worker has drained (its last save() needs the pool), and
+    // whether or not Redis was enabled.
+    try {
+      await getPool().end();
+    } catch (err) {
+      logger.error(
+        `[Postgres] Pool shutdown failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  });
 
   if (!isRedisDisabled) {
     // BullMQ connects lazily — new Queue() never throws on connection failure,
@@ -98,115 +195,41 @@ export default defineNitroPlugin(async (nitroApp) => {
           ),
       });
       bullMQQueue = queue;
-      jobQueueAdapter = new BullMQJobQueueAdapter(queue);
+      current = new BullMQJobQueueAdapter(queue);
       logger.info(
         `[Init] Redis connection verified, job queue ready (attempt ${attempts})`
       );
-    } catch (error) {
-      if (shouldFailWithoutRedis(process.env)) {
-        // In production an unreachable Redis is fatal: fail startup so
-        // Kubernetes restarts the pod rather than silently serving a stub
-        // queue that drops jobs.
-        throw error;
-      }
-      logger.warn(
-        `[Init] Redis unreachable, falling back to stub queue: ${String(error)}`
+      worker = initComicWorker(
+        langGraphAdapter,
+        projectRepo,
+        bullMQQueue,
+        logger,
+        storage,
+        mediaUrls,
+        imageGenPort,
+        llmClient,
+        imageCompositionPort
       );
-      bullMQQueue = null;
+    } catch (error) {
+      // In production an unreachable Redis is fatal: terminate the process so
+      // Kubernetes restarts the pod rather than silently serving a stub queue
+      // that drops jobs. (Nitro never awaits plugin promises, so a thrown
+      // error would be swallowed by the node-server preset's unhandled
+      // rejection handler and the pod would keep running, unhealthy.)
+      const outcome = handleRedisUnavailable(error, {
+        env: process.env,
+        logError: (message) => logger.error(message),
+      });
+      if (outcome === 'fallback') {
+        logger.warn(
+          `[Init] Redis unreachable, falling back to stub queue: ${String(error)}`
+        );
+        current = stubQueuePort;
+        bullMQQueue = null;
+      }
     }
   } else {
     logger.warn('[Init] Redis disabled via DISABLE_REDIS env var');
+    current = stubQueuePort;
   }
-
-  const llmClient = new XaiLLMClientAdapter();
-
-  // Image generation: in mock mode return placeholder buffers/URLs without
-  // hitting any external API. In production mode wire the real xAI-backed
-  // adapter — previously this branch threw unconditionally, which made
-  // every generation request fail with a 5xx in non-mock environments.
-  const imageGenPort: ImageGenerationPort =
-    process.env.USE_MOCK_IMAGE === 'true'
-      ? {
-          generatePanel: async (command: GeneratePanelCommand) => {
-            await new Promise((r) => setTimeout(r, 500));
-            return `https://example.com/panels/${command.panelNumber || 1}.png`;
-          },
-          generateCover: async () => Buffer.from(''),
-          generatePreview: async () => Buffer.from(''),
-        }
-      : new ImageGenerationAdapter();
-
-  // Final-composition adapter is opt-in. Gated by FEATURE_FINAL_COMPOSITION
-  // because the endpoint is hidden behind the same flag and because the
-  // adapter assumes GOOGLE_GENERATIVE_AI_API_KEY is set. When the flag is
-  // off we pass `null` to the worker so any stray compose-final-page job
-  // (e.g. queued before the flag was disabled) surfaces a descriptive
-  // error instead of dispatching to an unconfigured backend.
-  const imageCompositionPort: ImageCompositionPort | null =
-    process.env.FEATURE_FINAL_COMPOSITION === 'true'
-      ? new GeminiImageCompositionAdapter()
-      : null;
-
-  const langGraphAdapter = new LangGraphOrchestrationAdapter(
-    imageGenPort,
-    llmClient,
-    projectRepo,
-    logger,
-    storage,
-    mediaUrls,
-    checkpointer
-  );
-  const comicUseCase = new ComicGenerationUseCase(
-    projectRepo,
-    jobQueueAdapter,
-    logger
-  );
-
-  // Inject dependencies into request context (Nitro event.context pattern)
-  nitroApp.hooks.hook('request', (event) => {
-    event.context = event.context || {};
-    event.context.comicUseCase = comicUseCase;
-    event.context.llmClient = llmClient;
-    event.context.imageGenerationClient = imageGenPort;
-  });
-
-  let worker: Worker | undefined;
-  if (bullMQQueue) {
-    worker = initComicWorker(
-      langGraphAdapter,
-      projectRepo,
-      bullMQQueue,
-      logger,
-      storage,
-      mediaUrls,
-      imageGenPort,
-      llmClient,
-      imageCompositionPort
-    );
-  }
-
-  // Gracefully close BullMQ connections on server shutdown
-  nitroApp.hooks.hook('close', async () => {
-    if (bullMQQueue) {
-      logger.info('[BullMQ] Closing worker and queue connections...');
-      const results = await Promise.allSettled([
-        worker?.close(),
-        bullMQQueue.close(),
-      ]);
-      const rejected = results.filter((r) => r.status === 'rejected');
-      if (rejected.length > 0) {
-        logger.error(`[BullMQ] Shutdown errors: ${rejected.length} failure(s)`);
-      }
-      logger.info('[BullMQ] Connections closed.');
-    }
-    // After the worker has drained (its last save() needs the pool), and
-    // whether or not Redis was enabled.
-    try {
-      await getPool().end();
-    } catch (err) {
-      logger.error(
-        `[Postgres] Pool shutdown failed: ${err instanceof Error ? err.message : String(err)}`
-      );
-    }
-  });
 });

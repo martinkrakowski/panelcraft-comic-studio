@@ -70,7 +70,8 @@ export async function connectQueueWithRetry<Q>(
       detachErrorSink?.();
       if (attempt >= maxAttempts) {
         throw new Error(
-          `Redis unreachable after ${attempt} attempts: ${String(error)}`
+          `Redis unreachable after ${attempt} attempts: ${String(error)}`,
+          { cause: error }
         );
       }
       opts.onRetry?.(attempt, error);
@@ -113,4 +114,37 @@ export function shouldFailWithoutRedis(
  */
 export function shouldAttemptRedisConnect(disableRedis: unknown): boolean {
   return disableRedis !== 'true';
+}
+
+/**
+ * Handle a total Redis connection failure according to the environment.
+ *
+ * In production the process must terminate (`exit(1)`) so Kubernetes restarts
+ * the pod — throwing from an async Nitro plugin is swallowed because Nitro does
+ * not await plugin promises and the node-server preset's `unhandledRejection`
+ * handler only logs. Outside production the caller may fall back to the stub
+ * queue.
+ *
+ * Always returns `'fallback'` so callers can use it as a switch; in production
+ * it only returns if the injected `exit` returned (tests) instead of exiting.
+ */
+export function handleRedisUnavailable(
+  error: unknown,
+  deps: {
+    env?: { NODE_ENV?: string };
+    logError: (msg: string) => void;
+    exit?: (code: number) => never | void;
+  }
+): 'fallback' {
+  if (shouldFailWithoutRedis(deps.env)) {
+    deps.logError(
+      '[Init] Redis unreachable in production, exiting so the pod restarts: ' +
+        String(error)
+    );
+    const exit = deps.exit ?? ((code: number) => process.exit(code));
+    exit(1);
+    // Reachable only when `exit` returned (tests); production exits above.
+    return 'fallback';
+  }
+  return 'fallback';
 }

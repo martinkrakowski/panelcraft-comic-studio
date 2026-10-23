@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   connectQueueWithRetry,
+  handleRedisUnavailable,
   REDIS_CONNECT_INITIAL_DELAY_MS,
   REDIS_CONNECT_MAX_ATTEMPTS,
   REDIS_CONNECT_MAX_DELAY_MS,
   shouldAttemptRedisConnect,
   shouldFailWithoutRedis,
 } from '../server/utils/redis-connect.js';
-import type { ConnectQueueOptions } from '../server/utils/redis-connect.js';
 
 interface FakeQueue {
   id: number;
@@ -59,10 +59,15 @@ function makeOptions(
     attachErrorSink: (q: FakeQueue) => q.detach,
     close: (q: FakeQueue) => q.close(),
     sleep: overrides.sleep ?? vi.fn().mockResolvedValue(undefined),
-    maxAttempts: overrides.maxAttempts ?? REDIS_CONNECT_MAX_ATTEMPTS,
-    initialDelayMs:
-      overrides.initialDelayMs ?? REDIS_CONNECT_INITIAL_DELAY_MS,
-    maxDelayMs: overrides.maxDelayMs ?? REDIS_CONNECT_MAX_DELAY_MS,
+    ...(overrides.maxAttempts !== undefined && {
+      maxAttempts: overrides.maxAttempts,
+    }),
+    ...(overrides.initialDelayMs !== undefined && {
+      initialDelayMs: overrides.initialDelayMs,
+    }),
+    ...(overrides.maxDelayMs !== undefined && {
+      maxDelayMs: overrides.maxDelayMs,
+    }),
     onRetry: overrides.onRetry ?? vi.fn(),
   };
 }
@@ -147,12 +152,110 @@ describe('connectQueueWithRetry', () => {
     expect(REDIS_CONNECT_INITIAL_DELAY_MS).toBe(250);
     expect(REDIS_CONNECT_MAX_DELAY_MS).toBe(2000);
 
-    const queues = Array.from({ length: 3 }, () => makeFakeQueue(1));
+    const queues = Array.from({ length: REDIS_CONNECT_MAX_ATTEMPTS }, () =>
+      makeFakeQueue(1)
+    );
     const sleep = vi.fn().mockResolvedValue(undefined);
     const options = makeOptions(queues, { sleep });
-    await expect(connectQueueWithRetry(options)).rejects.toThrow(
-      /Redis unreachable after 30 attempts:/
+
+    let rejection: unknown;
+    try {
+      await connectQueueWithRetry(options);
+    } catch (error) {
+      rejection = error;
+    }
+    expect(rejection).toBeInstanceOf(Error);
+    const error = rejection as Error & { cause?: unknown };
+    expect(error.message).toMatch(/Redis unreachable after 30 attempts:/);
+
+    // All 30 attempts were made and every failed queue was closed once.
+    expect(options.create).toHaveBeenCalledTimes(30);
+    for (const q of queues) {
+      expect(q.close).toHaveBeenCalledTimes(1);
+    }
+
+    // Default backoff: 250, 500, 1000, then 2000 (capped) for the rest —
+    // 29 sleeps, none after the final failed attempt.
+    expect(sleep.mock.calls.map((call) => call[0])).toEqual([
+      250, 500, 1000, ...Array<number>(26).fill(2000),
+    ]);
+    expect(sleep).toHaveBeenCalledTimes(29);
+
+    // The terminal rejection keeps the last attempt's error as its cause.
+    expect(error.cause).toBeInstanceOf(Error);
+    expect((error.cause as Error).message).toBe(
+      `ECONNREFUSED ${queues[29]!.id}`
     );
+  });
+});
+
+describe('handleRedisUnavailable', () => {
+  it('logs once and exits with 1 in production', () => {
+    const logError = vi.fn();
+    const exit = vi.fn();
+
+    const result = handleRedisUnavailable(new Error('ECONNREFUSED 127.0.0.1:6379'), {
+      env: { NODE_ENV: 'production' },
+      logError,
+      exit,
+    });
+
+    expect(result).toBe('fallback');
+    expect(logError).toHaveBeenCalledTimes(1);
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '[Init] Redis unreachable in production, exiting so the pod restarts:'
+      )
+    );
+    expect(logError).toHaveBeenCalledWith(expect.stringContaining('ECONNREFUSED'));
+    expect(exit).toHaveBeenCalledTimes(1);
+    expect(exit).toHaveBeenCalledWith(1);
+  });
+
+  it('returns fallback without exiting outside production', () => {
+    const logError = vi.fn();
+    const exit = vi.fn();
+
+    for (const NODE_ENV of ['development', 'test', undefined]) {
+      const result = handleRedisUnavailable(new Error('boom'), {
+        env: NODE_ENV === undefined ? {} : { NODE_ENV },
+        logError,
+        exit,
+      });
+      expect(result).toBe('fallback');
+    }
+
+    expect(logError).not.toHaveBeenCalled();
+    expect(exit).not.toHaveBeenCalled();
+  });
+
+  it('defaults to process.env.NODE_ENV', () => {
+    const previous = process.env.NODE_ENV;
+    const logError = vi.fn();
+    const exit = vi.fn();
+    try {
+      process.env.NODE_ENV = 'production';
+      expect(
+        handleRedisUnavailable(new Error('boom'), { logError, exit })
+      ).toBe('fallback');
+      expect(exit).toHaveBeenCalledWith(1);
+      expect(logError).toHaveBeenCalledTimes(1);
+
+      logError.mockClear();
+      exit.mockClear();
+      process.env.NODE_ENV = 'development';
+      expect(
+        handleRedisUnavailable(new Error('boom'), { logError, exit })
+      ).toBe('fallback');
+      expect(exit).not.toHaveBeenCalled();
+      expect(logError).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = previous;
+      }
+    }
   });
 });
 
@@ -186,23 +289,5 @@ describe('shouldAttemptRedisConnect', () => {
     expect(shouldAttemptRedisConnect('true')).toBe(false);
     expect(shouldAttemptRedisConnect(undefined)).toBe(true);
     expect(shouldAttemptRedisConnect('false')).toBe(true);
-  });
-
-  it('disabled path: no queue creation when the plugin skips', async () => {
-    const create = vi.fn();
-    const options: ConnectQueueOptions<{ id: number }> = {
-      create,
-      waitUntilReady: async () => undefined,
-      attachErrorSink: () => () => {},
-      close: async () => undefined,
-      sleep: vi.fn().mockResolvedValue(undefined),
-    };
-
-    // Mirrors init.ts: the disabled check gates the entire retry loop.
-    if (shouldAttemptRedisConnect('true')) {
-      await connectQueueWithRetry(options);
-    }
-
-    expect(create).not.toHaveBeenCalled();
   });
 });
