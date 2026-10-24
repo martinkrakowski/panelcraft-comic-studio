@@ -1,0 +1,16 @@
+# gitleaks configuration: the default rules, plus narrow allowlists for reviewed test fixtures and
+# non-secret look-alikes. Each entry requires the file AND the rule AND the line's shape
+# (condition = "AND"), so any other finding in the same file is still caught. Add an entry only
+# for a reviewed fixture, never for a real value.
+title = "panelcraft-comic-studio"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "wizard test: referenceImageKey is an object-storage key name"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^apps/web/src/components/new-comic/__tests__/NewComicWizard\.test\.tsx$''']
+regexTarget = "line"
+regexes = ['''^\s*referenceImageKey: '''']
